@@ -6,7 +6,14 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 public class RadarImageCli {
-
+	// TODO:
+	// Put WxArchives on build path (both Nexrad and WWA data)
+	// Build Lambert-projected basemap generator, figure out way to handle rotation so north is always up
+	// Radar data download/decoder/storage
+	// Radar data plotter (not obscenely slow)
+	
+	private static final DebugLogger logger = new DebugLogger(DebugLoggerLevel.VERBOSE);
+	
 	public static void main(String[] args) {
 		System.out.println("input args: " + Arrays.toString(args));
 		
@@ -41,8 +48,8 @@ public class RadarImageCli {
 			}
 		}
 		
-		System.out.println(dt);
-		System.out.println(lat);
-		System.out.println(lon);
+		logger.println(dt, DebugLoggerLevel.BRIEF);
+		logger.println(lat, DebugLoggerLevel.VERBOSE);
+		logger.println(lon, DebugLoggerLevel.VERBOSE);
 	}
 }
