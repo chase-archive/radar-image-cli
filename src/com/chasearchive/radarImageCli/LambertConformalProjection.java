@@ -14,9 +14,8 @@ public class LambertConformalProjection implements MapProjection {
 	public double nx;
 	public double ny;
 	
-	public static final LambertConformalProjection hrrrProj = new LambertConformalProjection(-97.5, 21.138, 38.5, 38.5, 3, 3, 899.178564262, -123.970196814, 1799, 1059);
-	public static final LambertConformalProjection rapProj = new LambertConformalProjection(-107.0, 1.000, 50, 50, 32.46341, 32.46341, 173.5, -45, 349, 277);
-	public static final LambertConformalProjection HRDPS_CONT_PROJ = new LambertConformalProjection(-110.3, 60, 50, 68, 2.5, 2.5, 756, 835, 2540, 1290);
+	public static final LambertConformalProjection HRRR_PROJ = new LambertConformalProjection(-97.5, 21.138, 38.5, 38.5, 3, 3, 899.178564262, -123.970196814, 1799, 1059);
+	public static final LambertConformalProjection RAP_PROJ = new LambertConformalProjection(-107.0, 1.000, 50, 50, 32.46341, 32.46341, 173.5, -45, 349, 277);
 	public static final LambertConformalProjection RTMA_RU_PROJ = new LambertConformalProjection(-95, 25, 25, 25, 2.539703, 2.539703, 1289, 103, 2345, 1597);
 	
 	public LambertConformalProjection(double refLongitude, double refLatitude, double standardParallel1,
@@ -56,7 +55,7 @@ public class LambertConformalProjection implements MapProjection {
 	}
 
 	public PointD projectLatLonToIJ(PointD p) {
-		return projectLatLonToIJ(p.getY(), p.getX());
+		return projectLatLonToIJ(p.getX(), p.getY());
 	}
 
 	@Override

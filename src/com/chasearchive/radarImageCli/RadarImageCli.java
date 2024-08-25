@@ -1,18 +1,22 @@
 package com.chasearchive.radarImageCli;
 
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.util.Arrays;
+
+import javax.imageio.ImageIO;
 
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 public class RadarImageCli {
 	// TODO:
-	// Put WxArchives on build path (both Nexrad and WWA data)
-	// Build Lambert-projected basemap generator, figure out way to handle rotation so north is always up
 	// Radar data download/decoder/storage
 	// Radar data plotter (not obscenely slow)
+	// Maybe city markers?
 	
-	private static final DebugLogger logger = new DebugLogger(DebugLoggerLevel.VERBOSE);
+	static final DebugLogger logger = new DebugLogger(DebugLoggerLevel.VERBOSE);
 	
 	public static void main(String[] args) {
 		System.out.println("input args: " + Arrays.toString(args));
@@ -20,6 +24,7 @@ public class RadarImageCli {
 		DateTime dt = null;
 		double lat = -1024;
 		double lon = -1024;
+		GeneratorSettings settings = new GeneratorSettings();
 		
 		for(int i = 0; i < args.length; i+=2) {
 			String flag = args[i];
@@ -40,16 +45,26 @@ public class RadarImageCli {
 				
 				dt = new DateTime(year, month, day, hour, minute, DateTimeZone.UTC);
 			} else if("-lat".equals(flag)) {
-				lat = Double.valueOf(lat);
-			} else if("-dt".equals(flag)) {
-				lon = Double.valueOf(lon);
+				lat = Double.valueOf(arg);
+			} else if("-lon".equals(flag)) {
+				lon = Double.valueOf(arg);
 			} else {
 				
 			}
 		}
 		
 		logger.println(dt, DebugLoggerLevel.BRIEF);
-		logger.println(lat, DebugLoggerLevel.VERBOSE);
-		logger.println(lon, DebugLoggerLevel.VERBOSE);
+		logger.println(lat, DebugLoggerLevel.BRIEF);
+		logger.println(lon, DebugLoggerLevel.BRIEF);
+		
+		try {
+			BufferedImage radar = RadarImageGenerator.generateRadar(dt, lat, lon, settings);
+			
+			ImageIO.write(radar, "PNG", new File("basemap-test5.png"));
+		} catch (IOException e) {
+			System.err.println("Could not generate radar! Send following error message to Amelia:");
+			e.printStackTrace();
+			System.exit(1);
+		}
 	}
 }

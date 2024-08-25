@@ -7,6 +7,8 @@
 	</classpathentry>
 	<classpathentry kind="src" path="src"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/WxArchives"/>
-	<classpathentry kind="lib" path="/home/a-urq/eclipse-workspace/WxArchives/joda-time-2.12.2.jar"/>
+	<classpathentry kind="lib" path="lib/WxArchives.jar"/>
+	<classpathentry kind="lib" path="lib/joda-time-2.12.2.jar"/>
+	<classpathentry kind="lib" path="lib/commons-io-2.7.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
