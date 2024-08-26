@@ -7,16 +7,18 @@ import java.util.Arrays;
 
 import javax.imageio.ImageIO;
 
+import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 public class RadarImageCli {
+	// Radar data download is done
 	// TODO:
-	// Radar data download/decoder/storage
+	// Make RadarScan object that stores both refl and vlcy SAILS scans
 	// Radar data plotter (not obscenely slow)
 	// Maybe city markers?
 	
-	static final DebugLogger logger = new DebugLogger(DebugLoggerLevel.VERBOSE);
+	static final DebugLogger logger = new DebugLogger(DebugLoggerLevel.SILENT);
 	
 	public static void main(String[] args) {
 		System.out.println("input args: " + Arrays.toString(args));
@@ -25,7 +27,9 @@ public class RadarImageCli {
 		double lat = -1024;
 		double lon = -1024;
 		GeneratorSettings settings = new GeneratorSettings();
+		String outputFileString = null;
 		
+		// flag/argument parsing logic
 		for(int i = 0; i < args.length; i+=2) {
 			String flag = args[i];
 			String arg = args[i + 1];
@@ -48,8 +52,42 @@ public class RadarImageCli {
 				lat = Double.valueOf(arg);
 			} else if("-lon".equals(flag)) {
 				lon = Double.valueOf(arg);
+			} else if("-a".equals(flag)) {
+				if("1:1".equals(arg)) {
+					settings.setAspectRatio(AspectRatio.SQUARE);
+				} else if("4:3".equals(arg)) {
+					settings.setAspectRatio(AspectRatio.FOUR_THREE);
+				} else if("16:9".equals(arg)) {
+					settings.setAspectRatio(AspectRatio.SIXTEEN_NINE);
+				} else {
+					continue;
+				}
+			} else if("-m".equals(flag)) {
+				if("BR".equals(arg)) {
+					settings.setMoment(Moment.REFLECTIVITY);
+				} else if("BV".equals(arg)) {
+					settings.setMoment(Moment.VELOCITY);
+				} else {
+					continue;
+				}
+			} else if("-s".equals(flag)) {
+				settings.setSize(Double.valueOf(arg));
+			} else if("-r".equals(flag)) {
+				settings.setResolution(Double.valueOf(arg));
+			} else if("-debug".equals(flag)) {
+				if("SILENT".equals(arg)) {
+					logger.programLevel = DebugLoggerLevel.SILENT;
+				} else if("BRIEF".equals(arg)) {
+					logger.programLevel = DebugLoggerLevel.BRIEF;
+				} else if("VERBOSE".equals(arg)) {
+					logger.programLevel = DebugLoggerLevel.VERBOSE;
+				} else {
+					continue;
+				}
+			} else if("-o".equals(flag)) {
+				outputFileString = arg;
 			} else {
-				
+				continue; // no flags recognized, carry on to next one
 			}
 		}
 		
@@ -60,10 +98,25 @@ public class RadarImageCli {
 		try {
 			BufferedImage radar = RadarImageGenerator.generateRadar(dt, lat, lon, settings);
 			
-			ImageIO.write(radar, "PNG", new File("basemap-test5.png"));
+			File outputFile = new File(outputFileString);
+			ImageIO.write(radar, "PNG", outputFile);
+			logger.println("Output file to: " + outputFile.getAbsolutePath(), DebugLoggerLevel.BRIEF);
+			
+			try {
+				FileUtils.deleteDirectory(new File("radar-image-generator-temp"));
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
 		} catch (IOException e) {
 			System.err.println("Could not generate radar! Send following error message to Amelia:");
 			e.printStackTrace();
+			
+			try {
+				FileUtils.deleteDirectory(new File("radar-image-generator-temp"));
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+			
 			System.exit(1);
 		}
 	}

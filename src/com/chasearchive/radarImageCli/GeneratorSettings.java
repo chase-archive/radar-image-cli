@@ -1,9 +1,9 @@
 package com.chasearchive.radarImageCli;
 
 public class GeneratorSettings {
-	private AspectRatio aspectRatio = AspectRatio.FOUR_THREE;
+	private AspectRatio aspectRatio = AspectRatio.SQUARE;
 	private Moment moment = Moment.REFLECTIVITY;
-	private double size = 8; // domain height in degrees
+	private double size = 0.5; // domain height in degrees
 	private double resolution = 1080; // height in pixels
 	
 	public AspectRatio getAspectRatio() {
@@ -47,7 +47,7 @@ public class GeneratorSettings {
 		return resolution;
 	}
 	
-	public void getSize(double resolution) {
+	public void setResolution(double resolution) {
 		this.resolution = resolution;
 	}
 }
