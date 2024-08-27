@@ -46,9 +46,29 @@ public class RadarImageGenerator {
 		} catch (NoValidRadarScansFoundException e) {
 			e.printStackTrace();
 		}
+		
+		RadarScan radarScan = new RadarScan(radarFile);
+		
+		BufferedImage radarPlot = generateRadarPlot(radarScan, time, lat, lon, settings);
+		
+		BufferedImage plot = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+		Graphics2D g = plot.createGraphics();
 
-		return basemap;
+		g.setColor(Color.BLACK);
+		g.fillRect(0, 0, basemap.getWidth(), basemap.getHeight());
+
+		g.drawImage(radarPlot, 0, 0, null);
+		g.drawImage(basemap, 0, 0, null);
+		
+		g.dispose();
+
+		return plot;
 	}
+	
+	private static final ColorTable reflectivityColorTable = new ColorTable(
+			loadResourceAsFile("res/awips-ii-official-mod-low-filter-2.pal"), 0.1f, 10, "dBZ");
+	private static final ColorTable velocityColorTable = new ColorTable(
+			loadResourceAsFile("res/SRRadarLoopsVlcy.pal"), 0.1f, 10, "mph");
 
 	private static BufferedImage generateBasemap(double lat, double lon, GeneratorSettings settings)
 			throws IOException {
@@ -101,9 +121,6 @@ public class RadarImageGenerator {
 
 		BufferedImage roads = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g4 = roads.createGraphics();
-
-		g.setColor(Color.BLACK);
-		g.fillRect(0, 0, basemap.getWidth(), basemap.getHeight());
 
 		PointD latLonProjectedUL = new PointD(
 				latLonProjected.getX() - (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
@@ -313,6 +330,131 @@ public class RadarImageGenerator {
 
 		return basemap;
 	}
+	
+	private static BufferedImage generateRadarPlot(RadarScan scan, DateTime time, double lat, double lon, GeneratorSettings settings) {
+		PointD latLonProjected = HRRR_PROJ.projectLatLonToIJ(lon, lat);
+		PointD trueNorthPointer = HRRR_PROJ.projectLatLonToIJ(lon, lat + 0.01); // i love finite differencing
+		
+		double radarLat = scan.radarLat;
+		double radarLon = scan.radarLon;
+		
+		PointD radarProjected = HRRR_PROJ.projectLatLonToIJ(radarLon, radarLat);
+		PointD radarNorthPointer = HRRR_PROJ.projectLatLonToIJ(radarLon, radarLat + 0.01); // i love finite differencing
+
+		double trueNorth_dx = trueNorthPointer.getX() - latLonProjected.getX();
+		double trueNorth_dy = trueNorthPointer.getY() - latLonProjected.getY();
+		double rTrueNorth_dx = radarNorthPointer.getX() - radarProjected.getX();
+		double rTrueNorth_dy = radarNorthPointer.getY() - radarProjected.getY();
+
+		double rotationAngle = Math.atan2(-trueNorth_dx, -trueNorth_dy);
+		double rotationAngleRadar = Math.atan2(-rTrueNorth_dx, -rTrueNorth_dy);
+
+		BufferedImage radarPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
+				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g = radarPlot.createGraphics();
+
+		PointD latLonProjectedUL = new PointD(
+				latLonProjected.getX() - (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
+				latLonProjected.getY() - (111.32 / HRRR_PROJ.dy * settings.getSize()));
+		PointD latLonProjectedDR = new PointD(
+				latLonProjected.getX() + (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
+				latLonProjected.getY() + (111.32 / HRRR_PROJ.dy * settings.getSize()));
+		
+		float[][] data = null;
+		ColorTable colorTable = null;
+		
+		switch(settings.getMoment()) {
+		case REFLECTIVITY:
+			data = scan.getReflectivity(time, false);
+			colorTable = reflectivityColorTable;
+			break;
+		case VELOCITY:
+			data = scan.getRadialVelocity(time, false);
+			colorTable = velocityColorTable;
+			break;
+		default:
+			return radarPlot;
+		}
+		
+		for(int i = 0; i < data.length; i++) {
+			for(int j = 0; j < data[i].length; j++) {
+				PointD radarPolygon1 = new PointD(
+						radarProjected.getX() + (1.0/HRRR_PROJ.dx) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.sin(Math.toRadians(scan.da * (i - 0.5))),
+						radarProjected.getY() - (1.0/HRRR_PROJ.dy) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.cos(Math.toRadians(scan.da * (i - 0.5))));
+				PointD radarPolygon2 = new PointD(
+						radarProjected.getX() + (1.0/HRRR_PROJ.dx) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.sin(Math.toRadians(scan.da * (i + 0.5))),
+						radarProjected.getY() - (1.0/HRRR_PROJ.dy) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.cos(Math.toRadians(scan.da * (i + 0.5))));
+				PointD radarPolygon3 = new PointD(
+						radarProjected.getX() + (1.0/HRRR_PROJ.dx) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.sin(Math.toRadians(scan.da * (i + 0.5))),
+						radarProjected.getY() - (1.0/HRRR_PROJ.dy) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.cos(Math.toRadians(scan.da * (i + 0.5))));
+				PointD radarPolygon4 = new PointD(
+						radarProjected.getX() + (1.0/HRRR_PROJ.dx) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.sin(Math.toRadians(scan.da * (i - 0.5))),
+						radarProjected.getY() - (1.0/HRRR_PROJ.dy) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.cos(Math.toRadians(scan.da * (i - 0.5))));
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						radarPolygon1.getX());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						radarPolygon1.getY());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						radarPolygon2.getX());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						radarPolygon2.getY());
+				double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						radarPolygon3.getX());
+				double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						radarPolygon3.getY());
+				double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						radarPolygon4.getX());
+				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						radarPolygon4.getY());
+
+				PointD xy0P = rotateAroundCenter(radarProjected, radarPlot.getWidth(), radarPlot.getHeight(), rotationAngle);
+				PointD xy1P = rotateAroundCenter(x1, y1, radarPlot.getWidth(), radarPlot.getHeight(), rotationAngle);
+				PointD xy2P = rotateAroundCenter(x2, y2, radarPlot.getWidth(), radarPlot.getHeight(), rotationAngle);
+				PointD xy3P = rotateAroundCenter(x3, y3, radarPlot.getWidth(), radarPlot.getHeight(), rotationAngle);
+				PointD xy4P = rotateAroundCenter(x4, y4, radarPlot.getWidth(), radarPlot.getHeight(), rotationAngle);
+
+				PointD xy1PP = rotateAboutPoint(xy1P, xy0P.getX(), xy0P.getY(), rotationAngleRadar);
+				PointD xy2PP = rotateAboutPoint(xy2P, xy0P.getX(), xy0P.getY(), rotationAngleRadar);
+				PointD xy3PP = rotateAboutPoint(xy3P, xy0P.getX(), xy0P.getY(), rotationAngleRadar);
+				PointD xy4PP = rotateAboutPoint(xy4P, xy0P.getX(), xy0P.getY(), rotationAngleRadar);
+				
+				double value = data[i][j];
+				Color color = colorTable.getColor(value);
+				
+				int[] xPoints = {
+						(int) Math.round(xy1PP.getX()),
+						(int) Math.round(xy2PP.getX()),
+						(int) Math.round(xy3PP.getX()),
+						(int) Math.round(xy4PP.getX()) 
+					};
+				int[] yPoints = {
+						(int) Math.round(xy1PP.getY()),
+						(int) Math.round(xy2PP.getY()),
+						(int) Math.round(xy3PP.getY()),
+						(int) Math.round(xy4PP.getY()) 
+					};
+				
+				boolean anyInsideImage = false;
+				for(int k = 0; k < 4; k++) {
+					int x = xPoints[k];
+					int y = yPoints[k];
+					
+					if(x >= 0 && x < radarPlot.getWidth() && y >= 0 && y < radarPlot.getHeight()) {
+						anyInsideImage = true;
+						break;
+					}
+				}
+				
+				if (anyInsideImage) {
+					g.setColor(color);
+					g.fillPolygon(xPoints, yPoints, 4);
+				}
+			}
+		}
+		
+		return radarPlot;
+	}
 
 	private static final int TIME_TOLERANCE = 20; // minutes
 	private static File getClosestRadarData(DateTime time, double lat, double lon) throws NoValidRadarScansFoundException {
@@ -407,7 +549,7 @@ public class RadarImageGenerator {
 				);
 			
 			if(fileTimestamp.isBefore(time)) {
-				mostRecentFile = filename;
+				mostRecentFile = validFiles.get(i);
 			} else {
 				break;
 			}
@@ -416,7 +558,11 @@ public class RadarImageGenerator {
 		logger.println("chose file: " + mostRecentFile, DebugLoggerLevel.BRIEF);
 		
 		try {
+			logger.println("try returning file: " + mostRecentFile, DebugLoggerLevel.BRIEF);
+			
 			File nexradFile = downloadFile(mostRecentFile, "radar.nexrad");
+			
+			logger.println("returning file: " + mostRecentFile, DebugLoggerLevel.BRIEF);
 			
 			return nexradFile;
 		} catch (IOException e) {
@@ -497,6 +643,10 @@ public class RadarImageGenerator {
 		Collections.reverse(radarCodes);
 	}
 
+	private static PointD rotateAroundCenter(PointD p, double w, double h, double phi) {
+		return rotateAroundCenter(p.getX(), p.getY(), w, h, phi);
+	}
+
 	private static PointD rotateAroundCenter(double x, double y, double w, double h, double phi) {
 		double xPrime = x - w / 2;
 		double yPrime = y - h / 2;
@@ -506,6 +656,23 @@ public class RadarImageGenerator {
 
 		double xRotate = xPrimeRotated + w / 2;
 		double yRotate = yPrimeRotated + h / 2;
+
+		return new PointD(xRotate, yRotate);
+	}
+
+	private static PointD rotateAboutPoint(PointD p, double x0, double y0, double phi) {
+		return rotateAboutPoint(p.getX(), p.getY(), x0, y0, phi);
+	}
+
+	private static PointD rotateAboutPoint(double x, double y, double x0, double y0, double phi) {
+		double xPrime = x - x0;
+		double yPrime = y - y0;
+
+		double xPrimeRotated = Math.cos(phi) * xPrime - Math.sin(phi) * yPrime;
+		double yPrimeRotated = Math.sin(phi) * xPrime + Math.cos(phi) * yPrime;
+
+		double xRotate = xPrimeRotated + x0;
+		double yRotate = yPrimeRotated + y0;
 
 		return new PointD(xRotate, yRotate);
 	}
