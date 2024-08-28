@@ -27,10 +27,15 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.imageio.ImageIO;
+
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
+import com.ameliaWx.wxArchives.PointF;
+import com.ameliaWx.wxArchives.earthWeather.iemWarnings.WarningArchive;
+import com.ameliaWx.wxArchives.earthWeather.iemWarnings.WarningPolygon;
 import com.ameliaWx.wxArchives.earthWeather.nexrad.NexradAws;
 import com.univocity.parsers.tsv.TsvParser;
 import com.univocity.parsers.tsv.TsvParserSettings;
@@ -51,6 +56,10 @@ public class RadarImageGenerator {
 		
 		BufferedImage radarPlot = generateRadarPlot(radarScan, time, lat, lon, settings);
 		
+		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings);
+		
+		BufferedImage logo = ImageIO.read(loadResourceAsFile("res/chase-archive-logo-256pix.png"));
+		
 		BufferedImage plot = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
 		Graphics2D g = plot.createGraphics();
 
@@ -59,6 +68,15 @@ public class RadarImageGenerator {
 
 		g.drawImage(radarPlot, 0, 0, null);
 		g.drawImage(basemap, 0, 0, null);
+		g.drawImage(warningPlot, 0, 0, null);
+		g.drawImage(logo, 0, 0, null);
+		
+//		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
+//		g.setColor(Color.WHITE);
+//		g.drawString("Ⓒ Chase Archive ", 3, basemap.getHeight() - 45);
+//		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 24));
+//		g.setColor(Color.LIGHT_GRAY);
+//		g.drawString("chasearchive.com ", 63, basemap.getHeight() - 15);
 		
 		g.dispose();
 
@@ -316,10 +334,10 @@ public class RadarImageGenerator {
 			}
 		}
 
-		float[] scales = { 1f, 1f, 1f, 0.25f };
+		float[] scales = { 1f, 1f, 1f, 0.4f };
 		float[] offsets = new float[4];
 		RescaleOp rop = new RescaleOp(scales, offsets, null);
-		float[] scales2 = { 1f, 1f, 1f, 0.2f };
+		float[] scales2 = { 1f, 1f, 1f, 0.3f };
 		float[] offsets2 = new float[4];
 		RescaleOp rop2 = new RescaleOp(scales2, offsets2, null);
 
@@ -347,7 +365,7 @@ public class RadarImageGenerator {
 		double rTrueNorth_dy = radarNorthPointer.getY() - radarProjected.getY();
 
 		double rotationAngle = Math.atan2(-trueNorth_dx, -trueNorth_dy);
-		double rotationAngleRadar = Math.atan2(-rTrueNorth_dx, -rTrueNorth_dy);
+		double rotationAngleRadar = Math.atan2(rTrueNorth_dx, -rTrueNorth_dy);
 
 		BufferedImage radarPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
@@ -454,6 +472,153 @@ public class RadarImageGenerator {
 		}
 		
 		return radarPlot;
+	}
+
+	private static BufferedImage generateWarningPlot(DateTime time, double lat, double lon, GeneratorSettings settings) throws IOException {
+		BufferedImage warningPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
+				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g = warningPlot.createGraphics();
+
+		BasicStroke bs = new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+		BasicStroke ts = new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+		
+		WarningArchive wa = new WarningArchive("radar-image-generator-temp/");
+		ArrayList<WarningPolygon> warnings = wa.getWarnings(time.minusHours(2), time.plusHours(2));
+
+		PointD latLonProjected = HRRR_PROJ.projectLatLonToIJ(lon, lat);
+		PointD trueNorthPointer = HRRR_PROJ.projectLatLonToIJ(lon, lat + 0.01); // i love finite differencing
+
+		double trueNorth_dx = trueNorthPointer.getX() - latLonProjected.getX();
+		double trueNorth_dy = trueNorthPointer.getY() - latLonProjected.getY();
+
+		double rotationAngle = Math.atan2(-trueNorth_dx, -trueNorth_dy);
+
+		PointD latLonProjectedUL = new PointD(
+				latLonProjected.getX() - (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
+				latLonProjected.getY() - (111.32 / HRRR_PROJ.dy * settings.getSize()));
+		PointD latLonProjectedDR = new PointD(
+				latLonProjected.getX() + (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
+				latLonProjected.getY() + (111.32 / HRRR_PROJ.dy * settings.getSize()));
+		
+		for(WarningPolygon warning : warnings) {
+			if(warning.isActive(time)) {
+				switch(warning.getWarningType()) {
+				case DUST_STORM_WARNING:
+					g.setColor(new Color(0, 0, 0));
+					break;
+				case FLASH_FLOOD:
+					g.setColor(new Color(0, 0, 0));
+					break;
+				case SEVERE_THUNDERSTORM:
+					g.setColor(new Color(0, 0, 0));
+					break;
+				case SNOW_SQUALL_WARNING:
+					g.setColor(new Color(0, 0, 0));
+					break;
+				case SPECIAL_MARINE:
+					g.setColor(new Color(0, 0, 0));
+					break;
+				case TORNADO:
+					g.setColor(new Color(0, 0, 0));
+					break;
+				default:
+					g.setColor(new Color(0, 0, 0, 0));
+					break;
+				}
+				g.setStroke(ts);
+				
+				ArrayList<PointF> polygonF = warning.getPoints();
+				ArrayList<PointD> polygon = new ArrayList<>();
+				
+				for(int i = 0; i < polygonF.size(); i++) {
+					polygon.add(new PointD((double) polygonF.get(i).getY(), (double) polygonF.get(i).getX()));
+//					logger.println("polygonF conversion: " + polygon.get(polygon.size() - 1), DebugLoggerLevel.BRIEF);
+				}
+				
+				for (int i = 0; i < polygon.size(); i++) {
+					int j = i + 1;
+					if (j == polygon.size())
+						j = 0;
+
+					PointD p1 = HRRR_PROJ.projectLatLonToIJ(polygon.get(i));
+					PointD p2 = HRRR_PROJ.projectLatLonToIJ(polygon.get(j));
+
+					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+							p1.getX());
+					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+							p1.getY());
+					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+							p2.getX());
+					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+							p2.getY());
+
+					PointD xy1P = rotateAroundCenter(x1, y1, warningPlot.getWidth(), warningPlot.getHeight(), rotationAngle);
+					PointD xy2P = rotateAroundCenter(x2, y2, warningPlot.getWidth(), warningPlot.getHeight(), rotationAngle);
+
+					double x1P = xy1P.getX();
+					double y1P = xy1P.getY();
+					double x2P = xy2P.getX();
+					double y2P = xy2P.getY();
+
+					g.drawLine((int) x1P, (int) y1P, (int) x2P, (int) y2P);
+				}
+				
+				switch(warning.getWarningType()) {
+				case DUST_STORM_WARNING:
+					g.setColor(new Color(239, 192, 144));
+					break;
+				case FLASH_FLOOD:
+					g.setColor(new Color(0, 255, 0));
+					break;
+				case SEVERE_THUNDERSTORM:
+					g.setColor(new Color(255, 255, 0));
+					break;
+				case SNOW_SQUALL_WARNING:
+					g.setColor(new Color(0, 255, 255));
+					break;
+				case SPECIAL_MARINE:
+					g.setColor(new Color(255, 128, 0));
+					break;
+				case TORNADO:
+					g.setColor(new Color(255, 0, 0));
+					break;
+				default:
+					g.setColor(new Color(0, 0, 0, 0));
+					break;
+				}
+				g.setStroke(bs);
+				
+				for (int i = 0; i < polygon.size(); i++) {
+					int j = i + 1;
+					if (j == polygon.size())
+						j = 0;
+
+					PointD p1 = HRRR_PROJ.projectLatLonToIJ(polygon.get(i));
+					PointD p2 = HRRR_PROJ.projectLatLonToIJ(polygon.get(j));
+
+					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+							p1.getX());
+					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+							p1.getY());
+					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+							p2.getX());
+					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+							p2.getY());
+
+					PointD xy1P = rotateAroundCenter(x1, y1, warningPlot.getWidth(), warningPlot.getHeight(), rotationAngle);
+					PointD xy2P = rotateAroundCenter(x2, y2, warningPlot.getWidth(), warningPlot.getHeight(), rotationAngle);
+
+					double x1P = xy1P.getX();
+					double y1P = xy1P.getY();
+					double x2P = xy2P.getX();
+					double y2P = xy2P.getY();
+
+					g.drawLine((int) x1P, (int) y1P, (int) x2P, (int) y2P);
+				}
+			}
+		}
+		
+		return warningPlot;
 	}
 
 	private static final int TIME_TOLERANCE = 20; // minutes

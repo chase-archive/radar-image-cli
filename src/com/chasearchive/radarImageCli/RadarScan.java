@@ -91,8 +91,15 @@ public class RadarScan {
 		String timestampStart = ncfile.findGlobalAttribute("time_coverage_start").getStringValue();
 		logger.println(timestampStart, DebugLoggerLevel.BRIEF);
 
+		String station = ncfile.findGlobalAttribute("Station").getStringValue();
+
 		radarLat = ncfile.findGlobalAttribute("StationLatitude").getNumericValue().doubleValue();
 		radarLon = ncfile.findGlobalAttribute("StationLongitude").getNumericValue().doubleValue();
+		
+		if("PAHG".equals(station)) {
+			radarLat = 60.72399361822732;
+			radarLon = -151.3386685958528;
+		}
 
 		logger.println(radarLat, DebugLoggerLevel.BRIEF);
 		logger.println(radarLon, DebugLoggerLevel.BRIEF);
