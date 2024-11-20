@@ -27,3 +27,4 @@ NOTES:
 * This prototype is built in Java, since most of my already-existing code was in Java and the reuse of that code allowed for faster development. I am considering switching from Java to C++ later on for the best possible speed.
 * This program downloads two large data files per run, and the quality of the network connection will have a dramatic impact on execution times. While using a wireless connection from WIFI@OU in the National Weather Center, the code usually takes 15-20 seconds to run.
 
+

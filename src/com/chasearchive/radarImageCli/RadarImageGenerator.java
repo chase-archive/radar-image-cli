@@ -5,6 +5,7 @@ import static com.chasearchive.radarImageCli.RadarImageCli.logger;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.RescaleOp;
@@ -16,6 +17,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -23,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 import java.util.SortedSet;
+import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -34,6 +37,8 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 import com.ameliaWx.wxArchives.PointF;
+import com.ameliaWx.wxArchives.earthWeather.iemWarnings.DamageTag;
+import com.ameliaWx.wxArchives.earthWeather.iemWarnings.TornadoTag;
 import com.ameliaWx.wxArchives.earthWeather.iemWarnings.WarningArchive;
 import com.ameliaWx.wxArchives.earthWeather.iemWarnings.WarningPolygon;
 import com.ameliaWx.wxArchives.earthWeather.nexrad.NexradAws;
@@ -43,7 +48,9 @@ import com.univocity.parsers.tsv.TsvParserSettings;
 public class RadarImageGenerator {
 	public static BufferedImage generateRadar(DateTime time, double lat, double lon, GeneratorSettings settings)
 			throws IOException {
-		BufferedImage basemap = generateBasemap(lat, lon, settings);
+		RotateLatLonProjection plotProj = new RotateLatLonProjection(lat, lon, 111.32, 111.32, 1000, 1000);
+		
+		BufferedImage basemap = generateBasemap(lat, lon, settings, plotProj);
 		
 		File radarFile = null;
 		try {
@@ -54,9 +61,9 @@ public class RadarImageGenerator {
 		
 		RadarScan radarScan = new RadarScan(radarFile);
 		
-		BufferedImage radarPlot = generateRadarPlot(radarScan, time, lat, lon, settings);
+		BufferedImage radarPlot = generateRadarPlot(radarScan, time, lat, lon, settings, plotProj);
 		
-		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings);
+		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
 		
 		BufferedImage logo = ImageIO.read(loadResourceAsFile("res/chase-archive-logo-256pix.png"));
 		
@@ -74,6 +81,9 @@ public class RadarImageGenerator {
 //		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
 //		g.setColor(Color.WHITE);
 //		g.drawString("Ⓒ Chase Archive ", 3, basemap.getHeight() - 45);
+		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
+		g.setColor(Color.WHITE);
+		g.drawString(dateStringAlt(time), 3, basemap.getHeight() - 15);
 //		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 24));
 //		g.setColor(Color.LIGHT_GRAY);
 //		g.drawString("chasearchive.com ", 63, basemap.getHeight() - 15);
@@ -82,13 +92,30 @@ public class RadarImageGenerator {
 
 		return plot;
 	}
+
+	public static DateTimeZone timeZone = DateTimeZone.forID("America/Chicago");
+	public static String timeZoneCode = "CST";
+	private static String dateStringAlt(DateTime d) {
+		DateTime c = d.toDateTime(timeZone);
+
+		String daylightCode = timeZoneCode.substring(0, timeZoneCode.length() - 2) + "DT";
+
+		boolean isPm = c.getHourOfDay() >= 12;
+		boolean is12 = c.getHourOfDay() == 0 || c.getHourOfDay() == 12;
+		return String.format("%04d", c.getYear()) + "-" + String.format("%02d", c.getMonthOfYear()) + "-"
+				+ String.format("%02d", c.getDayOfMonth()) + " "
+				+ String.format("%02d", c.getHourOfDay() % 12 + (is12 ? 12 : 0)) + ":"
+				+ String.format("%02d", c.getMinuteOfHour()) + " " + (isPm ? "PM" : "AM") + " "
+				+ (TimeZone.getTimeZone(timeZone.getID()).inDaylightTime(d.toDate()) ? daylightCode
+						: timeZoneCode);
+	}
 	
 	private static final ColorTable reflectivityColorTable = new ColorTable(
 			loadResourceAsFile("res/awips-ii-official-mod-low-filter-2.pal"), 0.1f, 10, "dBZ");
 	private static final ColorTable velocityColorTable = new ColorTable(
 			loadResourceAsFile("res/SRRadarLoopsVlcy.pal"), 0.1f, 10, "mph");
 
-	private static BufferedImage generateBasemap(double lat, double lon, GeneratorSettings settings)
+	private static BufferedImage generateBasemap(double lat, double lon, GeneratorSettings settings, RotateLatLonProjection plotProj)
 			throws IOException {
 		ArrayList<ArrayList<PointD>> countyBorders;
 		ArrayList<ArrayList<PointD>> stateBorders;
@@ -105,8 +132,13 @@ public class RadarImageGenerator {
 		interstates = getPolygons(interstatesKML);
 		majorRoads = getPolygons(majorRoadsKML);
 
-		PointD latLonProjected = HRRR_PROJ.projectLatLonToIJ(lon, lat);
-		PointD trueNorthPointer = HRRR_PROJ.projectLatLonToIJ(lon, lat + 0.01); // i love finite differencing
+		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
+		System.out.println("latLonProjected (need to zero this out): " + latLonProjected);
+		PointD latLonProjected1 = plotProj.rotateLatLon(lon, lat + 10);
+		System.out.println("latLonProjected (need to 10 this out): " + latLonProjected1);
+		PointD latLonProjected2 = plotProj.rotateLatLon(lon + 10, lat);
+		System.out.println("latLonProjected (need to ??? this out): " + latLonProjected2);
+		PointD trueNorthPointer = plotProj.rotateLatLon(lon, lat + 0.01); // i love finite differencing
 
 		double trueNorth_dx = trueNorthPointer.getX() - latLonProjected.getX();
 		double trueNorth_dy = trueNorthPointer.getY() - latLonProjected.getY();
@@ -140,12 +172,20 @@ public class RadarImageGenerator {
 		BufferedImage roads = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g4 = roads.createGraphics();
 
+		// lambert stuff
+//		PointD latLonProjectedUL = new PointD(
+//				latLonProjected.getX() - (111.32 / plotProj.dx * settings.getSize() * settings.getAspectRatioFloat()),
+//				latLonProjected.getY() - (111.32 / plotProj.dy * settings.getSize()));
+//		PointD latLonProjectedDR = new PointD(
+//				latLonProjected.getX() + (111.32 / plotProj.dx * settings.getSize() * settings.getAspectRatioFloat()),
+//				latLonProjected.getY() + (111.32 / plotProj.dy * settings.getSize()));
+
 		PointD latLonProjectedUL = new PointD(
-				latLonProjected.getX() - (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
-				latLonProjected.getY() - (111.32 / HRRR_PROJ.dy * settings.getSize()));
+				-(settings.getSize() * settings.getAspectRatioFloat()),
+				(settings.getSize()));
 		PointD latLonProjectedDR = new PointD(
-				latLonProjected.getX() + (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
-				latLonProjected.getY() + (111.32 / HRRR_PROJ.dy * settings.getSize()));
+				(settings.getSize() * settings.getAspectRatioFloat()),
+				-(settings.getSize()));
 
 		logger.println("latLonProjectedUL: " + latLonProjectedUL, DebugLoggerLevel.VERBOSE);
 		logger.println("latLonProjectedDR: " + latLonProjectedDR, DebugLoggerLevel.VERBOSE);
@@ -158,27 +198,21 @@ public class RadarImageGenerator {
 				if (j == polygon.size())
 					j = 0;
 
-				PointD p1 = HRRR_PROJ.projectLatLonToIJ(polygon.get(i));
-				PointD p2 = HRRR_PROJ.projectLatLonToIJ(polygon.get(j));
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getX());
-				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getX());
-				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
 
-				PointD xy1P = rotateAroundCenter(x1, y1, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-				PointD xy2P = rotateAroundCenter(x2, y2, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-
-				double x1P = xy1P.getX();
-				double y1P = xy1P.getY();
-				double x2P = xy2P.getX();
-				double y2P = xy2P.getY();
-
-				g1.drawLine((int) x1P, (int) y1P, (int) x2P, (int) y2P);
+				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+					g1.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
 			}
 		}
 
@@ -190,27 +224,21 @@ public class RadarImageGenerator {
 				if (j == polygon.size())
 					j = 0;
 
-				PointD p1 = HRRR_PROJ.projectLatLonToIJ(polygon.get(i));
-				PointD p2 = HRRR_PROJ.projectLatLonToIJ(polygon.get(j));
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getX());
-				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getX());
-				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
 
-				PointD xy1P = rotateAroundCenter(x1, y1, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-				PointD xy2P = rotateAroundCenter(x2, y2, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-
-				double x1P = xy1P.getX();
-				double y1P = xy1P.getY();
-				double x2P = xy2P.getX();
-				double y2P = xy2P.getY();
-
-				g2.drawLine((int) x1P, (int) y1P, (int) x2P, (int) y2P);
+				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+					g2.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
 			}
 		}
 
@@ -220,27 +248,21 @@ public class RadarImageGenerator {
 			for (int i = 0; i < polygon.size() - 1; i++) {
 				int j = i + 1;
 
-				PointD p1 = HRRR_PROJ.projectLatLonToIJ(polygon.get(i));
-				PointD p2 = HRRR_PROJ.projectLatLonToIJ(polygon.get(j));
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getX());
-				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getX());
-				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
 
-				PointD xy1P = rotateAroundCenter(x1, y1, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-				PointD xy2P = rotateAroundCenter(x2, y2, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-
-				double x1P = xy1P.getX();
-				double y1P = xy1P.getY();
-				double x2P = xy2P.getX();
-				double y2P = xy2P.getY();
-
-				g3.drawLine((int) x1P, (int) y1P, (int) x2P, (int) y2P);
+				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+					g3.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
 			}
 		}
 
@@ -250,27 +272,21 @@ public class RadarImageGenerator {
 			for (int i = 0; i < polygon.size() - 1; i++) {
 				int j = i + 1;
 
-				PointD p1 = HRRR_PROJ.projectLatLonToIJ(polygon.get(i));
-				PointD p2 = HRRR_PROJ.projectLatLonToIJ(polygon.get(j));
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getX());
-				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getX());
-				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
 
-				PointD xy1P = rotateAroundCenter(x1, y1, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-				PointD xy2P = rotateAroundCenter(x2, y2, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-
-				double x1P = xy1P.getX();
-				double y1P = xy1P.getY();
-				double x2P = xy2P.getX();
-				double y2P = xy2P.getY();
-
-				g3.drawLine((int) x1P, (int) y1P, (int) x2P, (int) y2P);
+				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+					g3.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
 			}
 		}
 
@@ -280,27 +296,21 @@ public class RadarImageGenerator {
 			for (int i = 0; i < polygon.size() - 1; i++) {
 				int j = i + 1;
 
-				PointD p1 = HRRR_PROJ.projectLatLonToIJ(polygon.get(i));
-				PointD p2 = HRRR_PROJ.projectLatLonToIJ(polygon.get(j));
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getX());
-				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getX());
-				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
 
-				PointD xy1P = rotateAroundCenter(x1, y1, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-				PointD xy2P = rotateAroundCenter(x2, y2, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-
-				double x1P = xy1P.getX();
-				double y1P = xy1P.getY();
-				double x2P = xy2P.getX();
-				double y2P = xy2P.getY();
-
-				g4.drawLine((int) x1P, (int) y1P, (int) x2P, (int) y2P);
+				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+					g4.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
 			}
 		}
 
@@ -310,27 +320,21 @@ public class RadarImageGenerator {
 			for (int i = 0; i < polygon.size() - 1; i++) {
 				int j = i + 1;
 
-				PointD p1 = HRRR_PROJ.projectLatLonToIJ(polygon.get(i));
-				PointD p2 = HRRR_PROJ.projectLatLonToIJ(polygon.get(j));
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getX());
-				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getX());
-				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
 						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
 
-				PointD xy1P = rotateAroundCenter(x1, y1, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-				PointD xy2P = rotateAroundCenter(x2, y2, basemap.getWidth(), basemap.getHeight(), rotationAngle);
-
-				double x1P = xy1P.getX();
-				double y1P = xy1P.getY();
-				double x2P = xy2P.getX();
-				double y2P = xy2P.getY();
-
-				g4.drawLine((int) x1P, (int) y1P, (int) x2P, (int) y2P);
+				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+					g4.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
 			}
 		}
 
@@ -349,34 +353,34 @@ public class RadarImageGenerator {
 		return basemap;
 	}
 	
-	private static BufferedImage generateRadarPlot(RadarScan scan, DateTime time, double lat, double lon, GeneratorSettings settings) {
-		PointD latLonProjected = HRRR_PROJ.projectLatLonToIJ(lon, lat);
-		PointD trueNorthPointer = HRRR_PROJ.projectLatLonToIJ(lon, lat + 0.01); // i love finite differencing
+	private static BufferedImage generateRadarPlot(RadarScan scan, DateTime time, double lat, double lon, GeneratorSettings settings, RotateLatLonProjection plotProj) {
+		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
 		
 		double radarLat = scan.radarLat;
 		double radarLon = scan.radarLon;
 		
-		PointD radarProjected = HRRR_PROJ.projectLatLonToIJ(radarLon, radarLat);
-		PointD radarNorthPointer = HRRR_PROJ.projectLatLonToIJ(radarLon, radarLat + 0.01); // i love finite differencing
+		PointD radarProjected = plotProj.rotateLatLon(radarLon, radarLat);
+		PointD radarNorthPointer = plotProj.rotateLatLon(radarLon, radarLat + 0.01); // i love finite differencing
+		
+		System.out.println("radarProjected: " + radarProjected);
+		System.out.println("radarNorthPointer: " + radarNorthPointer);
 
-		double trueNorth_dx = trueNorthPointer.getX() - latLonProjected.getX();
-		double trueNorth_dy = trueNorthPointer.getY() - latLonProjected.getY();
 		double rTrueNorth_dx = radarNorthPointer.getX() - radarProjected.getX();
 		double rTrueNorth_dy = radarNorthPointer.getY() - radarProjected.getY();
-
-		double rotationAngle = Math.atan2(-trueNorth_dx, -trueNorth_dy);
-		double rotationAngleRadar = Math.atan2(rTrueNorth_dx, -rTrueNorth_dy);
+		System.out.println("rTrueNorth_dx: " + rTrueNorth_dx);
+		System.out.println("rTrueNorth_dy: " + rTrueNorth_dy);
+		double rotationAngleRadar = Math.atan2(rTrueNorth_dy, rTrueNorth_dx);
 
 		BufferedImage radarPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = radarPlot.createGraphics();
 
 		PointD latLonProjectedUL = new PointD(
-				latLonProjected.getX() - (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
-				latLonProjected.getY() - (111.32 / HRRR_PROJ.dy * settings.getSize()));
+				-(settings.getSize() * settings.getAspectRatioFloat()),
+				(settings.getSize()));
 		PointD latLonProjectedDR = new PointD(
-				latLonProjected.getX() + (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
-				latLonProjected.getY() + (111.32 / HRRR_PROJ.dy * settings.getSize()));
+				(settings.getSize() * settings.getAspectRatioFloat()),
+				-(settings.getSize()));
 		
 		float[][] data = null;
 		ColorTable colorTable = null;
@@ -394,20 +398,23 @@ public class RadarImageGenerator {
 			return radarPlot;
 		}
 		
+		System.out.println("radar projected: " + radarProjected);
+		System.out.println("rotationAngleRadar: " + rotationAngleRadar);
+		
 		for(int i = 0; i < data.length; i++) {
 			for(int j = 0; j < data[i].length; j++) {
 				PointD radarPolygon1 = new PointD(
-						radarProjected.getX() + (1.0/HRRR_PROJ.dx) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.sin(Math.toRadians(scan.da * (i - 0.5))),
-						radarProjected.getY() - (1.0/HRRR_PROJ.dy) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.cos(Math.toRadians(scan.da * (i - 0.5))));
+						radarProjected.getY() + (1.0/plotProj.dx) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.sin(rotationAngleRadar + Math.toRadians(scan.da * (i - 0.5))),
+						radarProjected.getX() + (1.0/plotProj.dy) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.cos(rotationAngleRadar + Math.toRadians(scan.da * (i - 0.5))));
 				PointD radarPolygon2 = new PointD(
-						radarProjected.getX() + (1.0/HRRR_PROJ.dx) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.sin(Math.toRadians(scan.da * (i + 0.5))),
-						radarProjected.getY() - (1.0/HRRR_PROJ.dy) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.cos(Math.toRadians(scan.da * (i + 0.5))));
+						radarProjected.getY() + (1.0/plotProj.dx) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.sin(rotationAngleRadar + Math.toRadians(scan.da * (i + 0.5))),
+						radarProjected.getX() + (1.0/plotProj.dy) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.cos(rotationAngleRadar + Math.toRadians(scan.da * (i + 0.5))));
 				PointD radarPolygon3 = new PointD(
-						radarProjected.getX() + (1.0/HRRR_PROJ.dx) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.sin(Math.toRadians(scan.da * (i + 0.5))),
-						radarProjected.getY() - (1.0/HRRR_PROJ.dy) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.cos(Math.toRadians(scan.da * (i + 0.5))));
+						radarProjected.getY() + (1.0/plotProj.dx) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.sin(rotationAngleRadar + Math.toRadians(scan.da * (i + 0.5))),
+						radarProjected.getX() + (1.0/plotProj.dy) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.cos(rotationAngleRadar + Math.toRadians(scan.da * (i + 0.5))));
 				PointD radarPolygon4 = new PointD(
-						radarProjected.getX() + (1.0/HRRR_PROJ.dx) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.sin(Math.toRadians(scan.da * (i - 0.5))),
-						radarProjected.getY() - (1.0/HRRR_PROJ.dy) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.cos(Math.toRadians(scan.da * (i - 0.5))));
+						radarProjected.getY() + (1.0/plotProj.dx) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.sin(rotationAngleRadar + Math.toRadians(scan.da * (i - 0.5))),
+						radarProjected.getX() + (1.0/plotProj.dy) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.cos(rotationAngleRadar + Math.toRadians(scan.da * (i - 0.5))));
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
 						radarPolygon1.getX());
@@ -425,32 +432,21 @@ public class RadarImageGenerator {
 						radarPolygon4.getX());
 				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
 						radarPolygon4.getY());
-
-				PointD xy0P = rotateAroundCenter(radarProjected, radarPlot.getWidth(), radarPlot.getHeight(), rotationAngle);
-				PointD xy1P = rotateAroundCenter(x1, y1, radarPlot.getWidth(), radarPlot.getHeight(), rotationAngle);
-				PointD xy2P = rotateAroundCenter(x2, y2, radarPlot.getWidth(), radarPlot.getHeight(), rotationAngle);
-				PointD xy3P = rotateAroundCenter(x3, y3, radarPlot.getWidth(), radarPlot.getHeight(), rotationAngle);
-				PointD xy4P = rotateAroundCenter(x4, y4, radarPlot.getWidth(), radarPlot.getHeight(), rotationAngle);
-
-				PointD xy1PP = rotateAboutPoint(xy1P, xy0P.getX(), xy0P.getY(), rotationAngleRadar);
-				PointD xy2PP = rotateAboutPoint(xy2P, xy0P.getX(), xy0P.getY(), rotationAngleRadar);
-				PointD xy3PP = rotateAboutPoint(xy3P, xy0P.getX(), xy0P.getY(), rotationAngleRadar);
-				PointD xy4PP = rotateAboutPoint(xy4P, xy0P.getX(), xy0P.getY(), rotationAngleRadar);
 				
 				double value = data[i][j];
 				Color color = colorTable.getColor(value);
 				
 				int[] xPoints = {
-						(int) Math.round(xy1PP.getX()),
-						(int) Math.round(xy2PP.getX()),
-						(int) Math.round(xy3PP.getX()),
-						(int) Math.round(xy4PP.getX()) 
+						(int) Math.round(x1),
+						(int) Math.round(x2),
+						(int) Math.round(x3),
+						(int) Math.round(x4) 
 					};
 				int[] yPoints = {
-						(int) Math.round(xy1PP.getY()),
-						(int) Math.round(xy2PP.getY()),
-						(int) Math.round(xy3PP.getY()),
-						(int) Math.round(xy4PP.getY()) 
+						(int) Math.round(y1),
+						(int) Math.round(y2),
+						(int) Math.round(y3),
+						(int) Math.round(y4) 
 					};
 				
 				boolean anyInsideImage = false;
@@ -474,64 +470,84 @@ public class RadarImageGenerator {
 		return radarPlot;
 	}
 
-	private static BufferedImage generateWarningPlot(DateTime time, double lat, double lon, GeneratorSettings settings) throws IOException {
+	private static BufferedImage generateWarningPlot(DateTime time, double lat, double lon, GeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
 		BufferedImage warningPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = warningPlot.createGraphics();
 
-		BasicStroke bs = new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
-		BasicStroke ts = new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+//		BasicStroke bs = new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+//		BasicStroke ts = new BasicStroke(12, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+//		BasicStroke ets = new BasicStroke(16, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+
+		BasicStroke bs = new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+		BasicStroke ts = new BasicStroke(7, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+		BasicStroke ets = new BasicStroke(11, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
 		
-		WarningArchive wa = new WarningArchive("radar-image-generator-temp/");
-		ArrayList<WarningPolygon> warnings = wa.getWarnings(time.minusHours(2), time.plusHours(2));
-
-		PointD latLonProjected = HRRR_PROJ.projectLatLonToIJ(lon, lat);
-		PointD trueNorthPointer = HRRR_PROJ.projectLatLonToIJ(lon, lat + 0.01); // i love finite differencing
-
-		double trueNorth_dx = trueNorthPointer.getX() - latLonProjected.getX();
-		double trueNorth_dy = trueNorthPointer.getY() - latLonProjected.getY();
-
-		double rotationAngle = Math.atan2(-trueNorth_dx, -trueNorth_dy);
+		ArrayList<WarningPolygon> warnings = null;
+		try {
+			WarningArchive wa = new WarningArchive("radar-image-generator-temp/");
+			warnings = wa.getWarnings(time.minusHours(2), time.plusHours(2));
+		} catch (UnknownHostException e) {
+			e.printStackTrace();
+			System.err.println("returning blank for warning plot!");
+			return warningPlot;
+		}
 
 		PointD latLonProjectedUL = new PointD(
-				latLonProjected.getX() - (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
-				latLonProjected.getY() - (111.32 / HRRR_PROJ.dy * settings.getSize()));
+				-(settings.getSize() * settings.getAspectRatioFloat()),
+				(settings.getSize()));
 		PointD latLonProjectedDR = new PointD(
-				latLonProjected.getX() + (111.32 / HRRR_PROJ.dx * settings.getSize() * settings.getAspectRatioFloat()),
-				latLonProjected.getY() + (111.32 / HRRR_PROJ.dy * settings.getSize()));
+				(settings.getSize() * settings.getAspectRatioFloat()),
+				-(settings.getSize()));
 		
 		for(WarningPolygon warning : warnings) {
 			if(warning.isActive(time)) {
+				// extra thick outlines
+				g.setStroke(ts);
 				switch(warning.getWarningType()) {
 				case DUST_STORM_WARNING:
-					g.setColor(new Color(0, 0, 0));
+					g.setColor(new Color(0, 0, 0, 0));
 					break;
 				case FLASH_FLOOD:
-					g.setColor(new Color(0, 0, 0));
+					if(warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
+						g.setColor(new Color(0, 0, 0));
+					} else {
+						g.setColor(new Color(0, 0, 0, 0));
+					}
 					break;
 				case SEVERE_THUNDERSTORM:
-					g.setColor(new Color(0, 0, 0));
+					if(warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
+						g.setColor(new Color(0, 0, 0));
+					} else if (warning.getTornadoTag() == TornadoTag.POSSIBLE) {
+						g.setColor(new Color(0, 0, 0));
+					} else {
+						g.setColor(new Color(0, 0, 0, 0));
+					}
 					break;
 				case SNOW_SQUALL_WARNING:
-					g.setColor(new Color(0, 0, 0));
+					g.setColor(new Color(0, 0, 0, 0));
 					break;
 				case SPECIAL_MARINE:
-					g.setColor(new Color(0, 0, 0));
+					g.setColor(new Color(0, 0, 0, 0));
 					break;
 				case TORNADO:
-					g.setColor(new Color(0, 0, 0));
+					if(warning.getDamageTag() == DamageTag.CONSIDERABLE) {
+						g.setColor(new Color(0, 0, 0));
+					} else {
+						g.setColor(new Color(0, 0, 0, 0));
+					}
 					break;
 				default:
 					g.setColor(new Color(0, 0, 0, 0));
 					break;
 				}
-				g.setStroke(ts);
+				g.setStroke(ets);
 				
 				ArrayList<PointF> polygonF = warning.getPoints();
 				ArrayList<PointD> polygon = new ArrayList<>();
 				
 				for(int i = 0; i < polygonF.size(); i++) {
-					polygon.add(new PointD((double) polygonF.get(i).getY(), (double) polygonF.get(i).getX()));
+					polygon.add(new PointD((double) polygonF.get(i).getX(), (double) polygonF.get(i).getY()));
 //					logger.println("polygonF conversion: " + polygon.get(polygon.size() - 1), DebugLoggerLevel.BRIEF);
 				}
 				
@@ -540,27 +556,81 @@ public class RadarImageGenerator {
 					if (j == polygon.size())
 						j = 0;
 
-					PointD p1 = HRRR_PROJ.projectLatLonToIJ(polygon.get(i));
-					PointD p2 = HRRR_PROJ.projectLatLonToIJ(polygon.get(j));
+					PointD p1 = plotProj.rotateLatLon(polygon.get(i));
+					PointD p2 = plotProj.rotateLatLon(polygon.get(j));
 
 					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p1.getX());
-					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
 							p1.getY());
+					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+							p1.getX());
 					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p2.getX());
-					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
 							p2.getY());
+					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+							p2.getX());
 
-					PointD xy1P = rotateAroundCenter(x1, y1, warningPlot.getWidth(), warningPlot.getHeight(), rotationAngle);
-					PointD xy2P = rotateAroundCenter(x2, y2, warningPlot.getWidth(), warningPlot.getHeight(), rotationAngle);
+					System.out.printf("%04d\t%5d\t%5d\t%5d\t%5d\n", i, (int) x1, (int) y1, (int) x2, (int) y2);
 
-					double x1P = xy1P.getX();
-					double y1P = xy1P.getY();
-					double x2P = xy2P.getX();
-					double y2P = xy2P.getY();
+					g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
+				// outlines
+				g.setStroke(ts);
+				switch(warning.getWarningType()) {
+				case DUST_STORM_WARNING:
+					g.setColor(new Color(0, 0, 0));
+					break;
+				case FLASH_FLOOD:
+					if(warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
+						g.setColor(new Color(255, 0, 255));
+					} else {
+						g.setColor(new Color(0, 0, 0));
+					}
+					break;
+				case SEVERE_THUNDERSTORM:
+					if(warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
+						g.setColor(new Color(128, 0, 128));
+					} else if (warning.getTornadoTag() == TornadoTag.POSSIBLE) {
+						g.setColor(new Color(255, 0, 64));
+					} else {
+						g.setColor(new Color(0, 0, 0));
+					}
+					break;
+				case SNOW_SQUALL_WARNING:
+					g.setColor(new Color(0, 0, 0));
+					break;
+				case SPECIAL_MARINE:
+					g.setColor(new Color(0, 0, 0));
+					break;
+				case TORNADO:
+					if(warning.getDamageTag() == DamageTag.CONSIDERABLE) {
+						g.setColor(new Color(128, 0, 0));
+					} else {
+						g.setColor(new Color(0, 0, 0));
+					}
+					break;
+				default:
+					g.setColor(new Color(0, 0, 0, 0));
+					break;
+				}
+				g.setStroke(ts);
+				
+				for (int i = 0; i < polygon.size(); i++) {
+					int j = i + 1;
+					if (j == polygon.size())
+						j = 0;
 
-					g.drawLine((int) x1P, (int) y1P, (int) x2P, (int) y2P);
+					PointD p1 = plotProj.rotateLatLon(polygon.get(i));
+					PointD p2 = plotProj.rotateLatLon(polygon.get(j));
+
+					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+							p1.getY());
+					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+							p1.getX());
+					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+							p2.getY());
+					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+							p2.getX());
+
+					g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
 				
 				switch(warning.getWarningType()) {
@@ -580,7 +650,11 @@ public class RadarImageGenerator {
 					g.setColor(new Color(255, 128, 0));
 					break;
 				case TORNADO:
-					g.setColor(new Color(255, 0, 0));
+					if(warning.getDamageTag() == DamageTag.CATASTROPHIC) {
+						g.setColor(new Color(255, 0, 255));
+					} else {
+						g.setColor(new Color(255, 0, 0));
+					}
 					break;
 				default:
 					g.setColor(new Color(0, 0, 0, 0));
@@ -593,27 +667,19 @@ public class RadarImageGenerator {
 					if (j == polygon.size())
 						j = 0;
 
-					PointD p1 = HRRR_PROJ.projectLatLonToIJ(polygon.get(i));
-					PointD p2 = HRRR_PROJ.projectLatLonToIJ(polygon.get(j));
+					PointD p1 = plotProj.rotateLatLon(polygon.get(i));
+					PointD p2 = plotProj.rotateLatLon(polygon.get(j));
 
 					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p1.getX());
-					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
 							p1.getY());
+					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+							p1.getX());
 					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p2.getX());
-					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
 							p2.getY());
+					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+							p2.getX());
 
-					PointD xy1P = rotateAroundCenter(x1, y1, warningPlot.getWidth(), warningPlot.getHeight(), rotationAngle);
-					PointD xy2P = rotateAroundCenter(x2, y2, warningPlot.getWidth(), warningPlot.getHeight(), rotationAngle);
-
-					double x1P = xy1P.getX();
-					double y1P = xy1P.getY();
-					double x2P = xy2P.getX();
-					double y2P = xy2P.getY();
-
-					g.drawLine((int) x1P, (int) y1P, (int) x2P, (int) y2P);
+					g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
 			}
 		}
