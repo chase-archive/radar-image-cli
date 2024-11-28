@@ -1,11 +1,11 @@
 package com.chasearchive.radarImageCli;
 
-import static com.chasearchive.radarImageCli.LambertConformalProjection.HRRR_PROJ;
 import static com.chasearchive.radarImageCli.RadarImageCli.logger;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.RescaleOp;
@@ -42,28 +42,48 @@ import com.ameliaWx.wxArchives.earthWeather.iemWarnings.TornadoTag;
 import com.ameliaWx.wxArchives.earthWeather.iemWarnings.WarningArchive;
 import com.ameliaWx.wxArchives.earthWeather.iemWarnings.WarningPolygon;
 import com.ameliaWx.wxArchives.earthWeather.nexrad.NexradAws;
+import com.univocity.parsers.csv.CsvParser;
+import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.tsv.TsvParser;
 import com.univocity.parsers.tsv.TsvParserSettings;
 
+// FOUND AN MRMS ARCHIVE GOLD MINE
+// USE THIS SOURCE!!! https://noaa-mrms-pds.s3.amazonaws.com/index.html#CONUS/SeamlessHSR_00.00/
+// ALLOWS DOWNLOAD OF SEPARATE FILES THAT ARE ONLY 2 MB BIG INSTEAD OF 4.5 GB
+// only goes back to Oct 2020 unfortunately
+
 public class RadarImageGenerator {
+	public static ArrayList<City> cities;
+	static {
+		cities = new ArrayList<>();
+		loadCities();
+	}
+	
 	public static BufferedImage generateRadar(DateTime time, double lat, double lon, GeneratorSettings settings)
 			throws IOException {
 		RotateLatLonProjection plotProj = new RotateLatLonProjection(lat, lon, 111.32, 111.32, 1000, 1000);
 		
 		BufferedImage basemap = generateBasemap(lat, lon, settings, plotProj);
 		
-		File radarFile = null;
-		try {
-			radarFile = getClosestRadarData(time, lat, lon);
-		} catch (NoValidRadarScansFoundException e) {
-			e.printStackTrace();
+		BufferedImage radarPlot = null;
+		
+		if(settings.getSource() == Source.NEXRAD) {
+			File radarFile = null;
+			try {
+				radarFile = getClosestRadarData(time, lat, lon);
+			} catch (NoValidRadarScansFoundException e) {
+				e.printStackTrace();
+			}
+			
+			RadarScan radarScan = new RadarScan(radarFile);
+			
+			radarPlot = generateRadarPlot(radarScan, time, lat, lon, settings, plotProj);
+		} else if(settings.getSource() == Source.MRMS) {
+			radarPlot = generateMrmsPlot(time, lat, lon, settings, plotProj);
 		}
 		
-		RadarScan radarScan = new RadarScan(radarFile);
-		
-		BufferedImage radarPlot = generateRadarPlot(radarScan, time, lat, lon, settings, plotProj);
-		
 		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
+		BufferedImage citiesPlot = generateCityPlot(lat, lon, settings, plotProj);
 		
 		BufferedImage logo = ImageIO.read(loadResourceAsFile("res/chase-archive-logo-256pix.png"));
 		
@@ -75,6 +95,7 @@ public class RadarImageGenerator {
 
 		g.drawImage(radarPlot, 0, 0, null);
 		g.drawImage(basemap, 0, 0, null);
+		g.drawImage(citiesPlot, 0, 0, null);
 		g.drawImage(warningPlot, 0, 0, null);
 		g.drawImage(logo, 0, 0, null);
 		
@@ -82,6 +103,11 @@ public class RadarImageGenerator {
 //		g.setColor(Color.WHITE);
 //		g.drawString("Ⓒ Chase Archive ", 3, basemap.getHeight() - 45);
 		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
+		g.setColor(Color.BLACK);
+		g.drawString(dateStringAlt(time), 2, basemap.getHeight() - 13);
+		g.drawString(dateStringAlt(time), 4, basemap.getHeight() - 15);
+		g.drawString(dateStringAlt(time), 2, basemap.getHeight() - 15);
+		g.drawString(dateStringAlt(time), 4, basemap.getHeight() - 13);
 		g.setColor(Color.WHITE);
 		g.drawString(dateStringAlt(time), 3, basemap.getHeight() - 15);
 //		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 24));
@@ -124,13 +150,15 @@ public class RadarImageGenerator {
 
 		File countyBordersKML = loadResourceAsFile("res/usCounties.kml");
 		File stateBordersKML = loadResourceAsFile("res/usStates.kml");
-		File interstatesKML = loadResourceAsFile("res/wms.kml");
-		File majorRoadsKML = loadResourceAsFile("res/roadtrl020.kml");
+		File interstatesPoly = loadResourceAsFile("res/primary-roads.poly");
+		File interstatesPolyMeta = loadResourceAsFile("res/primary-roads.poly.meta");
+		File majorRoadsPoly = loadResourceAsFile("res/prisec-roads.poly");
+		File majorRoadsPolyMeta = loadResourceAsFile("res/prisec-roads.poly.meta");
 
 		countyBorders = getPolygons(countyBordersKML);
 		stateBorders = getPolygons(stateBordersKML);
-		interstates = getPolygons(interstatesKML);
-		majorRoads = getPolygons(majorRoadsKML);
+		interstates = getPolygons(interstatesPoly, interstatesPolyMeta);
+		majorRoads = getPolygons(majorRoadsPoly, majorRoadsPolyMeta);
 
 		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
 		System.out.println("latLonProjected (need to zero this out): " + latLonProjected);
@@ -352,9 +380,84 @@ public class RadarImageGenerator {
 
 		return basemap;
 	}
+
+	public static final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 18);
+	public static final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 12);
+	private static BufferedImage generateCityPlot(double lat, double lon, GeneratorSettings settings, RotateLatLonProjection plotProj) {
+		BufferedImage citiesImg = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
+				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g2d = citiesImg.createGraphics();
+		
+		double pixelsPerDegree = settings.getResolution() / settings.getSize();
+		
+		for (City c : cities) {
+			String name = c.getName();
+			double cLat = c.getLatitude();
+			double cLon = c.getLongitude();
+			int pop = c.getPopulation();
+			double prm = c.getProminence();
+
+			if (pixelsPerDegree < 25) {
+				continue;
+			}
+			if (pixelsPerDegree < 100 && prm < 5) {
+				continue;
+			}
+			if (pixelsPerDegree < 200 && prm < 1) {
+				continue;
+			}
+			if (pixelsPerDegree < 400 && prm < 0.47) {
+				continue;
+			}
+			if (pixelsPerDegree < 600 && prm < 0.25) {
+				continue;
+			}
+			if (pixelsPerDegree < 800 && prm < 0.1) {
+				continue;
+			}
+			if (pixelsPerDegree < 1000 && prm < 0.05) {
+				continue;
+			}
+			if (pixelsPerDegree < 1200 && prm < 0.025) {
+				continue;
+			}
+			if (pixelsPerDegree < 1400 && prm < 0.01) {
+				continue;
+			}
+			if (pixelsPerDegree < 2000 && prm < 0.0001) {
+				continue;
+			}
+
+			g2d.setFont((pop > 100000) ? CITY_FONT : TOWN_FONT);
+
+			PointD cityP = plotProj.rotateLatLon(cLon, cLat);
+
+			PointD latLonProjectedUL = new PointD(
+					-(settings.getSize() * settings.getAspectRatioFloat()),
+					(settings.getSize()));
+			PointD latLonProjectedDR = new PointD(
+					(settings.getSize() * settings.getAspectRatioFloat()),
+					-(settings.getSize()));
+			
+			int cityX = (int) linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, citiesImg.getWidth(), cityP.getY());
+			int cityY = (int) linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, citiesImg.getHeight(), cityP.getX());
+			
+//			System.out.println(name + "\t" + cLon + "\t" + cLat + "\t" + cityP + "\t" + cityX + "\t" + cityY);
+					
+			g2d.setColor(Color.BLACK);
+			drawCenteredString(name, g2d, cityX + 0, cityY - 1);
+			drawCenteredString(name, g2d, cityX - 1, cityY + 0);
+			drawCenteredString(name, g2d, cityX + 1, cityY + 0);
+			drawCenteredString(name, g2d, cityX + 0, cityY + 1);
+			g2d.setColor(Color.WHITE);
+			drawCenteredString(name, g2d, cityX, cityY);
+		}
+		
+		return citiesImg;
+	}
 	
 	private static BufferedImage generateRadarPlot(RadarScan scan, DateTime time, double lat, double lon, GeneratorSettings settings, RotateLatLonProjection plotProj) {
-		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
+//		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
 		
 		double radarLat = scan.radarLat;
 		double radarLon = scan.radarLon;
@@ -432,6 +535,103 @@ public class RadarImageGenerator {
 						radarPolygon4.getX());
 				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
 						radarPolygon4.getY());
+				
+				double value = data[i][j];
+				Color color = colorTable.getColor(value);
+				
+				int[] xPoints = {
+						(int) Math.round(x1),
+						(int) Math.round(x2),
+						(int) Math.round(x3),
+						(int) Math.round(x4) 
+					};
+				int[] yPoints = {
+						(int) Math.round(y1),
+						(int) Math.round(y2),
+						(int) Math.round(y3),
+						(int) Math.round(y4) 
+					};
+				
+				boolean anyInsideImage = false;
+				for(int k = 0; k < 4; k++) {
+					int x = xPoints[k];
+					int y = yPoints[k];
+					
+					if(x >= 0 && x < radarPlot.getWidth() && y >= 0 && y < radarPlot.getHeight()) {
+						anyInsideImage = true;
+						break;
+					}
+				}
+				
+				if (anyInsideImage) {
+					g.setColor(color);
+					g.fillPolygon(xPoints, yPoints, 4);
+				}
+			}
+		}
+		
+		return radarPlot;
+	}
+	
+	private static BufferedImage generateMrmsPlot(DateTime time, double lat, double lon, GeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
+//		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
+
+		BufferedImage radarPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
+				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g = radarPlot.createGraphics();
+
+		PointD latLonProjectedUL = new PointD(
+				-(settings.getSize() * settings.getAspectRatioFloat()),
+				(settings.getSize()));
+		PointD latLonProjectedDR = new PointD(
+				(settings.getSize() * settings.getAspectRatioFloat()),
+				-(settings.getSize()));
+		
+		MrmsComposite mrms = new MrmsComposite(new File("/home/a-urq/Downloads/2024050100/CONUS/SeamlessHSR/MRMS_SeamlessHSR_00.00_20240501-000000.grib2.gz"));
+		
+		float[][] data = null;
+		ColorTable colorTable = null;
+		
+		switch(settings.getMoment()) {
+		case REFLECTIVITY:
+			data = mrms.reflAtLowestAltitude[0][0];
+			colorTable = reflectivityColorTable;
+			break;
+		default:
+			return radarPlot;
+		}
+		
+		for(int i = 0; i < data.length; i++) {
+			for(int j = 0; j < data[i].length; j++) {
+				float qLat = mrms.lat[mrms.lat.length - 1 - i];
+				float qLon = mrms.lon[j];
+				
+				float lat1 = qLat - mrms.dLat/2.0f;
+				float lat2 = qLat + mrms.dLat/2.0f;
+				float lon1 = qLon - mrms.dLat/2.0f;
+				float lon2 = qLon + mrms.dLat/2.0f;
+				
+				PointD p1P = plotProj.rotateLatLon(lon1, lat1);
+				PointD p2P = plotProj.rotateLatLon(lon1, lat2);
+				PointD p3P = plotProj.rotateLatLon(lon2, lat2);
+				PointD p4P = plotProj.rotateLatLon(lon2, lat1);
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p1P.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p1P.getX());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p2P.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p2P.getX());
+				double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p3P.getY());
+				double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p3P.getX());
+				double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p4P.getY());
+				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p4P.getX());
 				
 				double value = data[i][j];
 				Color color = colorTable.getColor(value);
@@ -567,8 +767,6 @@ public class RadarImageGenerator {
 							p2.getY());
 					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
 							p2.getX());
-
-					System.out.printf("%04d\t%5d\t%5d\t%5d\t%5d\n", i, (int) x1, (int) y1, (int) x2, (int) y2);
 
 					g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
@@ -874,6 +1072,7 @@ public class RadarImageGenerator {
 		Collections.reverse(radarCodes);
 	}
 
+	@SuppressWarnings("unused")
 	private static PointD rotateAroundCenter(PointD p, double w, double h, double phi) {
 		return rotateAroundCenter(p.getX(), p.getY(), w, h, phi);
 	}
@@ -891,6 +1090,7 @@ public class RadarImageGenerator {
 		return new PointD(xRotate, yRotate);
 	}
 
+	@SuppressWarnings("unused")
 	private static PointD rotateAboutPoint(PointD p, double x0, double y0, double phi) {
 		return rotateAboutPoint(p.getX(), p.getY(), x0, y0, phi);
 	}
@@ -906,6 +1106,13 @@ public class RadarImageGenerator {
 		double yRotate = yPrimeRotated + y0;
 
 		return new PointD(xRotate, yRotate);
+	}
+
+	public static void drawCenteredString(String s, Graphics2D g, int x, int y) {
+		FontMetrics fm = g.getFontMetrics();
+		int ht = fm.getAscent() + fm.getDescent();
+		int width = fm.stringWidth(s);
+		g.drawString(s, x - width / 2, y + (fm.getAscent() - ht / 2));
 	}
 
 	private static ArrayList<ArrayList<PointD>> getPolygons(File kml) {
@@ -947,6 +1154,42 @@ public class RadarImageGenerator {
 			polygons.add(polygon);
 		}
 
+		return polygons;
+	}
+
+	private static ArrayList<ArrayList<PointD>> getPolygons(File poly, File meta) {
+		CsvParserSettings settings = new CsvParserSettings();
+		settings.getFormat().setLineSeparator("\n");
+		
+		// creates a CSV parser
+		CsvParser parser = new CsvParser(settings);
+
+		// parses all rows in one go.
+		List<String[]> polyRows = parser.parseAll(poly);
+		List<String[]> metaRows = parser.parseAll(meta);
+		
+		ArrayList<ArrayList<PointD>> polygons = new ArrayList<>();
+		
+		ArrayList<PointD> polygon = new ArrayList<>();
+		int polygonId = 0;
+		int polygonSize = Integer.valueOf(metaRows.get(polygonId)[0]);
+		
+		for(int i = 0; i < polyRows.size(); i++) {
+			if(polygon.size() >= polygonSize) {
+				polygonId++;
+				polygonSize = Integer.valueOf(metaRows.get(polygonId)[0]);
+				
+				polygons.add(polygon);
+				polygon = new ArrayList<>();
+			}
+			
+			String[] row = polyRows.get(i);
+			PointD point = new PointD(Float.valueOf(row[0]), Float.valueOf(row[1]));
+			polygon.add(point);
+			
+//			System.out.printf("%6d\t%6d\t%6d\t%6d\t" + poly.getName() + "\n", i, polyRows.size(), polygon.size(), polygonSize);
+		}
+		
 		return polygons;
 	}
 
@@ -1020,5 +1263,55 @@ public class RadarImageGenerator {
 		os.close();
 		
 		return new File(dataFolder + fileName);
+	}
+
+	private static void loadCities() {
+		CsvParserSettings settings = new CsvParserSettings();
+		settings.getFormat().setLineSeparator("\n");
+
+		// creates a CSV parser
+		CsvParser parser = new CsvParser(settings);
+
+		// parses all rows in one go.
+		List<String[]> allRows = parser.parseAll(loadResourceAsFile("res/usCities.csv"));
+
+		for (int i = 0; i < allRows.size(); i++) {
+			String[] row = allRows.get(i);
+
+			City city = new City(row[0], Double.valueOf(row[1]), Double.valueOf(row[2]), Integer.valueOf(row[3]));
+
+			city.setProminence(Double.valueOf(row[4]));
+
+			// code to calculate city prominence
+//			double closestLargerCityDis = 10000;
+//			int closestLargerCityPop = 0;
+//			if(cities == null) {
+//				city.setProminence(100);
+//			} else {
+//				for(City c : cities) {
+//					double cityDis = Math.hypot(city.getLatitude() - c.getLatitude(), city.getLongitude() - c.getLongitude());
+//					
+//					if(cityDis < closestLargerCityDis) {
+//						closestLargerCityDis = cityDis;
+//						closestLargerCityPop = c.getPopulation();
+//					}
+//				}
+//				
+//				double prominence = (double) city.getPopulation()*Math.log10(city.getPopulation())/closestLargerCityPop * closestLargerCityDis;
+//				
+//				// special handling for weird okc and norman prominence ratings
+//				if(city.getLatitude() > 35 && city.getLatitude() < 36 && city.getLongitude() > -98 && city.getLongitude() < -97) {
+//					if("Norman".equals(city.getName()) || "Oklahoma City".equals(city.getName())) {
+//						prominence *= 2;
+//					}
+//				}
+//				
+//				city.setProminence(prominence);
+//			}
+
+			cities.add(city);
+		}
+
+		Collections.reverse(cities);
 	}
 }

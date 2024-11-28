@@ -70,6 +70,14 @@ public class RadarImageCli {
 				} else {
 					continue;
 				}
+			} else if("-c".equals(flag)) {
+				if("NEXRAD".equals(arg)) {
+					settings.setSource(Source.NEXRAD);
+				} else if("MRMS".equals(arg)) {
+					settings.setSource(Source.MRMS);
+				} else {
+					continue;
+				}
 			} else if("-s".equals(flag)) {
 				settings.setSize(Double.valueOf(arg));
 			} else if("-r".equals(flag)) {

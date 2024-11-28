@@ -3,6 +3,7 @@ package com.chasearchive.radarImageCli;
 public class GeneratorSettings {
 	private AspectRatio aspectRatio = AspectRatio.SQUARE;
 	private Moment moment = Moment.REFLECTIVITY;
+	private Source source = Source.NEXRAD;
 	private double size = 0.5; // domain height in degrees
 	private double resolution = 1080; // height in pixels
 	
@@ -49,5 +50,13 @@ public class GeneratorSettings {
 	
 	public void setResolution(double resolution) {
 		this.resolution = resolution;
+	}
+
+	public Source getSource() {
+		return source;
+	}
+
+	public void setSource(Source source) {
+		this.source = source;
 	}
 }
