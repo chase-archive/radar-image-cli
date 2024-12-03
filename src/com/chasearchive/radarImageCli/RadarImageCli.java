@@ -12,11 +12,8 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 public class RadarImageCli {
-	// Radar data download is done
 	// TODO:
-	// Make RadarScan object that stores both refl and vlcy SAILS scans
-	// Radar data plotter (not obscenely slow)
-	// Maybe city markers?
+	// Nothing that I can think of tbh
 	
 	static final DebugLogger logger = new DebugLogger(DebugLoggerLevel.SILENT);
 	

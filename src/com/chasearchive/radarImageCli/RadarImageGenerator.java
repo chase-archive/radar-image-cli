@@ -11,6 +11,7 @@ import java.awt.image.BufferedImage;
 import java.awt.image.RescaleOp;
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -29,6 +30,7 @@ import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.GZIPInputStream;
 
 import javax.imageio.ImageIO;
 
@@ -406,6 +408,9 @@ public class RadarImageGenerator {
 			if (pixelsPerDegree < 200 && prm < 1) {
 				continue;
 			}
+			if (pixelsPerDegree < 300 && prm < 0.67) {
+				continue;
+			}
 			if (pixelsPerDegree < 400 && prm < 0.47) {
 				continue;
 			}
@@ -587,7 +592,14 @@ public class RadarImageGenerator {
 				(settings.getSize() * settings.getAspectRatioFloat()),
 				-(settings.getSize()));
 		
-		MrmsComposite mrms = new MrmsComposite(new File("/home/a-urq/Downloads/2024050100/CONUS/SeamlessHSR/MRMS_SeamlessHSR_00.00_20240501-000000.grib2.gz"));
+
+		String mrmsUrl = String.format("https://noaa-mrms-pds.s3.amazonaws.com/CONUS/SeamlessHSR_00.00/%04d%02d%02d/MRMS_SeamlessHSR_00.00_%04d%02d%02d-%02d%02d%02d.grib2.gz",
+				time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
+				time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
+				time.getHourOfDay(), time.getMinuteOfHour() - (time.getMinuteOfHour() % 2), 0);
+		File mrmsGz = downloadFile(mrmsUrl, "mrms.composite");
+		File mrmsFile = unzipGz(mrmsGz);
+		MrmsComposite mrms = new MrmsComposite(mrmsFile);
 		
 		float[][] data = null;
 		ColorTable colorTable = null;
@@ -1263,6 +1275,29 @@ public class RadarImageGenerator {
 		os.close();
 		
 		return new File(dataFolder + fileName);
+	}
+
+	public static File unzipGz(File gz) {
+		byte[] buffer = new byte[1024];
+
+		String fullFilename = gz.getAbsolutePath();
+		
+		try {
+			GZIPInputStream gzip = new GZIPInputStream(new FileInputStream(fullFilename));
+			FileOutputStream out = new FileOutputStream(fullFilename.substring(0, fullFilename.length() - 3));
+
+			int len;
+			while ((len = gzip.read(buffer)) > 0) {
+				out.write(buffer, 0, len);
+			}
+
+			gzip.close();
+			out.close();
+		} catch (IOException ex) {
+			ex.printStackTrace();
+		}
+		
+		return new File(fullFilename.substring(0, fullFilename.length() - 3));
 	}
 
 	private static void loadCities() {
