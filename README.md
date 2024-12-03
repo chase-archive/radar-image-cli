@@ -16,7 +16,8 @@ There are four mandatory flags and four additional optional flags that can be us
 | -o | Output file name. File is made in the same directory as the JAR file. |
 | -a (optional) | Aspect ratio of image. Options are "1:1", "4:3", and "16:9". <br> Default is "1:1". |
 | -m (optional) | "Moment" from the NEXRAD file. <br> Options are "BR" (base reflectivity) and "BV" (base velocity). <br> Default is "BR". |
-| -s (optional | Size of image, in degrees of arc from the center of the image to the edge. <br> Default is 0.5. |
+| -s (optional) | Size of image, in degrees of arc from the center of the image to the edge. <br> Default is 0.5. |
+| -c (optional) | Source of data. <br> Options are "NEXRAD" and "MRMS". <br> Default is "NEXRAD". |
 | -r (optional) | Resolution of image, in pixels. Default is 1080. |
 
 A more detailed CLI call may look like this:

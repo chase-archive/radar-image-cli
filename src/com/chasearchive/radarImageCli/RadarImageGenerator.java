@@ -106,10 +106,10 @@ public class RadarImageGenerator {
 //		g.drawString("Ⓒ Chase Archive ", 3, basemap.getHeight() - 45);
 		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
 		g.setColor(Color.BLACK);
-		g.drawString(dateStringAlt(time), 2, basemap.getHeight() - 13);
-		g.drawString(dateStringAlt(time), 4, basemap.getHeight() - 15);
-		g.drawString(dateStringAlt(time), 2, basemap.getHeight() - 15);
-		g.drawString(dateStringAlt(time), 4, basemap.getHeight() - 13);
+		g.drawString(dateStringAlt(time), 2, basemap.getHeight() - 14);
+		g.drawString(dateStringAlt(time), 4, basemap.getHeight() - 16);
+		g.drawString(dateStringAlt(time), 2, basemap.getHeight() - 16);
+		g.drawString(dateStringAlt(time), 4, basemap.getHeight() - 14);
 		g.setColor(Color.WHITE);
 		g.drawString(dateStringAlt(time), 3, basemap.getHeight() - 15);
 //		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 24));
