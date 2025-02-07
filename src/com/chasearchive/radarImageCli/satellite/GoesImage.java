@@ -44,6 +44,22 @@ public class GoesImage extends CdmFile implements SatelliteImage {
 		
 		image.permaFields.put("wavelength", DataField.fromCdmVar(ncfile.findVariable("band_wavelength")));
 		image.permaFields.get("wavelength").setAnnotation("units are micrometers");
+
+		image.permaFields.put("x", DataField.fromCdmVar(ncfile.findVariable("x")));
+		image.permaFields.get("x").bundleField("scale_factor", DataField.fromNumber(ncfile.findVariable("x").findAttributeDouble("scale_factor", -1024)));
+		image.permaFields.get("x").bundleField("add_offset", DataField.fromNumber(ncfile.findVariable("x").findAttributeDouble("add_offset", -1024)));
+		image.permaFields.get("x").processOffsets();
+
+		image.permaFields.put("y", DataField.fromCdmVar(ncfile.findVariable("y")));
+		image.permaFields.get("y").bundleField("scale_factor", DataField.fromNumber(ncfile.findVariable("y").findAttributeDouble("scale_factor", -1024)));
+		image.permaFields.get("y").bundleField("add_offset", DataField.fromNumber(ncfile.findVariable("y").findAttributeDouble("add_offset", -1024)));
+		image.permaFields.get("y").processOffsets();
+
+		image.permaFields.put("dx", DataField.fromNumber(image.dataFromField("x", 1) - image.dataFromField("x", 0)));
+		image.permaFields.put("dy", DataField.fromNumber(image.dataFromField("y", 1) - image.dataFromField("y", 0)));
+		
+		image.permaFields.put("time_start", DataField.fromNexradAttrToStr(ncfile.findGlobalAttribute("time_coverage_start")));
+		image.permaFields.put("time_end", DataField.fromNexradAttrToStr(ncfile.findGlobalAttribute("time_coverage_end")));
 		
 		ncfile.close();
 		return image;

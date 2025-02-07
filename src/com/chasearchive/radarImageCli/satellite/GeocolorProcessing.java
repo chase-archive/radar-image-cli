@@ -10,19 +10,17 @@ import javax.imageio.ImageIO;
 
 import com.ameliaWx.weatherUtils.WeatherUtils;
 
-import ucar.nc2.NetcdfFile;
-
 public class GeocolorProcessing {
 	// from GOES true color recipe
 	// https://unidata.github.io/python-gallery/examples/mapping_GOES16_TrueColor.html#sphx-glr-download-examples-mapping-goes16-truecolor-py
 
 	public static void main(String[] args) throws IOException {
-//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 1000000, 10.33 / 1000000));
-//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 100000, 10.33 / 1000000));
-//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 10000, 10.33 / 1000000));
-//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 1000, 10.33 / 1000000));
-//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 100, 10.33 / 1000000));
-//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 10, 10.33 / 1000000));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 1000000.0, 10.33 / 1000000));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 100000.0, 10.33 / 1000000));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 10000.0, 10.33 / 1000000));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 1000.0, 10.33 / 1000000));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 100.0, 10.33 / 1000000));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 10.0, 10.33 / 1000000));
 //		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 / 1, 10.33 / 1000000));
 //		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 * 10, 10.33 / 1000000));
 //		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 * 100, 10.33 / 1000000));
@@ -30,6 +28,21 @@ public class GeocolorProcessing {
 //		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 * 10000, 10.33 / 1000000));
 //		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 * 100000, 10.33 / 1000000));
 //		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavelength(77 * 1000000, 10.33 / 1000000));
+//		System.out.println(10);
+//
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 / 1000000.0, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 / 100000.0, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 / 10000.0, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 / 1000.0, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 / 100.0, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 / 10.0, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 / 1, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 * 10, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 * 100, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 * 1000, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 * 10000, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 * 100000, WeatherUtils.wavelengthToWavenumber(0.0000103)));
+//		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 * 1000000, WeatherUtils.wavelengthToWavenumber(0.0000103)));
 //		
 //		System.exit(0);
 		
@@ -39,11 +52,11 @@ public class GeocolorProcessing {
 		GoesImage band7 = GoesImage.loadFromFile(new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C07_G16_s20250372301171_e20250372303556_c20250372304028.nc"));
 		GoesImage band13 = GoesImage.loadFromFile(new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C13_G16_s20250372301171_e20250372303556_c20250372304042.nc"));
 		
-		NetcdfFile band1File = NetcdfFile.open("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C01_G16_s20250372301171_e20250372303544_c20250372303599.nc");
-		NetcdfFile band2File = NetcdfFile.open("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C02_G16_s20250372301171_e20250372303544_c20250372303571.nc");
-		NetcdfFile band3File = NetcdfFile.open("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C03_G16_s20250372301171_e20250372303544_c20250372303583.nc");
-		
-		System.out.println(band3File);
+//		NetcdfFile band1File = NetcdfFile.open("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C01_G16_s20250372301171_e20250372303544_c20250372303599.nc");
+//		NetcdfFile band2File = NetcdfFile.open("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C02_G16_s20250372301171_e20250372303544_c20250372303571.nc");
+//		NetcdfFile band3File = NetcdfFile.open("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C03_G16_s20250372301171_e20250372303544_c20250372303583.nc");
+//		
+//		System.out.println(band3File);
 
 		Color[][] comp = createComposite(band1, band2, band3, band7, band13);
 //		createIRGoes(band7, band13);
@@ -222,6 +235,8 @@ public class GeocolorProcessing {
 		Color[][] goesComposite = new Color[red[0].length][red.length];
 
 		for (int i = 0; i < goesComposite[0].length; i++) {
+			if(i % 500 == 0) System.out.println("Goes True-Color Composite " + (100 * (float) i/goesComposite[0].length) + "% complete");
+			
 			for (int j = 0; j < goesComposite.length; j++) {
 				int r = (int) (255 * red[i][j]);
 
@@ -256,17 +271,17 @@ public class GeocolorProcessing {
 					band7Temp[i][j] = -1024;
 					band13Temp[i][j] = -1024;
 				} else {
-					band7Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavelength(band7Rad[i][j] * 100000, band7wavelength / 1000000);
-					band13Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavelength(band13Rad[i][j] * 100000, band13wavelength / 1000000);
-//					band7Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(band7Rad[i][j] / 100000, WeatherUtils.wavelengthToWavenumber(band7wavelength));
-//					band13Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(band13Rad[i][j] / 100000, WeatherUtils.wavelengthToWavenumber(band13wavelength));
+//					band7Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavelength(band7Rad[i][j] * 100000, band7wavelength / 1000000);
+//					band13Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavelength(band13Rad[i][j] * 100000, band13wavelength / 1000000);
+					band7Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(band7Rad[i][j] / 100000.0, WeatherUtils.wavelengthToWavenumber(band7wavelength / 1000000.0));
+					band13Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(band13Rad[i][j] / 100000.0, WeatherUtils.wavelengthToWavenumber(band13wavelength / 1000000.0));
 				}
 			}
 		}
-		System.out.println("band 13: " + band13Rad[400][1500] + " um");
-		System.out.println("band 13: " + band13Temp[400][1500] + " K");
-		System.out.println("band 7: " + band7Rad[400][1500] + " um");
-		System.out.println("band 7: " + band7Temp[400][1500] + " K");
+//		System.out.println("band 13: " + band13Rad[400][1500] + " mW m^-2 sr^-1 (cm^-1)^-1");
+//		System.out.println("band 13: " + band13Temp[400][1500] + " K");
+//		System.out.println("band 7: " + band7Rad[400][1500] + " mW m^-2 sr^-1 (cm^-1)^-1");
+//		System.out.println("band 7: " + band7Temp[400][1500] + " K");
 
 		float[][] band13Clip = clip(band13Temp, 90, 273);
 		float[][] band13Norm = clip(invNormalize(band13Clip, 0, 350), 0, 255);
@@ -277,7 +292,7 @@ public class GeocolorProcessing {
 			for (int j = 0; j < goesComposite.length; j++) {
 				float fog = band13Temp[i][j] - band7Temp[i][j];
 
-				float fogBlue = clip(linScale(0, 5, 0, 200, fog), 0, 200);
+				float fogBlue = clip(linScale(0, 5, 0, 150, fog), 0, 150);
 
 				Color fogColor = new Color((int) (0.5 * fogBlue), (int) (0.75 * fogBlue), (int) (1.0 * fogBlue));
 //				Color band13Color = new Color((int) band13Norm[i][j], (int) band13Norm[i][j],
@@ -286,9 +301,9 @@ public class GeocolorProcessing {
 //				goesComposite[j][i] = maxTristims(fogColor, band13Color);
 
 				Color band13Color = new Color((int) band13Norm[i][j], (int) band13Norm[i][j],
-						(int) Double.max(band13Norm[i][j], band13Norm[i][j]));
+						(int) Double.max(band13Norm[i][j], fogBlue));
 
-				goesComposite[j][i] = maxTristims(band13Color, band13Color);
+				goesComposite[j][i] = maxTristims(band13Color, fogColor);
 
 				if (band13Temp[i][j] == -1024) {
 					goesComposite[j][i] = Color.BLACK;
