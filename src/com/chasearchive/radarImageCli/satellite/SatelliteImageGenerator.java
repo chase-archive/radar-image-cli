@@ -30,7 +30,6 @@ import java.util.zip.GZIPInputStream;
 
 import javax.imageio.ImageIO;
 
-import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
@@ -44,7 +43,6 @@ import com.ameliaWx.wxArchives.earthWeather.iemWarnings.WarningPolygon;
 import com.chasearchive.radarImageCli.City;
 import com.chasearchive.radarImageCli.ColorTable;
 import com.chasearchive.radarImageCli.DebugLoggerLevel;
-import com.chasearchive.radarImageCli.LambertConformalProjection;
 import com.chasearchive.radarImageCli.PointD;
 import com.chasearchive.radarImageCli.RadarImageGenerator;
 import com.univocity.parsers.csv.CsvParser;
@@ -52,6 +50,8 @@ import com.univocity.parsers.csv.CsvParserSettings;
 
 public class SatelliteImageGenerator {
 	// TODO:
+	// Use separate band imagery for higher resolution
+	// Readme update needed SOON!!
 	// Data for GOES-17, GOES-18, and GOES-19 (should be trivial)
 	// Data for Himawari 8 and Himawari 9
 	// Older GOES data
@@ -939,18 +939,6 @@ public class SatelliteImageGenerator {
 		} catch (IOException e) {
 			return null;
 		}
-	}
-
-	private static double greatCircleDistance(double lat1, double lon1, double lat2, double lon2) {
-		double arccosArg = Math.sin(Math.toRadians(lat1)) * Math.sin(Math.toRadians(lat2))
-				+ Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
-						* Math.cos(Math.toRadians(lon1 - lon2));
-
-		double arcAngle = Math.acos(arccosArg);
-
-		double distance = arcAngle * LambertConformalProjection.R;
-
-		return distance;
 	}
 	
 	@SuppressWarnings("unused")
