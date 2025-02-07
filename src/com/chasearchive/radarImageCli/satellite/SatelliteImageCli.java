@@ -1,4 +1,4 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.satellite;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -11,10 +11,11 @@ import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
-public class RadarImageCli {
-	// TODO:
-	// Nothing that I can think of tbh
-	
+import com.chasearchive.radarImageCli.AspectRatio;
+import com.chasearchive.radarImageCli.DebugLogger;
+import com.chasearchive.radarImageCli.DebugLoggerLevel;
+
+public class SatelliteImageCli {
 	public static final DebugLogger logger = new DebugLogger(DebugLoggerLevel.SILENT);
 	
 	public static void main(String[] args) {
@@ -23,7 +24,7 @@ public class RadarImageCli {
 		DateTime dt = null;
 		double lat = -1024;
 		double lon = -1024;
-		RadarGeneratorSettings settings = new RadarGeneratorSettings();
+		SatelliteGeneratorSettings settings = new SatelliteGeneratorSettings();
 		String outputFileString = null;
 		
 		// flag/argument parsing logic
@@ -59,19 +60,11 @@ public class RadarImageCli {
 				} else {
 					continue;
 				}
-			} else if("-m".equals(flag)) {
-				if("BR".equals(arg)) {
-					settings.setMoment(Moment.REFLECTIVITY);
-				} else if("BV".equals(arg)) {
-					settings.setMoment(Moment.VELOCITY);
-				} else {
-					continue;
-				}
-			} else if("-c".equals(flag)) {
-				if("NEXRAD".equals(arg)) {
-					settings.setSource(Source.NEXRAD);
-				} else if("MRMS".equals(arg)) {
-					settings.setSource(Source.MRMS);
+			} else if("-t".equals(flag)) {
+				if("VIS".equals(arg)) {
+					settings.setImageType(SatelliteImageType.GEOCOLOR);
+				} else if("LIR".equals(arg)) {
+					settings.setImageType(SatelliteImageType.LONGWAVE_IR);
 				} else {
 					continue;
 				}
@@ -101,23 +94,23 @@ public class RadarImageCli {
 		logger.println(lon, DebugLoggerLevel.BRIEF);
 		
 		try {
-			BufferedImage radar = RadarImageGenerator.generateRadar(dt, lat, lon, settings);
+			BufferedImage radar = SatelliteImageGenerator.generateSatellite(dt, lat, lon, settings);
 			
 			File outputFile = new File(outputFileString);
 			ImageIO.write(radar, "PNG", outputFile);
 			logger.println("Output file to: " + outputFile.getAbsolutePath(), DebugLoggerLevel.BRIEF);
 			
 			try {
-				FileUtils.deleteDirectory(new File("radar-image-generator-temp"));
+				FileUtils.deleteDirectory(new File("satellite-image-generator-temp"));
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			}
 		} catch (IOException e) {
-			System.err.println("Could not generate radar! Send following error message to Amelia:");
+			System.err.println("Could not generate satellite! Send following error message to Amelia:");
 			e.printStackTrace();
 			
 			try {
-				FileUtils.deleteDirectory(new File("radar-image-generator-temp"));
+				FileUtils.deleteDirectory(new File("satellite-image-generator-temp"));
 			} catch (IOException e1) {
 				e1.printStackTrace();
 			}

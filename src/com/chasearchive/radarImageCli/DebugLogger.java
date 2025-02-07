@@ -1,7 +1,7 @@
 package com.chasearchive.radarImageCli;
 
 public class DebugLogger {
-	DebugLoggerLevel programLevel;
+	public DebugLoggerLevel programLevel;
 	
 	public DebugLogger(DebugLoggerLevel programLevel) {
 		this.programLevel = programLevel;

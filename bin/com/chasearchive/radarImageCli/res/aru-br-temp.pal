@@ -1,0 +1,25 @@
+;
+; Full range brightness temperature color table
+; Made by Amelia Urquhart
+;
+
+Product: BRIGHTNESS TEMPERATURE
+Units:  K
+Step:   10
+
+
+Color:  183.15     64    0   64  255   64  255  
+Color:  193.15    255  255  255
+Color:  203.15      0    0    0 
+Color:  213.15    255    0    0
+Color:  223.15    255  255    0
+Color:  233.15      0  255    0
+Color:  243.15      0    0  127  127  255  255
+Color:  253.15    255  255  255
+Color:  273.15    128  128  128
+Color:  313.15      0    0    0
+Color:  333.15    127   60   30
+
+ND:   0   0   0
+RF: 128   0 192
+

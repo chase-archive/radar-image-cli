@@ -1,4 +1,4 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.satellite;
 
 import static com.chasearchive.radarImageCli.RadarImageCli.logger;
 
@@ -20,14 +20,10 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
-import java.util.SortedSet;
 import java.util.TimeZone;
-import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -39,50 +35,91 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 import com.ameliaWx.wxArchives.PointF;
+import com.ameliaWx.wxArchives.earthWeather.goes.GoesAws;
+import com.ameliaWx.wxArchives.earthWeather.goes.SatelliteSector;
 import com.ameliaWx.wxArchives.earthWeather.iemWarnings.DamageTag;
 import com.ameliaWx.wxArchives.earthWeather.iemWarnings.TornadoTag;
 import com.ameliaWx.wxArchives.earthWeather.iemWarnings.WarningArchive;
 import com.ameliaWx.wxArchives.earthWeather.iemWarnings.WarningPolygon;
-import com.ameliaWx.wxArchives.earthWeather.nexrad.NexradAws;
+import com.chasearchive.radarImageCli.City;
+import com.chasearchive.radarImageCli.ColorTable;
+import com.chasearchive.radarImageCli.DebugLoggerLevel;
+import com.chasearchive.radarImageCli.LambertConformalProjection;
+import com.chasearchive.radarImageCli.PointD;
+import com.chasearchive.radarImageCli.RadarImageGenerator;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
-import com.univocity.parsers.tsv.TsvParser;
-import com.univocity.parsers.tsv.TsvParserSettings;
 
-public class RadarImageGenerator {
+public class SatelliteImageGenerator {
+	// TODO:
+	// Data for GOES-17, GOES-18, and GOES-19 (should be trivial)
+	// Data for Himawari 8 and Himawari 9
+	// Older GOES data
+	// Possibly METEOSAT data for Europe and Africa, depends on availability
+	
 	public static ArrayList<City> cities;
 	static {
 		cities = new ArrayList<>();
 		loadCities();
 	}
 	
-	public static BufferedImage generateRadar(DateTime time, double lat, double lon, RadarGeneratorSettings settings)
+	public static BufferedImage generateSatellite(DateTime time, double lat, double lon, SatelliteGeneratorSettings settings)
 			throws IOException {
 		RotateLatLonProjection plotProj = new RotateLatLonProjection(lat, lon, 111.32, 111.32, 1000, 1000);
+		GeostationaryProjection satProj = null;
+		
+		if(settings.getSource() == SatelliteSource.GOES_EAST) {
+			satProj = GeostationaryProjection.GOES_EAST;
+		} else if(settings.getSource() == SatelliteSource.GOES_WEST) {
+			satProj = GeostationaryProjection.GOES_WEST;
+		}
 		
 		BufferedImage basemap = generateBasemap(lat, lon, settings, plotProj);
 		
 		BufferedImage radarPlot = null;
 		
-		if(settings.getSource() == Source.NEXRAD) {
-			File radarFile = null;
+		SatelliteSource source = SatelliteSource.GOES_EAST;
+		SatelliteSector sector = SatelliteSector.GOES_CONUS;
+		
+		// this decision tree will likely evolve as new data sources are added
+		if(lon > -106 && lon <= 74) {
+			source = SatelliteSource.GOES_EAST;
+			
+			if(lat > 22 && lat <= 51 && lon > -106 && lon <= -59) {
+				sector = SatelliteSector.GOES_CONUS;
+			} else {
+				sector = SatelliteSector.GOES_FULL_DISK;
+			}
+		} else if((lon > -180 && lon <= -106) || (lon > 74 && lon <= 180)) {
+			source = SatelliteSource.GOES_WEST;
+			
+			if(lat > 22 && lat <= 51 && lon > -162 && lon <= -106) {
+				sector = SatelliteSector.GOES_PACUS;
+			} else {
+				sector = SatelliteSector.GOES_FULL_DISK;
+			}
+		}
+		
+		settings.setSource(source);
+		settings.setSector(sector);
+		
+		if(settings.getSource() == SatelliteSource.GOES_EAST) {
+			File satFile = null;
 			try {
-				radarFile = getClosestRadarData(time, lat, lon);
-			} catch (NoValidRadarScansFoundException e) {
+				satFile = getGoesData(time, settings.getSource(), settings.getSector());
+			} catch (NoValidSatelliteScansFoundException e) {
 				e.printStackTrace();
 			}
 			
-			RadarScan radarScan = new RadarScan(radarFile);
+			GoesMultibandImage goesImage = GoesMultibandImage.loadFromFile(satFile);
 			
-			radarPlot = generateRadarPlot(radarScan, time, lat, lon, settings, plotProj);
-		} else if(settings.getSource() == Source.MRMS) {
-			radarPlot = generateMrmsPlot(time, lat, lon, settings, plotProj);
+			radarPlot = generateSatellitePlot(goesImage, time, lat, lon, settings, satProj, plotProj);
 		}
 		
 		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
 		BufferedImage citiesPlot = generateCityPlot(lat, lon, settings, plotProj);
 		
-		BufferedImage logo = ImageIO.read(loadResourceAsFile("res/chase-archive-logo-256pix.png"));
+		BufferedImage logo = ImageIO.read(RadarImageGenerator.loadResourceAsFile("res/chase-archive-logo-256pix.png"));
 		
 		BufferedImage plot = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
 		Graphics2D g = plot.createGraphics();
@@ -133,40 +170,38 @@ public class RadarImageGenerator {
 						: timeZoneCode);
 	}
 	
-	private static final ColorTable reflectivityColorTable = new ColorTable(
-			loadResourceAsFile("res/awips-ii-official-mod-low-filter-2.pal"), 0.1f, 10, "dBZ");
-	private static final ColorTable velocityColorTable = new ColorTable(
-			loadResourceAsFile("res/SRRadarLoopsVlcy.pal"), 0.1f, 10, "mph");
+	private static final ColorTable brightnessTemperatureColorTable = new ColorTable(
+			RadarImageGenerator.loadResourceAsFile("res/aru-br-temp.pal"), 0.1f, 10, "dBZ");
 
-	private static BufferedImage generateBasemap(double lat, double lon, RadarGeneratorSettings settings, RotateLatLonProjection plotProj)
+	private static BufferedImage generateBasemap(double lat, double lon, SatelliteGeneratorSettings settings, RotateLatLonProjection plotProj)
 			throws IOException {
 		ArrayList<ArrayList<PointD>> countyBorders;
 		ArrayList<ArrayList<PointD>> stateBorders;
 		ArrayList<ArrayList<PointD>> interstates;
 		ArrayList<ArrayList<PointD>> majorRoads;
 
-		File countyBordersKML = loadResourceAsFile("res/usCounties.kml");
-		File stateBordersKML = loadResourceAsFile("res/usStates.kml");
-		File interstatesPoly = loadResourceAsFile("res/primary-roads.poly");
-		File interstatesPolyMeta = loadResourceAsFile("res/primary-roads.poly.meta");
-		File majorRoadsPoly = loadResourceAsFile("res/prisec-roads.poly");
-		File majorRoadsPolyMeta = loadResourceAsFile("res/prisec-roads.poly.meta");
+		File countyBordersKML = RadarImageGenerator.loadResourceAsFile("res/usCounties.kml");
+		File stateBordersKML = RadarImageGenerator.loadResourceAsFile("res/usStates.kml");
+		File interstatesPoly = RadarImageGenerator.loadResourceAsFile("res/primary-roads.poly");
+		File interstatesPolyMeta = RadarImageGenerator.loadResourceAsFile("res/primary-roads.poly.meta");
+		File majorRoadsPoly = RadarImageGenerator.loadResourceAsFile("res/prisec-roads.poly");
+		File majorRoadsPolyMeta = RadarImageGenerator.loadResourceAsFile("res/prisec-roads.poly.meta");
 
 		countyBorders = getPolygons(countyBordersKML);
 		stateBorders = getPolygons(stateBordersKML);
 		interstates = getPolygons(interstatesPoly, interstatesPolyMeta);
 		majorRoads = getPolygons(majorRoadsPoly, majorRoadsPolyMeta);
 
-		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
+		GeoCoord latLonProjected = plotProj.rotateLatLon(lon, lat);
 		System.out.println("latLonProjected (need to zero this out): " + latLonProjected);
-		PointD latLonProjected1 = plotProj.rotateLatLon(lon, lat + 10);
+		GeoCoord latLonProjected1 = plotProj.rotateLatLon(lon, lat + 10);
 		System.out.println("latLonProjected (need to 10 this out): " + latLonProjected1);
-		PointD latLonProjected2 = plotProj.rotateLatLon(lon + 10, lat);
+		GeoCoord latLonProjected2 = plotProj.rotateLatLon(lon + 10, lat);
 		System.out.println("latLonProjected (need to ??? this out): " + latLonProjected2);
-		PointD trueNorthPointer = plotProj.rotateLatLon(lon, lat + 0.01); // i love finite differencing
+		GeoCoord trueNorthPointer = plotProj.rotateLatLon(lon, lat + 0.01); // i love finite differencing
 
-		double trueNorth_dx = trueNorthPointer.getX() - latLonProjected.getX();
-		double trueNorth_dy = trueNorthPointer.getY() - latLonProjected.getY();
+		double trueNorth_dx = trueNorthPointer.getLat() - latLonProjected.getLat();
+		double trueNorth_dy = trueNorthPointer.getLon() - latLonProjected.getLon();
 
 		logger.println("trueNorth_dx: " + trueNorth_dx, DebugLoggerLevel.VERBOSE);
 		logger.println("trueNorth_dy: " + trueNorth_dy, DebugLoggerLevel.VERBOSE);
@@ -223,19 +258,19 @@ public class RadarImageGenerator {
 				if (j == polygon.size())
 					j = 0;
 
-				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
-				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+				GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getY());
+						p1.getLon());
 				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p1.getX());
+						p1.getLat());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getY());
+						p2.getLon());
 				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p2.getX());
+						p2.getLat());
 
-				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+				if(Math.abs(p1.getLon() - p2.getLon()) < 100) {
 					g1.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
 			}
@@ -249,19 +284,19 @@ public class RadarImageGenerator {
 				if (j == polygon.size())
 					j = 0;
 
-				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
-				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+				GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getY());
+						p1.getLon());
 				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p1.getX());
+						p1.getLat());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getY());
+						p2.getLon());
 				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p2.getX());
+						p2.getLat());
 
-				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+				if(Math.abs(p1.getLon() - p2.getLon()) < 100) {
 					g2.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
 			}
@@ -273,19 +308,19 @@ public class RadarImageGenerator {
 			for (int i = 0; i < polygon.size() - 1; i++) {
 				int j = i + 1;
 
-				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
-				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+				GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getY());
+						p1.getLon());
 				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p1.getX());
+						p1.getLat());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getY());
+						p2.getLon());
 				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p2.getX());
+						p2.getLat());
 
-				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+				if(Math.abs(p1.getLon() - p2.getLon()) < 100) {
 					g3.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
 			}
@@ -297,19 +332,19 @@ public class RadarImageGenerator {
 			for (int i = 0; i < polygon.size() - 1; i++) {
 				int j = i + 1;
 
-				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
-				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+				GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getY());
+						p1.getLon());
 				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p1.getX());
+						p1.getLat());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getY());
+						p2.getLon());
 				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p2.getX());
+						p2.getLat());
 
-				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+				if(Math.abs(p1.getLon() - p2.getLon()) < 100) {
 					g3.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
 			}
@@ -321,19 +356,19 @@ public class RadarImageGenerator {
 			for (int i = 0; i < polygon.size() - 1; i++) {
 				int j = i + 1;
 
-				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
-				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+				GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getY());
+						p1.getLon());
 				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p1.getX());
+						p1.getLat());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getY());
+						p2.getLon());
 				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p2.getX());
+						p2.getLat());
 
-				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+				if(Math.abs(p1.getLon() - p2.getLon()) < 100) {
 					g4.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
 			}
@@ -345,19 +380,19 @@ public class RadarImageGenerator {
 			for (int i = 0; i < polygon.size() - 1; i++) {
 				int j = i + 1;
 
-				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
-				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+				GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p1.getY());
+						p1.getLon());
 				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p1.getX());
+						p1.getLat());
 				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
-						p2.getY());
+						p2.getLon());
 				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
-						p2.getX());
+						p2.getLat());
 
-				if(Math.abs(p1.getY() - p2.getY()) < 100) {
+				if(Math.abs(p1.getLon() - p2.getLon()) < 100) {
 					g4.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
 			}
@@ -380,7 +415,7 @@ public class RadarImageGenerator {
 
 	public static final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 18);
 	public static final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 12);
-	private static BufferedImage generateCityPlot(double lat, double lon, RadarGeneratorSettings settings, RotateLatLonProjection plotProj) {
+	private static BufferedImage generateCityPlot(double lat, double lon, SatelliteGeneratorSettings settings, RotateLatLonProjection plotProj) {
 		BufferedImage citiesImg = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g2d = citiesImg.createGraphics();
@@ -430,7 +465,7 @@ public class RadarImageGenerator {
 
 			g2d.setFont((pop > 100000) ? CITY_FONT : TOWN_FONT);
 
-			PointD cityP = plotProj.rotateLatLon(cLon, cLat);
+			GeoCoord cityP = plotProj.rotateLatLon(cLon, cLat);
 
 			PointD latLonProjectedUL = new PointD(
 					-(settings.getSize() * settings.getAspectRatioFloat()),
@@ -439,8 +474,8 @@ public class RadarImageGenerator {
 					(settings.getSize() * settings.getAspectRatioFloat()),
 					-(settings.getSize()));
 			
-			int cityX = (int) linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, citiesImg.getWidth(), cityP.getY());
-			int cityY = (int) linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, citiesImg.getHeight(), cityP.getX());
+			int cityX = (int) linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, citiesImg.getWidth(), cityP.getLon());
+			int cityY = (int) linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, citiesImg.getHeight(), cityP.getLat());
 			
 //			System.out.println(name + "\t" + cLon + "\t" + cLat + "\t" + cityP + "\t" + cityX + "\t" + cityY);
 					
@@ -456,27 +491,10 @@ public class RadarImageGenerator {
 		return citiesImg;
 	}
 	
-	private static BufferedImage generateRadarPlot(RadarScan scan, DateTime time, double lat, double lon, RadarGeneratorSettings settings, RotateLatLonProjection plotProj) {
-//		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
-		
-		double radarLat = scan.radarLat;
-		double radarLon = scan.radarLon;
-		
-		PointD radarProjected = plotProj.rotateLatLon(radarLon, radarLat);
-		PointD radarNorthPointer = plotProj.rotateLatLon(radarLon, radarLat + 0.01); // i love finite differencing
-		
-		System.out.println("radarProjected: " + radarProjected);
-		System.out.println("radarNorthPointer: " + radarNorthPointer);
-
-		double rTrueNorth_dx = radarNorthPointer.getX() - radarProjected.getX();
-		double rTrueNorth_dy = radarNorthPointer.getY() - radarProjected.getY();
-		System.out.println("rTrueNorth_dx: " + rTrueNorth_dx);
-		System.out.println("rTrueNorth_dy: " + rTrueNorth_dy);
-		double rotationAngleRadar = Math.atan2(rTrueNorth_dy, rTrueNorth_dx);
-
-		BufferedImage radarPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
+	private static BufferedImage generateSatellitePlot(GoesMultibandImage goes, DateTime time, double lat, double lon, SatelliteGeneratorSettings settings, GeostationaryProjection satProj, RotateLatLonProjection plotProj) {
+		BufferedImage satPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
-		Graphics2D g = radarPlot.createGraphics();
+		Graphics2D g = satPlot.createGraphics();
 
 		PointD latLonProjectedUL = new PointD(
 				-(settings.getSize() * settings.getAspectRatioFloat()),
@@ -485,199 +503,113 @@ public class RadarImageGenerator {
 				(settings.getSize() * settings.getAspectRatioFloat()),
 				-(settings.getSize()));
 		
-		float[][] data = null;
-		ColorTable colorTable = null;
+		DataField band13 = goes.field("band_13");
+		int[] band13Shape = band13.getShape();
 		
-		switch(settings.getMoment()) {
-		case REFLECTIVITY:
-			data = scan.getReflectivity(time, false);
-			colorTable = reflectivityColorTable;
+		Color[][] satColors = new Color[band13Shape[1]][band13Shape[0]];
+		
+		System.out.println("image type: " + settings.getImageType());
+		
+		switch(settings.getImageType()) {
+		case GEOCOLOR:
+			satColors = GeocolorProcessing.createComposite(goes);
+			
 			break;
-		case VELOCITY:
-			data = scan.getRadialVelocity(time, false);
-			colorTable = velocityColorTable;
-			break;
-		default:
-			return radarPlot;
-		}
-		
-		System.out.println("radar projected: " + radarProjected);
-		System.out.println("rotationAngleRadar: " + rotationAngleRadar);
-		
-		for(int i = 0; i < data.length; i++) {
-			for(int j = 0; j < data[i].length; j++) {
-				PointD radarPolygon1 = new PointD(
-						radarProjected.getY() + (1.0/plotProj.dx) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.sin(rotationAngleRadar + Math.toRadians(scan.da * (i - 0.5))),
-						radarProjected.getX() + (1.0/plotProj.dy) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.cos(rotationAngleRadar + Math.toRadians(scan.da * (i - 0.5))));
-				PointD radarPolygon2 = new PointD(
-						radarProjected.getY() + (1.0/plotProj.dx) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.sin(rotationAngleRadar + Math.toRadians(scan.da * (i + 0.5))),
-						radarProjected.getX() + (1.0/plotProj.dy) * (scan.coneOfSilence + scan.dr * (j - 0.5)) * Math.cos(rotationAngleRadar + Math.toRadians(scan.da * (i + 0.5))));
-				PointD radarPolygon3 = new PointD(
-						radarProjected.getY() + (1.0/plotProj.dx) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.sin(rotationAngleRadar + Math.toRadians(scan.da * (i + 0.5))),
-						radarProjected.getX() + (1.0/plotProj.dy) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.cos(rotationAngleRadar + Math.toRadians(scan.da * (i + 0.5))));
-				PointD radarPolygon4 = new PointD(
-						radarProjected.getY() + (1.0/plotProj.dx) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.sin(rotationAngleRadar + Math.toRadians(scan.da * (i - 0.5))),
-						radarProjected.getX() + (1.0/plotProj.dy) * (scan.coneOfSilence + scan.dr * (j + 0.5)) * Math.cos(rotationAngleRadar + Math.toRadians(scan.da * (i - 0.5))));
-
-				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
-						radarPolygon1.getX());
-				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
-						radarPolygon1.getY());
-				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
-						radarPolygon2.getX());
-				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
-						radarPolygon2.getY());
-				double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
-						radarPolygon3.getX());
-				double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
-						radarPolygon3.getY());
-				double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
-						radarPolygon4.getX());
-				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
-						radarPolygon4.getY());
-				
-				double value = data[i][j];
-				Color color = colorTable.getColor(value);
-				
-				int[] xPoints = {
-						(int) Math.round(x1),
-						(int) Math.round(x2),
-						(int) Math.round(x3),
-						(int) Math.round(x4) 
-					};
-				int[] yPoints = {
-						(int) Math.round(y1),
-						(int) Math.round(y2),
-						(int) Math.round(y3),
-						(int) Math.round(y4) 
-					};
-				
-				boolean anyInsideImage = false;
-				for(int k = 0; k < 4; k++) {
-					int x = xPoints[k];
-					int y = yPoints[k];
-					
-					if(x >= 0 && x < radarPlot.getWidth() && y >= 0 && y < radarPlot.getHeight()) {
-						anyInsideImage = true;
-						break;
-					}
+		case LONGWAVE_IR:
+			ColorTable brTempColors = brightnessTemperatureColorTable;
+			
+			for(int i = 0; i < satColors.length; i++) {
+				for(int j = 0; j < satColors[i].length; j++) {
+					satColors[i][j] = brTempColors.getColor(band13.getData(j, i));
 				}
+			}
+			
+			break;
+		}
+
+		float[] x = goes.field("x").array1D();
+		float[] y = goes.field("y").array1D();
+		float dx = goes.dataFromField("dx");
+		float dy = goes.dataFromField("dy");
+
+		System.out.println("x[0]: " + x[0]);
+		System.out.println("y[0]: " + y[0]);
+		System.out.println("x[1400]: " + x[1400]);
+		System.out.println("y[1400]: " + y[1400]);
+
+		GeoCoord testLL = satProj.projectXYToLatLon(-x[200] - dx / 2.0f,
+				y[200] - dy / 2.0f);
+		
+		System.out.println("testLL: " + testLL);
+
+		for (int i = 0; i < satColors.length; i++) {
+			for (int j = 0; j < satColors[0].length; j++) {
+				float x0 = -x[i];
+				float y0 = y[j];
+
+				GeoCoord latLon1 = satProj.projectXYToLatLon(x0 - dx / 2.0f,
+						y0 - dy / 2.0f);
+				GeoCoord latLon2 = satProj.projectXYToLatLon(x0 + dx / 2.0f,
+						y0 - dy / 2.0f);
+				GeoCoord latLon3 = satProj.projectXYToLatLon(x0 + dx / 2.0f,
+						y0 + dy / 2.0f);
+				GeoCoord latLon4 = satProj.projectXYToLatLon(x0 - dx / 2.0f,
+						y0 + dy / 2.0f);
 				
-				if (anyInsideImage) {
-					g.setColor(color);
+				GeoCoord p1 = plotProj.rotateLatLon(latLon1);
+				GeoCoord p2 = plotProj.rotateLatLon(latLon2);
+				GeoCoord p3 = plotProj.rotateLatLon(latLon3);
+				GeoCoord p4 = plotProj.rotateLatLon(latLon4);
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+						p1.getLon());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+						p1.getLat());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+						p2.getLon());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+						p2.getLat());
+				double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+						p3.getLon());
+				double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+						p3.getLat());
+				double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+						p4.getLon());
+				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+						p4.getLat());
+
+//				if()
+//				System.out.println("satellite polygon ll1: " + latLon1);
+//				System.out.println("satellite polygon p1: " + p1);
+
+				int[] xPoints = new int[] { (int) x1, (int) x2,
+						(int) x3, (int) x4 };
+				int[] yPoints = new int[] { (int) y1, (int) y2,
+						(int) y3, (int) y4 };
+
+				boolean allValid = !Float.isNaN(latLon1.getLat()) && !Float.isNaN(latLon2.getLat())
+						&& !Float.isNaN(latLon3.getLat()) && !Float.isNaN(latLon4.getLat())
+						&& !Float.isNaN(latLon1.getLon()) && !Float.isNaN(latLon2.getLon())
+						&& !Float.isNaN(latLon3.getLon()) && !Float.isNaN(latLon4.getLon()) && x1 != 0
+						&& x2 != 0
+						&& x3 != 0
+						&& x4 != 0
+						&& x1 != 0
+						&& x2 != 0
+						&& x3 != 0
+						&& x4 != 0;
+
+				if (allValid) {
+					g.setColor(satColors[i][j]);
 					g.fillPolygon(xPoints, yPoints, 4);
 				}
 			}
 		}
 		
-		return radarPlot;
-	}
-	
-	private static BufferedImage generateMrmsPlot(DateTime time, double lat, double lon, RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
-//		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
-
-		BufferedImage radarPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
-				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
-		Graphics2D g = radarPlot.createGraphics();
-
-		PointD latLonProjectedUL = new PointD(
-				-(settings.getSize() * settings.getAspectRatioFloat()),
-				(settings.getSize()));
-		PointD latLonProjectedDR = new PointD(
-				(settings.getSize() * settings.getAspectRatioFloat()),
-				-(settings.getSize()));
-		
-
-		String mrmsUrl = String.format("https://noaa-mrms-pds.s3.amazonaws.com/CONUS/SeamlessHSR_00.00/%04d%02d%02d/MRMS_SeamlessHSR_00.00_%04d%02d%02d-%02d%02d%02d.grib2.gz",
-				time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
-				time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
-				time.getHourOfDay(), time.getMinuteOfHour() - (time.getMinuteOfHour() % 2), 0);
-		File mrmsGz = downloadFile(mrmsUrl, "mrms.composite");
-		File mrmsFile = unzipGz(mrmsGz);
-		MrmsComposite mrms = new MrmsComposite(mrmsFile);
-		
-		float[][] data = null;
-		ColorTable colorTable = null;
-		
-		switch(settings.getMoment()) {
-		case REFLECTIVITY:
-			data = mrms.reflAtLowestAltitude[0][0];
-			colorTable = reflectivityColorTable;
-			break;
-		default:
-			return radarPlot;
-		}
-		
-		for(int i = 0; i < data.length; i++) {
-			for(int j = 0; j < data[i].length; j++) {
-				float qLat = mrms.lat[mrms.lat.length - 1 - i];
-				float qLon = mrms.lon[j];
-				
-				float lat1 = qLat - mrms.dLat/2.0f;
-				float lat2 = qLat + mrms.dLat/2.0f;
-				float lon1 = qLon - mrms.dLat/2.0f;
-				float lon2 = qLon + mrms.dLat/2.0f;
-				
-				PointD p1P = plotProj.rotateLatLon(lon1, lat1);
-				PointD p2P = plotProj.rotateLatLon(lon1, lat2);
-				PointD p3P = plotProj.rotateLatLon(lon2, lat2);
-				PointD p4P = plotProj.rotateLatLon(lon2, lat1);
-
-				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
-						p1P.getY());
-				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
-						p1P.getX());
-				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
-						p2P.getY());
-				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
-						p2P.getX());
-				double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
-						p3P.getY());
-				double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
-						p3P.getX());
-				double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
-						p4P.getY());
-				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
-						p4P.getX());
-				
-				double value = data[i][j];
-				Color color = colorTable.getColor(value);
-				
-				int[] xPoints = {
-						(int) Math.round(x1),
-						(int) Math.round(x2),
-						(int) Math.round(x3),
-						(int) Math.round(x4) 
-					};
-				int[] yPoints = {
-						(int) Math.round(y1),
-						(int) Math.round(y2),
-						(int) Math.round(y3),
-						(int) Math.round(y4) 
-					};
-				
-				boolean anyInsideImage = false;
-				for(int k = 0; k < 4; k++) {
-					int x = xPoints[k];
-					int y = yPoints[k];
-					
-					if(x >= 0 && x < radarPlot.getWidth() && y >= 0 && y < radarPlot.getHeight()) {
-						anyInsideImage = true;
-						break;
-					}
-				}
-				
-				if (anyInsideImage) {
-					g.setColor(color);
-					g.fillPolygon(xPoints, yPoints, 4);
-				}
-			}
-		}
-		
-		return radarPlot;
+		return satPlot;
 	}
 
-	private static BufferedImage generateWarningPlot(DateTime time, double lat, double lon, RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
+	private static BufferedImage generateWarningPlot(DateTime time, double lat, double lon, SatelliteGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
 		BufferedImage warningPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = warningPlot.createGraphics();
@@ -692,7 +624,7 @@ public class RadarImageGenerator {
 		
 		ArrayList<WarningPolygon> warnings = null;
 		try {
-			WarningArchive wa = new WarningArchive("radar-image-generator-temp/");
+			WarningArchive wa = new WarningArchive("satellite-image-generator-temp/");
 			warnings = wa.getWarnings(time.minusHours(2), time.plusHours(2));
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
@@ -763,17 +695,17 @@ public class RadarImageGenerator {
 					if (j == polygon.size())
 						j = 0;
 
-					PointD p1 = plotProj.rotateLatLon(polygon.get(i));
-					PointD p2 = plotProj.rotateLatLon(polygon.get(j));
+					GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+					GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p1.getY());
+							p1.getLon());
 					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p1.getX());
+							p1.getLat());
 					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p2.getY());
+							p2.getLon());
 					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p2.getX());
+							p2.getLat());
 
 					g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
@@ -823,17 +755,17 @@ public class RadarImageGenerator {
 					if (j == polygon.size())
 						j = 0;
 
-					PointD p1 = plotProj.rotateLatLon(polygon.get(i));
-					PointD p2 = plotProj.rotateLatLon(polygon.get(j));
+					GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+					GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p1.getY());
+							p1.getLon());
 					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p1.getX());
+							p1.getLat());
 					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p2.getY());
+							p2.getLon());
 					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p2.getX());
+							p2.getLat());
 
 					g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
@@ -872,17 +804,17 @@ public class RadarImageGenerator {
 					if (j == polygon.size())
 						j = 0;
 
-					PointD p1 = plotProj.rotateLatLon(polygon.get(i));
-					PointD p2 = plotProj.rotateLatLon(polygon.get(j));
+					GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+					GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
 
 					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p1.getY());
+							p1.getLon());
 					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p1.getX());
+							p1.getLat());
 					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p2.getY());
+							p2.getLon());
 					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p2.getX());
+							p2.getLat());
 
 					g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
@@ -893,78 +825,78 @@ public class RadarImageGenerator {
 	}
 
 	private static final int TIME_TOLERANCE = 20; // minutes
-	private static File getClosestRadarData(DateTime time, double lat, double lon) throws NoValidRadarScansFoundException {
-		if (radarSites == null) {
-			loadRadarSites();
-		}
-
-		HashMap<Double, String> closestRadars = findClosestRadarSites(lat, lon);
-		SortedSet<Double> closestRadarDists = new TreeSet<Double>(closestRadars.keySet());
-		String[] closestRadarCodes = new String[closestRadarDists.size()];
-
-		logger.println(Arrays.toString(closestRadarDists.toArray()), DebugLoggerLevel.VERBOSE);
-
-		for (int i = 0; i < closestRadarDists.size(); i++) {
-			closestRadarCodes[i] = closestRadars.get(closestRadarDists.toArray()[i]);
-		}
-
-		logger.println(Arrays.toString(closestRadarCodes), DebugLoggerLevel.BRIEF);
-
+	private static final DateTime GOES_17_18_OPERATIONAL_CUTOFF = new DateTime(2023, 1, 3, 0, 0, DateTimeZone.UTC);
+	private static final DateTime GOES_16_19_OPERATIONAL_CUTOFF = new DateTime(2099, 1, 1, 0, 0, DateTimeZone.UTC);
+	private static File getGoesData(DateTime time, SatelliteSource source, SatelliteSector sector) throws NoValidSatelliteScansFoundException {
 		ArrayList<String> validFiles = new ArrayList<>();
-		for (int i = 0; i < closestRadarCodes.length; i++) {
-			DateTime prevUtcDay = time.minusDays(1);
-			DateTime nextUtcDay = time.plusDays(1);
-			
-			List<String> nexradFilesPrev = new ArrayList<>();
-			List<String> nexradFilesNext = new ArrayList<>();
-			
-			List<String> nexradFilesCurr = NexradAws.nexradLevel2Files(time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
-					closestRadarCodes[i], true);
-			
-			if(time.getHourOfDay() < 1) {
-				nexradFilesPrev = NexradAws.nexradLevel2Files(prevUtcDay.getYear(), prevUtcDay.getMonthOfYear(), prevUtcDay.getDayOfMonth(),
-						closestRadarCodes[i], true);
+		DateTime prevUtcHour = time.minusHours(1);
+		DateTime nextUtcHour = time.plusHours(1);
+		
+		List<String> satFilesCurr = new ArrayList<>();
+		List<String> satFilesPrev = new ArrayList<>();
+		List<String> satFilesNext = new ArrayList<>();
+		
+		if(source == SatelliteSource.GOES_EAST) {
+			if(time.isBefore(GOES_16_19_OPERATIONAL_CUTOFF)) {
+				satFilesCurr = GoesAws.goes16Files(time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(), 
+						time.getHourOfDay(), sector);
+				satFilesPrev = GoesAws.goes16Files(prevUtcHour.getYear(), prevUtcHour.getMonthOfYear(), prevUtcHour.getDayOfMonth(), 
+						prevUtcHour.getHourOfDay(), sector);
+				satFilesNext = GoesAws.goes16Files(nextUtcHour.getYear(), nextUtcHour.getMonthOfYear(), nextUtcHour.getDayOfMonth(), 
+						nextUtcHour.getHourOfDay(), sector);
+			} else {
+				// GOES-19 stuff
 			}
-			if(time.getHourOfDay() >= 23) {
-				nexradFilesNext = NexradAws.nexradLevel2Files(nextUtcDay.getYear(), nextUtcDay.getMonthOfYear(), nextUtcDay.getDayOfMonth(),
-						closestRadarCodes[i], true);
-			}
-			
-			List<String> nexradFiles = new ArrayList<>();
-			nexradFiles.addAll(nexradFilesPrev);
-			nexradFiles.addAll(nexradFilesCurr);
-			nexradFiles.addAll(nexradFilesNext);
-
-			ArrayList<String> filesWithinTolerance = new ArrayList<>();
-			for(int j = 0; j < nexradFiles.size(); j++) {
-				String[] awsPath = nexradFiles.get(j).split("/");
-				String filename = awsPath[awsPath.length - 1];
-				
-				DateTime fileTimestamp = new DateTime(
-						Integer.valueOf(filename.substring(4, 8)),
-						Integer.valueOf(filename.substring(8, 10)),
-						Integer.valueOf(filename.substring(10, 12)),
-						Integer.valueOf(filename.substring(13, 15)),
-						Integer.valueOf(filename.substring(15, 17)),
-						Integer.valueOf(filename.substring(17, 19)),
-						DateTimeZone.UTC
-					);
-				
-				if(time.minusMinutes(TIME_TOLERANCE).isBefore(fileTimestamp)
-						&& time.plusMinutes(TIME_TOLERANCE).isAfter(fileTimestamp)) {
-					logger.println("valid file added: " + filename, DebugLoggerLevel.VERBOSE);
-					filesWithinTolerance.add(nexradFiles.get(j));
-				}
-			}
-			
-			if (filesWithinTolerance.size() > 0) {
-				validFiles = filesWithinTolerance;
-				break;
+		} else if (source == SatelliteSource.GOES_WEST) {
+			if(time.isBefore(GOES_17_18_OPERATIONAL_CUTOFF)) {
+				// GOES-17 stuff
+			} else {
+				// GOES-18 stuff
 			}
 		}
 		
+		List<String> satFiles = new ArrayList<>();
+		satFiles.addAll(satFilesPrev);
+		satFiles.addAll(satFilesCurr);
+		satFiles.addAll(satFilesNext);
+
+		ArrayList<String> filesWithinTolerance = new ArrayList<>();
+		for(int j = 0; j < satFiles.size(); j++) {
+			String[] awsPath = satFiles.get(j).split("/");
+			String filename = awsPath[awsPath.length - 1];
+			
+			System.out.println(filename);
+			
+			int dayOfYear = Integer.valueOf(filename.substring(29, 32));
+			
+			DateTime fileTimestamp = new DateTime(
+					Integer.valueOf(filename.substring(25, 29)),
+					1, 1,
+					Integer.valueOf(filename.substring(32, 34)),
+					Integer.valueOf(filename.substring(34, 36)),
+					Integer.valueOf(filename.substring(36, 38)),
+					DateTimeZone.UTC
+				);
+			
+			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
+			
+			System.out.println(fileTimestamp);
+			
+			fileTimestamp.dayOfYear().setCopy(dayOfYear);
+			
+			if(time.minusMinutes(TIME_TOLERANCE).isBefore(fileTimestamp)
+					&& time.plusMinutes(TIME_TOLERANCE).isAfter(fileTimestamp)) {
+				logger.println("valid file added: " + filename, DebugLoggerLevel.VERBOSE);
+				filesWithinTolerance.add(satFiles.get(j));
+			}
+		}
+		
+		if (filesWithinTolerance.size() > 0) {
+			validFiles = filesWithinTolerance;
+		}
+		
 		if (validFiles.size() == 0) {
-			throw new NoValidRadarScansFoundException();
+			throw new NoValidSatelliteScansFoundException();
 		}
 		
 		// file selection
@@ -974,15 +906,18 @@ public class RadarImageGenerator {
 			String[] awsPath = validFiles.get(i).split("/");
 			String filename = awsPath[awsPath.length - 1];
 			
+			int dayOfYear = Integer.valueOf(filename.substring(29, 32));
+			
 			DateTime fileTimestamp = new DateTime(
-					Integer.valueOf(filename.substring(4, 8)),
-					Integer.valueOf(filename.substring(8, 10)),
-					Integer.valueOf(filename.substring(10, 12)),
-					Integer.valueOf(filename.substring(13, 15)),
-					Integer.valueOf(filename.substring(15, 17)),
-					Integer.valueOf(filename.substring(17, 19)),
+					Integer.valueOf(filename.substring(25, 29)),
+					1, 1,
+					Integer.valueOf(filename.substring(32, 34)),
+					Integer.valueOf(filename.substring(34, 36)),
+					Integer.valueOf(filename.substring(36, 38)),
 					DateTimeZone.UTC
 				);
+			
+			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
 			
 			if(fileTimestamp.isBefore(time)) {
 				mostRecentFile = validFiles.get(i);
@@ -996,7 +931,7 @@ public class RadarImageGenerator {
 		try {
 			logger.println("try returning file: " + mostRecentFile, DebugLoggerLevel.BRIEF);
 			
-			File nexradFile = downloadFile(mostRecentFile, "radar.nexrad");
+			File nexradFile = downloadFile(mostRecentFile, "satellite.nc");
 			
 			logger.println("returning file: " + mostRecentFile, DebugLoggerLevel.BRIEF);
 			
@@ -1004,27 +939,6 @@ public class RadarImageGenerator {
 		} catch (IOException e) {
 			return null;
 		}
-	}
-
-	private static final double RADAR_DISTANCE_TOLERANCE = 300; // km
-	private static HashMap<Double, String> findClosestRadarSites(double lat, double lon) {
-		HashMap<Double, String> ret = new HashMap<>();
-
-		for (int i = 0; i < radarSites.size(); i++) {
-			PointD radarLocation = radarSites.get(i).getSiteCoords();
-			String radarCode = radarCodes.get(i);
-
-			double rLat = radarLocation.getX();
-			double rLon = radarLocation.getY();
-
-			double distance = greatCircleDistance(lat, lon, rLat, rLon);
-
-			if (distance < RADAR_DISTANCE_TOLERANCE) {
-				ret.put(distance, radarCode);
-			}
-		}
-
-		return ret;
 	}
 
 	private static double greatCircleDistance(double lat1, double lon1, double lat2, double lon2) {
@@ -1038,47 +952,7 @@ public class RadarImageGenerator {
 
 		return distance;
 	}
-
-	private static ArrayList<RadarSite> radarSites = null;
-	private static ArrayList<String> radarCodes = null;
-
-	private static void loadRadarSites() {
-		radarSites = new ArrayList<>();
-		radarCodes = new ArrayList<>();
-
-		TsvParserSettings settings = new TsvParserSettings();
-		// the file used in the example uses '\n' as the line separator sequence.
-		// the line separator sequence is defined here to ensure systems such as MacOS
-		// and Windows
-		// are able to process this file correctly (MacOS uses '\r'; and Windows uses
-		// '\r\n').
-		settings.getFormat().setLineSeparator("\n");
-
-		// creates a TSV parser
-		TsvParser parser = new TsvParser(settings);
-
-		// parses all rows in one go.
-		List<String[]> allRows = parser.parseAll(loadResourceAsFile("res/radarSites.tsv"));
-
-		for (int i = 0; i < allRows.size(); i++) {
-			String[] row = allRows.get(i);
-
-			String code = row[0];
-			String city = row[1];
-
-			String lat = row[2];
-			String lon = row[3];
-
-			RadarSite r = new RadarSite(code, city, new PointD(Double.valueOf(lat), Double.valueOf(lon)));
-
-			radarSites.add(r);
-			radarCodes.add(code);
-		}
-
-		Collections.reverse(radarSites);
-		Collections.reverse(radarCodes);
-	}
-
+	
 	@SuppressWarnings("unused")
 	private static PointD rotateAroundCenter(PointD p, double w, double h, double phi) {
 		return rotateAroundCenter(p.getX(), p.getY(), w, h, phi);
@@ -1220,34 +1094,7 @@ public class RadarImageGenerator {
 		return slope * (value - preMin) + postMin;
 	}
 
-	public static File loadResourceAsFile(String urlStr) {
-		logger.println("loading " + urlStr, DebugLoggerLevel.VERBOSE);
-		URL url = RadarImageGenerator.class.getResource(urlStr);
-		URL tilesObj = url;
-
-		// System.out.println("Temp-file created.");
-
-		File file = new File("radar-image-generator-temp/" + urlStr + "");
-
-		if (tilesObj == null) {
-			System.out.println("Loading failed to start.");
-			return null;
-		}
-
-		// System.out.println("Loading successfully started.");
-
-		try {
-			FileUtils.copyURLToFile(tilesObj, file);
-		} catch (Exception e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-			return null;
-		}
-
-		return file;
-	}
-
-	private static final String dataFolder = "radar-image-generator-temp/";
+	private static final String dataFolder = "satellite-image-generator-temp/";
 	private static File downloadFile(String url, String fileName) throws IOException {
 //		System.out.println("Downloading from: " + url);
 		URL dataURL = new URL(url);
@@ -1303,7 +1150,7 @@ public class RadarImageGenerator {
 		CsvParser parser = new CsvParser(settings);
 
 		// parses all rows in one go.
-		List<String[]> allRows = parser.parseAll(loadResourceAsFile("res/usCities.csv"));
+		List<String[]> allRows = parser.parseAll(RadarImageGenerator.loadResourceAsFile("res/usCities.csv"));
 
 		for (int i = 0; i < allRows.size(); i++) {
 			String[] row = allRows.get(i);

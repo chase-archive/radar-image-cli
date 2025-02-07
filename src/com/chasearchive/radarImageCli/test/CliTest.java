@@ -23,8 +23,8 @@ public class CliTest {
 //		RadarImageCli.main(args1);
 //		long endTime = System.currentTimeMillis();
 //		
-		DateTime start = new DateTime(2024, 4, 27, 12, 00, 00,DateTimeZone.UTC);
-		DateTime end = new DateTime(2024, 4, 28, 12, 00, 00,DateTimeZone.UTC);
+		DateTime start = new DateTime(2023, 2, 26, 21, 50, 0,DateTimeZone.UTC);
+		DateTime end = new DateTime(2023, 2, 27, 0, 0, 0,DateTimeZone.UTC);
 		
 		while(start.isBefore(end)) {
 			String dtArg = String.format("%04d%02d%02d-%02d%02d", start.getYear(), start.getMonthOfYear(), start.getDayOfMonth(), start.getHourOfDay(), start.getMinuteOfHour());

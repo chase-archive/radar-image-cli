@@ -1,4 +1,4 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.satellite;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -7,8 +7,6 @@ import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
-
-import com.ameliaWx.wxArchives.PointF;
 
 public class RotateLatLonProjection implements MapProjection {
 	private double latitudeRotation;
@@ -43,9 +41,9 @@ public class RotateLatLonProjection implements MapProjection {
 				double lon = i - 180;
 				double lat = 90 - j;
 
-				PointD llP = TEST_PROJ.rotateLatLon(lon, lat);
-				double latP = llP.getX();
-				double lonP = llP.getY();
+				GeoCoord llP = TEST_PROJ.rotateLatLon(lon, lat);
+				double latP = llP.getLat();
+				double lonP = llP.getLon();
 
 				if(lonP > -91 && lonP < -89 && latP > 59 && latP < 61) {
 					g.setColor(Color.WHITE);
@@ -121,20 +119,19 @@ public class RotateLatLonProjection implements MapProjection {
 //		};
 	}
 
-	@Override
-	public PointD projectLatLonToIJ(double longitude, double latitude) {
-		PointD latLonPrime = rotateLatLon(longitude, latitude);
+	public VirtualCoord projectLatLonToIJ(double longitude, double latitude) {
+		GeoCoord latLonPrime = rotateLatLon(longitude, latitude);
 
-		double lonPrime = latLonPrime.getY();
-		double latPrime = latLonPrime.getX();
+		double lonPrime = latLonPrime.getLon();
+		double latPrime = latLonPrime.getLat();
 
 		double i = nx / 2.0 + lonPrime * (111.32 / dx);
 		double j = ny - (ny / 2.0 + latPrime * (111.32 / dy));
 
-		return new PointD(i + offsetX, j + offsetY);
+		return new VirtualCoord(i + offsetX, j + offsetY);
 	}
 
-	public PointD rotateLatLon(double longitude, double latitude) {
+	public GeoCoord rotateLatLon(double longitude, double latitude) {
 		double x = Math.cos(Math.toRadians(longitude)) * Math.cos(Math.toRadians(latitude));
 		double y = Math.sin(Math.toRadians(longitude)) * Math.cos(Math.toRadians(latitude));
 		double z = Math.sin(Math.toRadians(latitude));
@@ -151,18 +148,37 @@ public class RotateLatLonProjection implements MapProjection {
 		double rPlanar = Math.hypot(xP, yP);
 		double latPrime = Math.toDegrees(Math.atan2(zP, rPlanar));
 
-		return new PointD(latPrime, lonPrime);
+		return new GeoCoord(latPrime, lonPrime);
+	}
+
+	public GeoCoord rotateLatLon(float longitude, float latitude) {
+		double x = Math.cos(Math.toRadians(longitude)) * Math.cos(Math.toRadians(latitude));
+		double y = Math.sin(Math.toRadians(longitude)) * Math.cos(Math.toRadians(latitude));
+		double z = Math.sin(Math.toRadians(latitude));
+
+		double xM = rotationMatrixLon[0][0] * x + rotationMatrixLon[1][0] * y + rotationMatrixLon[2][0] * z;
+		double yM = rotationMatrixLon[0][1] * x + rotationMatrixLon[1][1] * y + rotationMatrixLon[2][1] * z;
+		double zM = rotationMatrixLon[0][2] * x + rotationMatrixLon[1][2] * y + rotationMatrixLon[2][2] * z;
+
+		double xP = rotationMatrixLat[0][0] * xM + rotationMatrixLat[1][0] * yM + rotationMatrixLat[2][0] * zM;
+		double yP = rotationMatrixLat[0][1] * xM + rotationMatrixLat[1][1] * yM + rotationMatrixLat[2][1] * zM;
+		double zP = rotationMatrixLat[0][2] * xM + rotationMatrixLat[1][2] * yM + rotationMatrixLat[2][2] * zM;
+
+		double lonPrime = Math.toDegrees(Math.atan2(yP, xP));
+		double rPlanar = Math.hypot(xP, yP);
+		double latPrime = Math.toDegrees(Math.atan2(zP, rPlanar));
+
+		return new GeoCoord(latPrime, lonPrime);
 	}
 
 	@Override
-	public PointD projectLatLonToIJ(PointD p) {
-		return projectLatLonToIJ(p.getY(), p.getX());
+	public VirtualCoord projectLatLonToXY(GeoCoord p) {
+		return projectLatLonToIJ(p.getLon(), p.getLat());
 	}
 
-	public PointD rotateLatLon(PointD p) {
-		return rotateLatLon(p.getY(), p.getX());
+	public GeoCoord rotateLatLon(GeoCoord p) {
+		return rotateLatLon(p.getLon(), p.getLat());
 	}
-
 	@Override
 	public boolean inDomain(double i, double j) {
 		if (i >= 0 && i <= nx - 1 && j >= 0 && j <= ny - 1)
@@ -172,7 +188,28 @@ public class RotateLatLonProjection implements MapProjection {
 	}
 
 	@Override
-	public boolean inDomain(PointD p) {
+	public boolean inDomain(VirtualCoord p) {
 		return inDomain(p.getX(), p.getY());
+	}
+
+
+	@Override
+	public VirtualCoord projectLatLonToXY(double latitude, double longitude) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+
+	@Override
+	public GeoCoord projectXYToLatLon(double i, double j) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+
+	@Override
+	public GeoCoord projectXYToLatLon(VirtualCoord p) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }
