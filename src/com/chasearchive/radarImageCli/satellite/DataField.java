@@ -148,22 +148,47 @@ public class DataField {
 	}
 	
 	public float[][] array2D() {
-		int[] array1DShape = new int[2];
+		int[] array2DShape = new int[2];
 
-		for(int i = 0; i < array1DShape.length; i++) {
-			array1DShape[i] = 1;
+		for(int i = 0; i < array2DShape.length; i++) {
+			array2DShape[i] = 1;
 		}
 		
 		for(int i = 0; i < shape.length; i++) {
 			int idx = Integer.min(i, shape.length - 1);
 			
-			array1DShape[idx] *= shape[i];
+			array2DShape[idx] *= shape[i];
 		}
 		
-		float[][] array = new float[array1DShape[0]][array1DShape[1]];
+		float[][] array = new float[array2DShape[0]][array2DShape[1]];
 		for(int i = 0; i < array.length; i++) {
 			for(int j = 0; j < array[i].length; j++) {
 				array[i][j] = getData(i, j);
+			}
+		}
+		
+		return array;
+	}
+	
+	public float[][][] array3D() {
+		int[] array3DShape = new int[3];
+
+		for(int i = 0; i < array3DShape.length; i++) {
+			array3DShape[i] = 1;
+		}
+		
+		for(int i = 0; i < shape.length; i++) {
+			int idx = Integer.min(i, shape.length - 1);
+			
+			array3DShape[idx] *= shape[i];
+		}
+		
+		float[][][] array = new float[array3DShape[0]][array3DShape[1]][array3DShape[2]];
+		for(int i = 0; i < array.length; i++) {
+			for(int j = 0; j < array[i].length; j++) {
+				for(int k = 0; k < array[i][j].length; k++) {
+					array[i][j][k] = getData(i, j, k);
+				}
 			}
 		}
 		
