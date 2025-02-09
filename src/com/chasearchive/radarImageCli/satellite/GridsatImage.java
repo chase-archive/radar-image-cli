@@ -88,6 +88,9 @@ public class GridsatImage extends CdmFile implements SatelliteImage {
 		image.permaFields.get("lir").bundleField("add_offset", DataField.fromNumber(ncfile.findVariable("ch4").findAttributeDouble("add_offset", -1024)));
 		image.permaFields.get("lir").bundleField("fill_value", DataField.fromNumber(ncfile.findVariable("ch4").findAttributeDouble("missing_value", -1024)));
 		image.permaFields.get("lir").processOffsets();
+
+		image.permaFields.put("dlat", DataField.fromNumber(image.dataFromField("lat", 1) - image.dataFromField("lat", 0)));
+		image.permaFields.put("dlon", DataField.fromNumber(image.dataFromField("lon", 1) - image.dataFromField("lon", 0)));
 		
 		ncfile.close();
 		return image;
@@ -137,7 +140,6 @@ public class GridsatImage extends CdmFile implements SatelliteImage {
 		return swapFields.get(key).getData(indices);
 	}
 	
-	@SuppressWarnings("deprecation")
 	public void loadIntoSwap(String... keys) throws IOException {
 		
 	}
