@@ -33,6 +33,7 @@ import javax.imageio.ImageIO;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
+import com.ameliaWx.weatherUtils.WeatherUtils;
 import com.ameliaWx.wxArchives.PointF;
 import com.ameliaWx.wxArchives.earthWeather.goes.GoesAws;
 import com.ameliaWx.wxArchives.earthWeather.goes.SatelliteSector;
@@ -65,19 +66,6 @@ public class SatelliteImageGenerator {
 
 	public static BufferedImage generateSatellite(DateTime time, double lat, double lon,
 			SatelliteGeneratorSettings settings) throws IOException {
-		RotateLatLonProjection plotProj = new RotateLatLonProjection(lat, lon, 111.32, 111.32, 1000, 1000);
-		GeostationaryProjection satProj = null;
-
-		if (settings.getSource() == SatelliteSource.GOES_EAST) {
-			satProj = GeostationaryProjection.GOES_EAST;
-		} else if (settings.getSource() == SatelliteSource.GOES_WEST) {
-			satProj = GeostationaryProjection.GOES_WEST;
-		}
-
-		BufferedImage basemap = generateBasemap(lat, lon, settings, plotProj);
-
-		BufferedImage radarPlot = null;
-
 		SatelliteSource source = SatelliteSource.GOES_EAST;
 		SatelliteSector sector = SatelliteSector.GOES_CONUS;
 
@@ -100,10 +88,28 @@ public class SatelliteImageGenerator {
 			}
 		}
 
+		System.out.println("source: " + source);
+		System.out.println("sector: " + sector);
+
 		settings.setSource(source);
 		settings.setSector(sector);
 
+		RotateLatLonProjection plotProj = new RotateLatLonProjection(lat, lon, 111.32, 111.32, 1000, 1000);
+		GeostationaryProjection satProj = null;
+
 		if (settings.getSource() == SatelliteSource.GOES_EAST) {
+			satProj = GeostationaryProjection.GOES_EAST;
+		} else if (settings.getSource() == SatelliteSource.GOES_WEST) {
+			satProj = GeostationaryProjection.GOES_WEST;
+		} else if (settings.getSource() == SatelliteSource.GRIDSAT) {
+
+		}
+
+		BufferedImage basemap = generateBasemap(lat, lon, settings, plotProj);
+
+		BufferedImage satPlot = null;
+
+		if (settings.getSource() == SatelliteSource.GOES_EAST || settings.getSource() == SatelliteSource.GOES_WEST) {
 			File[] satFiles = null;
 			try {
 				satFiles = getGoesData(time, settings.getSource(), settings.getSector());
@@ -116,10 +122,10 @@ public class SatelliteImageGenerator {
 			GoesImage band3 = GoesImage.loadFromFile(satFiles[2]);
 			GoesImage band7 = GoesImage.loadFromFile(satFiles[3]);
 			GoesImage band13 = GoesImage.loadFromFile(satFiles[4]);
-			
-			GoesImage[] goesImages = {band1, band2, band3, band7, band13};
 
-			radarPlot = generateSatellitePlot(goesImages, time, lat, lon, settings, satProj, plotProj);
+			GoesImage[] goesImages = { band1, band2, band3, band7, band13 };
+
+			satPlot = generateSatellitePlot(goesImages, time, lat, lon, settings, satProj, plotProj);
 		}
 
 		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
@@ -133,9 +139,9 @@ public class SatelliteImageGenerator {
 		g.setColor(Color.BLACK);
 		g.fillRect(0, 0, basemap.getWidth(), basemap.getHeight());
 
-		g.drawImage(radarPlot, 0, 0, null);
+		g.drawImage(satPlot, 0, 0, null);
 		g.drawImage(basemap, 0, 0, null);
-		g.drawImage(citiesPlot, 0, 0, null);
+//		g.drawImage(citiesPlot, 0, 0, null);
 		g.drawImage(warningPlot, 0, 0, null);
 		g.drawImage(logo, 0, 0, null);
 
@@ -185,6 +191,9 @@ public class SatelliteImageGenerator {
 		ArrayList<ArrayList<PointD>> stateBorders;
 		ArrayList<ArrayList<PointD>> interstates;
 		ArrayList<ArrayList<PointD>> majorRoads;
+		ArrayList<ArrayList<PointD>> estadoBorders;
+		ArrayList<ArrayList<PointD>> provinceBorders;
+		ArrayList<ArrayList<PointD>> caSubdBorders;
 
 		File countyBordersKML = RadarImageGenerator.loadResourceAsFile("res/usCounties.kml");
 		File stateBordersKML = RadarImageGenerator.loadResourceAsFile("res/usStates.kml");
@@ -193,10 +202,20 @@ public class SatelliteImageGenerator {
 		File majorRoadsPoly = RadarImageGenerator.loadResourceAsFile("res/prisec-roads.poly");
 		File majorRoadsPolyMeta = RadarImageGenerator.loadResourceAsFile("res/prisec-roads.poly.meta");
 
+		File mxEstadosPoly = RadarImageGenerator.loadResourceAsFile("res/mxEstados.poly");
+		File mxEstadosPolyMeta = RadarImageGenerator.loadResourceAsFile("res/mxEstados.poly.meta");
+		File caProvincesPoly = RadarImageGenerator.loadResourceAsFile("res/caProvinces.poly");
+		File caProvincesPolyMeta = RadarImageGenerator.loadResourceAsFile("res/caProvinces.poly.meta");
+		File caAdminSubdPoly = RadarImageGenerator.loadResourceAsFile("res/caAdminSubd.poly");
+		File caAdminSubdPolyMeta = RadarImageGenerator.loadResourceAsFile("res/caAdminSubd.poly.meta");
+
 		countyBorders = getPolygons(countyBordersKML);
 		stateBorders = getPolygons(stateBordersKML);
 		interstates = getPolygons(interstatesPoly, interstatesPolyMeta);
 		majorRoads = getPolygons(majorRoadsPoly, majorRoadsPolyMeta);
+		estadoBorders = getPolygons(mxEstadosPoly, mxEstadosPolyMeta);
+		provinceBorders = getPolygons(caProvincesPoly, caProvincesPolyMeta);
+		caSubdBorders = getPolygons(caAdminSubdPoly, caAdminSubdPolyMeta);
 
 		GeoCoord latLonProjected = plotProj.rotateLatLon(lon, lat);
 		System.out.println("latLonProjected (need to zero this out): " + latLonProjected);
@@ -279,10 +298,79 @@ public class SatelliteImageGenerator {
 				}
 			}
 		}
+		for (ArrayList<PointD> polygon : estadoBorders) {
+			for (int i = 0; i < polygon.size(); i++) {
+				int j = i + 1;
+				if (j == polygon.size())
+					j = 0;
+
+				GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p1.getLon());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getLat());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p2.getLon());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getLat());
+
+				if (Math.abs(p1.getLon() - p2.getLon()) < 100) {
+					g1.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
+			}
+		}
+		for (ArrayList<PointD> polygon : provinceBorders) {
+			for (int i = 0; i < polygon.size(); i++) {
+				int j = i + 1;
+				if (j == polygon.size())
+					j = 0;
+
+				GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p1.getLon());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getLat());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p2.getLon());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getLat());
+
+				if (Math.abs(p1.getLon() - p2.getLon()) < 100) {
+					g1.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
+			}
+		}
 
 		g2.setColor(new Color(255, 255, 255));
 		g2.setStroke(bs);
 		for (ArrayList<PointD> polygon : countyBorders) {
+			for (int i = 0; i < polygon.size(); i++) {
+				int j = i + 1;
+				if (j == polygon.size())
+					j = 0;
+
+				GeoCoord p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				GeoCoord p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p1.getLon());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getLat());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p2.getLon());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getLat());
+
+				if (Math.abs(p1.getLon() - p2.getLon()) < 100) {
+					g2.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
+			}
+		}
+		for (ArrayList<PointD> polygon : caSubdBorders) {
 			for (int i = 0; i < polygon.size(); i++) {
 				int j = i + 1;
 				if (j == polygon.size())
@@ -512,7 +600,7 @@ public class SatelliteImageGenerator {
 		int[] band13Shape = band13.getShape();
 
 		Color[][] satColors = new Color[band13Shape[1]][band13Shape[0]];
-		
+
 		float[] x = new float[0];
 		float[] y = new float[0];
 		float dx = 0;
@@ -535,7 +623,9 @@ public class SatelliteImageGenerator {
 
 			for (int i = 0; i < satColors.length; i++) {
 				for (int j = 0; j < satColors[i].length; j++) {
-					satColors[i][j] = brTempColors.getColor(band13.getData(j, i));
+					double brTemp = WeatherUtils.brightnessTemperatureFromWavenumber(band13.getData(j, i) / 100000.0,
+							WeatherUtils.wavelengthToWavenumber(goes[4].dataFromField("wavelength") / 1000000.0));
+					satColors[i][j] = brTempColors.getColor(brTemp);
 				}
 			}
 
@@ -836,42 +926,50 @@ public class SatelliteImageGenerator {
 		ArrayList<String> validBand3Files = new ArrayList<>();
 		ArrayList<String> validBand7Files = new ArrayList<>();
 		ArrayList<String> validBand13Files = new ArrayList<>();
-		
+
 		DateTime prevUtcHour = time.minusHours(1);
-		DateTime nextUtcHour = time.plusHours(1);
 
 		List<String> satFilesCurr = new ArrayList<>();
 		List<String> satFilesPrev = new ArrayList<>();
-		List<String> satFilesNext = new ArrayList<>();
 
 		if (source == SatelliteSource.GOES_EAST) {
 			if (time.isBefore(GOES_16_19_OPERATIONAL_CUTOFF)) {
+				System.out.println("Downloading GOES-16 data...");
 				satFilesCurr = GoesAws.goes16Level1Files(time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
 						time.getHourOfDay(), sector);
 				satFilesPrev = GoesAws.goes16Level1Files(prevUtcHour.getYear(), prevUtcHour.getMonthOfYear(),
 						prevUtcHour.getDayOfMonth(), prevUtcHour.getHourOfDay(), sector);
-				satFilesNext = GoesAws.goes16Level1Files(nextUtcHour.getYear(), nextUtcHour.getMonthOfYear(),
-						nextUtcHour.getDayOfMonth(), nextUtcHour.getHourOfDay(), sector);
 			} else {
-				// GOES-19 stuff
+				System.out.println("Downloading GOES-19 data...");
+				satFilesCurr = GoesAws.goes19Level1Files(time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
+						time.getHourOfDay(), sector);
+				satFilesPrev = GoesAws.goes19Level1Files(prevUtcHour.getYear(), prevUtcHour.getMonthOfYear(),
+						prevUtcHour.getDayOfMonth(), prevUtcHour.getHourOfDay(), sector);
 			}
 		} else if (source == SatelliteSource.GOES_WEST) {
 			if (time.isBefore(GOES_17_18_OPERATIONAL_CUTOFF)) {
-				// GOES-17 stuff
+				System.out.println("Downloading GOES-17 data...");
+				satFilesCurr = GoesAws.goes17Level1Files(time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
+						time.getHourOfDay(), sector);
+				satFilesPrev = GoesAws.goes17Level1Files(prevUtcHour.getYear(), prevUtcHour.getMonthOfYear(),
+						prevUtcHour.getDayOfMonth(), prevUtcHour.getHourOfDay(), sector);
 			} else {
-				// GOES-18 stuff
+				System.out.println("Downloading GOES-18 data...");
+				satFilesCurr = GoesAws.goes18Level1Files(time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
+						time.getHourOfDay(), sector);
+				satFilesPrev = GoesAws.goes18Level1Files(prevUtcHour.getYear(), prevUtcHour.getMonthOfYear(),
+						prevUtcHour.getDayOfMonth(), prevUtcHour.getHourOfDay(), sector);
 			}
 		}
 
 		List<String> satFiles = new ArrayList<>();
 		satFiles.addAll(satFilesPrev);
 		satFiles.addAll(satFilesCurr);
-		satFiles.addAll(satFilesNext);
 
 		System.out.println("satFiles.size(): " + satFiles.size());
 
 		for (String str : satFiles) {
-			System.out.println(str);
+			System.out.println("satFile: " + str);
 		}
 
 		ArrayList<String> band1FilesWithinTolerance = new ArrayList<>();
@@ -883,7 +981,7 @@ public class SatelliteImageGenerator {
 			String[] awsPath = satFiles.get(j).split("/");
 			String filename = awsPath[awsPath.length - 1];
 
-			System.out.println(filename);
+			System.out.println("satFile name: " + filename);
 
 			int dayOfYear = Integer.valueOf(filename.substring(31, 34));
 
@@ -893,7 +991,7 @@ public class SatelliteImageGenerator {
 
 			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
-			System.out.println(fileTimestamp);
+			System.out.println("fileTimestamp: " + fileTimestamp);
 
 			fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
@@ -902,8 +1000,8 @@ public class SatelliteImageGenerator {
 			if (time.minusMinutes(TIME_TOLERANCE).isBefore(fileTimestamp)
 					&& time.plusMinutes(TIME_TOLERANCE).isAfter(fileTimestamp)) {
 				logger.println("valid file added: " + filename, DebugLoggerLevel.VERBOSE);
-				
-				switch(band) {
+
+				switch (band) {
 				case 1:
 					band1FilesWithinTolerance.add(satFiles.get(j));
 					break;
@@ -960,7 +1058,7 @@ public class SatelliteImageGenerator {
 		for (int i = 1; i < validBand1Files.size(); i++) {
 			String[] awsPath = validBand1Files.get(i).split("/");
 			String filename = awsPath[awsPath.length - 1];
-			
+
 //			System.out.println(filename);
 
 			int year = Integer.valueOf(filename.substring(27, 31));
@@ -968,11 +1066,10 @@ public class SatelliteImageGenerator {
 			int hour = Integer.valueOf(filename.substring(34, 36));
 			int minute = Integer.valueOf(filename.substring(36, 38));
 			int second = Integer.valueOf(filename.substring(38, 40));
-			
+
 //			System.out.println(year + "\t" + dayOfYear + "\t" + hour + "\t" + minute + "\t" + second);
 
-			DateTime fileTimestamp = new DateTime(year, 1, 1,
-					hour, minute, second, DateTimeZone.UTC);
+			DateTime fileTimestamp = new DateTime(year, 1, 1, hour, minute, second, DateTimeZone.UTC);
 
 			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
@@ -986,17 +1083,16 @@ public class SatelliteImageGenerator {
 		for (int i = 1; i < validBand2Files.size(); i++) {
 			String[] awsPath = validBand2Files.get(i).split("/");
 			String filename = awsPath[awsPath.length - 1];
-			
+
 			int year = Integer.valueOf(filename.substring(27, 31));
 			int dayOfYear = Integer.valueOf(filename.substring(31, 34));
 			int hour = Integer.valueOf(filename.substring(34, 36));
 			int minute = Integer.valueOf(filename.substring(36, 38));
 			int second = Integer.valueOf(filename.substring(38, 40));
-			
+
 //			System.out.println(year + "\t" + dayOfYear + "\t" + hour + "\t" + minute + "\t" + second);
 
-			DateTime fileTimestamp = new DateTime(year, 1, 1,
-					hour, minute, second, DateTimeZone.UTC);
+			DateTime fileTimestamp = new DateTime(year, 1, 1, hour, minute, second, DateTimeZone.UTC);
 
 			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
@@ -1016,11 +1112,10 @@ public class SatelliteImageGenerator {
 			int hour = Integer.valueOf(filename.substring(34, 36));
 			int minute = Integer.valueOf(filename.substring(36, 38));
 			int second = Integer.valueOf(filename.substring(38, 40));
-			
+
 //			System.out.println(year + "\t" + dayOfYear + "\t" + hour + "\t" + minute + "\t" + second);
 
-			DateTime fileTimestamp = new DateTime(year, 1, 1,
-					hour, minute, second, DateTimeZone.UTC);
+			DateTime fileTimestamp = new DateTime(year, 1, 1, hour, minute, second, DateTimeZone.UTC);
 
 			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
@@ -1040,11 +1135,10 @@ public class SatelliteImageGenerator {
 			int hour = Integer.valueOf(filename.substring(34, 36));
 			int minute = Integer.valueOf(filename.substring(36, 38));
 			int second = Integer.valueOf(filename.substring(38, 40));
-			
+
 //			System.out.println(year + "\t" + dayOfYear + "\t" + hour + "\t" + minute + "\t" + second);
 
-			DateTime fileTimestamp = new DateTime(year, 1, 1,
-					hour, minute, second, DateTimeZone.UTC);
+			DateTime fileTimestamp = new DateTime(year, 1, 1, hour, minute, second, DateTimeZone.UTC);
 
 			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
@@ -1064,11 +1158,10 @@ public class SatelliteImageGenerator {
 			int hour = Integer.valueOf(filename.substring(34, 36));
 			int minute = Integer.valueOf(filename.substring(36, 38));
 			int second = Integer.valueOf(filename.substring(38, 40));
-			
+
 //			System.out.println(year + "\t" + dayOfYear + "\t" + hour + "\t" + minute + "\t" + second);
 
-			DateTime fileTimestamp = new DateTime(year, 1, 1,
-					hour, minute, second, DateTimeZone.UTC);
+			DateTime fileTimestamp = new DateTime(year, 1, 1, hour, minute, second, DateTimeZone.UTC);
 
 			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
