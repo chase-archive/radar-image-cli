@@ -20,7 +20,9 @@ import java.io.OutputStream;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Scanner;
 import java.util.TimeZone;
@@ -49,6 +51,8 @@ import com.chasearchive.radarImageCli.RadarImageGenerator;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 
+import ucar.nc2.NetcdfFile;
+
 public class SatelliteImageGenerator {
 	// TODO:
 	// Use separate band imagery for higher resolution
@@ -62,6 +66,24 @@ public class SatelliteImageGenerator {
 	static {
 		cities = new ArrayList<>();
 		loadCities();
+	}
+	
+	public static void main(String[] args) {
+		NetcdfFile ncfile;
+		try {
+			ncfile = NetcdfFile.open("/home/a-urq/Downloads/href.t00z.conus.mean.f01.grib2");
+			
+			System.out.println(ncfile);
+		} catch (IOException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		
+		try {
+			getGridsatData(new DateTime(2016, 04, 11, 23, 00, DateTimeZone.UTC), 33.0f, -96.5f);
+		} catch (NoValidSatelliteScansFoundException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public static BufferedImage generateSatellite(DateTime time, double lat, double lon,
@@ -133,7 +155,7 @@ public class SatelliteImageGenerator {
 		} else if (settings.getSource() == SatelliteSource.GRIDSAT) {
 			File gridsatFile = null;
 			try {
-				 gridsatFile = getGridsatData(time);
+				 gridsatFile = getGridsatData(time, (float) lat, (float) lon);
 			} catch (NoValidSatelliteScansFoundException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -749,6 +771,11 @@ public class SatelliteImageGenerator {
 		case GEOCOLOR:
 			data = gridsat.field("vis").array3D()[0];
 
+			latArr = gridsat.field("lat").array1D();
+			lonArr = gridsat.field("lon").array1D();
+			dlat = gridsat.dataFromField("dlat");
+			dlon = gridsat.dataFromField("dlon");
+
 			for (int i = 0; i < satColors.length; i++) {
 				for (int j = 0; j < satColors[i].length; j++) {
 					int gray = (int) (255 * data[j][i]);
@@ -756,15 +783,20 @@ public class SatelliteImageGenerator {
 					if(gray < 0) gray = 0;
 					if(gray > 255) gray = 255;
 					
-					satColors[i][j] = new Color(gray, gray, gray);
+					float alpha = 1.33f * data[j][i];
+
+					if(alpha < 0) alpha = 0;
+					if(alpha > 1) alpha = 1;
+					
+					Color daytimeBackground = ModisBlueMarble.getColor(latArr[j], lonArr[i]);
+					
+					satColors[i][j] = new Color(
+							(int) (alpha * 255 + (1 - alpha) * 0.25f * daytimeBackground.getRed()), 
+							(int) (alpha * 255 + (1 - alpha) * 0.25f * daytimeBackground.getGreen()), 
+							(int) (alpha * 255 + (1 - alpha) * 0.25f * daytimeBackground.getBlue()));
 				}
 			}
-
-			latArr = gridsat.field("lat").array1D();
-			lonArr = gridsat.field("lon").array1D();
-			dlat = gridsat.dataFromField("dlat");
-			dlon = gridsat.dataFromField("dlon");
-
+			
 			break;
 		case LONGWAVE_IR:
 			ColorTable brTempColors = brightnessTemperatureColorTable;
@@ -828,7 +860,7 @@ public class SatelliteImageGenerator {
 						&& !Float.isNaN(latLon1.getLon()) && !Float.isNaN(latLon2.getLon())
 						&& !Float.isNaN(latLon3.getLon()) && !Float.isNaN(latLon4.getLon()) && x1 != 0 && x2 != 0
 						&& x3 != 0 && x4 != 0 && x1 != 0 && x2 != 0 && x3 != 0 && x4 != 0;
-
+				
 				if (allValid) {
 					g.setColor(satColors[i][j]);
 					g.fillPolygon(xPoints, yPoints, 4);
@@ -1330,14 +1362,83 @@ public class SatelliteImageGenerator {
 		}
 	}
 	
-	private static File getGridsatData(DateTime time)
+	private static File getGridsatData(DateTime time, float lat, float lon)
 			throws NoValidSatelliteScansFoundException {
-		String gridsatUrl = "https://www.ncei.noaa.gov/data/gridsat-goes/access/conus/2016/04/GridSat-CONUS.goes13.2016.04.11.2300.v01.nc";
-		
 		try {
-			File gridsatFile = downloadFile(gridsatUrl, "gridsat.nc");
+//			String gridsatUrl = "https://www.ncei.noaa.gov/data/gridsat-goes/access/conus/2016/04/GridSat-CONUS.goes13.2016.04.11.2300.v01.nc";
+//			File gridsatFile = downloadFile(gridsatUrl, "gridsat.nc");
 			
-			return gridsatFile;
+			String sector = "conus";
+			
+			String webFolderUrl = String.format("https://www.ncei.noaa.gov/data/gridsat-goes/access/%s/%04d/%02d/",
+					sector, time.getYear(), time.getMonthOfYear());
+			
+			ArrayList<String> gridsatFiles = listWebDirectory(webFolderUrl);
+			
+			HashMap<Integer, ArrayList<String>> gridsatFilesBySatId = new HashMap<>();
+			
+			for(String filename : gridsatFiles) {
+				int satId = Integer.valueOf(filename.substring(18, 20));
+				
+				if(!gridsatFilesBySatId.containsKey(satId)) {
+					gridsatFilesBySatId.put(satId, new ArrayList<>());
+				}
+				
+				gridsatFilesBySatId.get(satId).add(filename);
+			}
+			
+			System.out.println("Files per satellite:");
+			for(Integer satId : gridsatFilesBySatId.keySet()) {
+				System.out.println("\t" + satId + "\t" + gridsatFilesBySatId.get(satId).size());
+			}
+			
+			System.out.println("gridsatFilesBySatId.keySet(): " + Arrays.toString(gridsatFilesBySatId.keySet().toArray()));
+
+			HashMap<Integer, String> mostRecentFileBySatId = new HashMap<>();
+			for(Integer satId : gridsatFilesBySatId.keySet()) {
+				DateTime mostRecentTimestamp = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeZone.UTC);
+				String mostRecentFilename = "";
+				
+				for(int i = 0; i < gridsatFilesBySatId.get(satId).size(); i++) {
+					String filename = gridsatFilesBySatId.get(satId).get(i);
+					
+					int year = Integer.valueOf(filename.substring(21, 25));
+					int month = Integer.valueOf(filename.substring(26, 28));
+					int day = Integer.valueOf(filename.substring(29, 31));
+					int hour = Integer.valueOf(filename.substring(32, 34));
+					int minute = Integer.valueOf(filename.substring(34, 36));
+					int second = 0;
+
+//					System.out.println(year + "\t" + month + "\t" + hour + "\t" + minute + "\t" + second);
+
+					DateTime fileTimestamp = new DateTime(year, month, day, hour, minute, second, DateTimeZone.UTC);
+//					System.out.println(filename);
+//					System.out.println(fileTimestamp);
+
+					if (fileTimestamp.isBefore(time) && fileTimestamp.isAfter(mostRecentTimestamp)) {
+						mostRecentFilename = filename;
+						mostRecentTimestamp = fileTimestamp;
+					} else {
+//						break;
+					}
+				}
+
+				mostRecentFileBySatId.put(satId, mostRecentFilename);
+			}
+			
+			System.out.println("Most recent file per satellite:");
+			for(Integer satId : mostRecentFileBySatId.keySet()) {
+				System.out.println("\t" + satId + "\t" + mostRecentFileBySatId.get(satId));
+			}
+			
+			// construct satellite selector
+			// make list of historical goes-east/goes-west satellites and pick
+			// the most recent goes satellite for its orbital slot with a valid
+			// file in mostRecentFileBySatId
+			
+			System.exit(0);
+			
+			return null;
 		} catch (IOException e) {
 			return null;
 		}
@@ -1508,6 +1609,25 @@ public class SatelliteImageGenerator {
 		os.close();
 
 		return new File(dataFolder + fileName);
+	}
+
+	private static ArrayList<String> listWebDirectory(String url) throws IOException {
+		ArrayList<String> filesInDirectory = new ArrayList<>();
+		
+		File webDirectoryFile = downloadFile(url, "gridsatDirectory.xml");
+		
+		String webDirectory = usingBufferedReader(webDirectoryFile);
+		
+		Pattern p = Pattern.compile("(?<=<a href=\")GridSat.*?(?=\">)");
+		Matcher m = p.matcher(webDirectory);
+		
+		while(m.find()) {
+			String link = m.group();
+			
+			filesInDirectory.add(link);
+		}
+		
+		return filesInDirectory;
 	}
 
 	public static File unzipGz(File gz) {
