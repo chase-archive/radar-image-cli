@@ -72,6 +72,13 @@ public class RadarImageGenerator {
 				e.printStackTrace();
 			}
 			
+			if(radarFile.getAbsolutePath().endsWith(".gz")) {
+				
+				File radarFileUnzipped = unzipGz(radarFile);
+				
+				radarFile = radarFileUnzipped;
+			}
+			
 			RadarScan radarScan = new RadarScan(radarFile);
 			
 			radarPlot = generateRadarPlot(radarScan, time, lat, lon, settings, plotProj);
@@ -996,7 +1003,7 @@ public class RadarImageGenerator {
 		try {
 			logger.println("try returning file: " + mostRecentFile, DebugLoggerLevel.BRIEF);
 			
-			File nexradFile = downloadFile(mostRecentFile, "radar.nexrad");
+			File nexradFile = downloadFile(mostRecentFile, "radar.nexrad" + (mostRecentFile.endsWith(".gz") ? ".gz" : ""));
 			
 			logger.println("returning file: " + mostRecentFile, DebugLoggerLevel.BRIEF);
 			

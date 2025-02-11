@@ -51,15 +51,11 @@ import com.chasearchive.radarImageCli.RadarImageGenerator;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 
-import ucar.nc2.NetcdfFile;
-
 public class SatelliteImageGenerator {
 	// TODO:
-	// Use separate band imagery for higher resolution
 	// Readme update needed SOON!!
-	// Data for GOES-17, GOES-18, and GOES-19 (should be trivial)
+	// Finish GridSat data
 	// Data for Himawari 8 and Himawari 9
-	// Older GOES data
 	// Possibly METEOSAT data for Europe and Africa, depends on availability
 
 	public static ArrayList<City> cities;
@@ -69,16 +65,6 @@ public class SatelliteImageGenerator {
 	}
 	
 	public static void main(String[] args) {
-		NetcdfFile ncfile;
-		try {
-			ncfile = NetcdfFile.open("/home/a-urq/Downloads/href.t00z.conus.mean.f01.grib2");
-			
-			System.out.println(ncfile);
-		} catch (IOException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		
 		try {
 			getGridsatData(new DateTime(2016, 04, 11, 23, 00, DateTimeZone.UTC), 33.0f, -96.5f);
 		} catch (NoValidSatelliteScansFoundException e) {
@@ -783,17 +769,19 @@ public class SatelliteImageGenerator {
 					if(gray < 0) gray = 0;
 					if(gray > 255) gray = 255;
 					
-					float alpha = 1.33f * data[j][i];
-
-					if(alpha < 0) alpha = 0;
-					if(alpha > 1) alpha = 1;
+//					float alpha = 1.33f * data[j][i];
+//
+//					if(alpha < 0) alpha = 0;
+//					if(alpha > 1) alpha = 1;
+//					
+//					Color daytimeBackground = ModisBlueMarble.getColor(latArr[j], lonArr[i]);
+//					
+//					satColors[i][j] = new Color(
+//							(int) (alpha * 255 + (1 - alpha) * 0.5f * daytimeBackground.getRed()), 
+//							(int) (alpha * 255 + (1 - alpha) * 0.5f * daytimeBackground.getGreen()), 
+//							(int) (alpha * 255 + (1 - alpha) * 0.5f * daytimeBackground.getBlue()));
 					
-					Color daytimeBackground = ModisBlueMarble.getColor(latArr[j], lonArr[i]);
-					
-					satColors[i][j] = new Color(
-							(int) (alpha * 255 + (1 - alpha) * 0.25f * daytimeBackground.getRed()), 
-							(int) (alpha * 255 + (1 - alpha) * 0.25f * daytimeBackground.getGreen()), 
-							(int) (alpha * 255 + (1 - alpha) * 0.25f * daytimeBackground.getBlue()));
+					satColors[i][j] = new Color(gray, gray, gray);
 				}
 			}
 			
@@ -1362,6 +1350,8 @@ public class SatelliteImageGenerator {
 		}
 	}
 	
+	private static final int[] goesEastSats = new int[] {8, 12, 13};
+	private static final int[] goesWestSats = new int[] {9, 10, 11, 15};
 	private static File getGridsatData(DateTime time, float lat, float lon)
 			throws NoValidSatelliteScansFoundException {
 		try {
@@ -1436,9 +1426,36 @@ public class SatelliteImageGenerator {
 			// the most recent goes satellite for its orbital slot with a valid
 			// file in mostRecentFileBySatId
 			
-			System.exit(0);
+			String selectedFile = "";
+			if(lon > -106) {
+				for(int i = 0; i < goesEastSats.length; i++) {
+					if(mostRecentFileBySatId.containsKey(goesEastSats[i])) {
+						if(mostRecentFileBySatId.get(goesEastSats[i]).length() != 0) {
+							selectedFile = mostRecentFileBySatId.get(goesEastSats[i]);
+						} else {
+							continue;
+						}
+					}
+				}
+			} else {
+				for(int i = 0; i < goesWestSats.length; i++) {
+					if(mostRecentFileBySatId.containsKey(goesWestSats[i])) {
+						if(mostRecentFileBySatId.get(goesWestSats[i]).length() != 0) {
+							selectedFile = mostRecentFileBySatId.get(goesWestSats[i]);
+						} else {
+							continue;
+						}
+					}
+				}
+			}
 			
-			return null;
+			if(selectedFile.length() != 0) {
+				File gridsatFile = downloadFile(webFolderUrl + selectedFile, "gridsat.nc");
+				
+				return gridsatFile;
+			} else {
+				throw new NoValidSatelliteScansFoundException();
+			}
 		} catch (IOException e) {
 			return null;
 		}

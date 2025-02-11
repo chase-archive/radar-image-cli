@@ -114,6 +114,7 @@ public class RadarImageCli {
 			}
 		} catch (IOException e) {
 			System.err.println("Could not generate radar! Send following error message to Amelia:");
+			System.err.println("Case info: time: " + dt + " lat: " + lat + " lon: " + lon);
 			e.printStackTrace();
 			
 			try {

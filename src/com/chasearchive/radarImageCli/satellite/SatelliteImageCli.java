@@ -107,6 +107,7 @@ public class SatelliteImageCli {
 			}
 		} catch (IOException e) {
 			System.err.println("Could not generate satellite! Send following error message to Amelia:");
+			System.err.println("Case info: time: " + dt + " lat: " + lat + " lon: " + lon);
 			e.printStackTrace();
 			
 			try {
