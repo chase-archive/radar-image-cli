@@ -93,6 +93,10 @@ public class SatelliteImageGenerator {
 		} else if ((lon > -180 && lon <= -106) || (lon > 74 && lon <= 180)) {
 			source = SatelliteSource.GOES_WEST;
 
+			if(time.isBefore(GRIDSAT_END)) {
+				source = SatelliteSource.GRIDSAT;
+			}
+
 			if (lat > 22 && lat <= 51 && lon > -162 && lon <= -106) {
 				sector = SatelliteSector.GOES_PACUS;
 			} else {
@@ -122,13 +126,17 @@ public class SatelliteImageGenerator {
 		BufferedImage satPlot = null;
 
 		if (settings.getSource() == SatelliteSource.GOES_EAST || settings.getSource() == SatelliteSource.GOES_WEST) {
+			long downloadStartTime = System.currentTimeMillis();
 			File[] satFiles = null;
 			try {
 				satFiles = getGoesData(time, settings.getSource(), settings.getSector());
 			} catch (NoValidSatelliteScansFoundException e) {
 				e.printStackTrace();
 			}
+			long downloadEndTime = System.currentTimeMillis();
+			System.out.println("download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
 
+			long fileLoadStartTime = System.currentTimeMillis();
 			GoesImage band1 = GoesImage.loadFromFile(satFiles[0]);
 			GoesImage band2 = GoesImage.loadFromFile(satFiles[1]);
 			GoesImage band3 = GoesImage.loadFromFile(satFiles[2]);
@@ -136,9 +144,15 @@ public class SatelliteImageGenerator {
 			GoesImage band13 = GoesImage.loadFromFile(satFiles[4]);
 
 			GoesImage[] goesImages = { band1, band2, band3, band7, band13 };
+			long fileLoadEndTime = System.currentTimeMillis();
+			System.out.println("file load time: " + (fileLoadEndTime - fileLoadStartTime)/1000.0 + " s");
 
+			long plotStartTime = System.currentTimeMillis();
 			satPlot = generateSatellitePlot(goesImages, time, lat, lon, settings, satProj, plotProj);
+			long plotEndTime = System.currentTimeMillis();
+			System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
 		} else if (settings.getSource() == SatelliteSource.GRIDSAT) {
+			long downloadStartTime = System.currentTimeMillis();
 			File gridsatFile = null;
 			try {
 				 gridsatFile = getGridsatData(time, (float) lat, (float) lon);
@@ -146,12 +160,20 @@ public class SatelliteImageGenerator {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
+			long downloadEndTime = System.currentTimeMillis();
+			System.out.println("download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
 			
 			System.out.println(gridsatFile);
-			
+
+			long fileLoadStartTime = System.currentTimeMillis();
 			GridsatImage gridsat = GridsatImage.loadFromFile(gridsatFile);
-			
+			long fileLoadEndTime = System.currentTimeMillis();
+			System.out.println("file load time: " + (fileLoadEndTime - fileLoadStartTime)/1000.0 + " s");
+
+			long plotStartTime = System.currentTimeMillis();
 			satPlot = generateSatellitePlot(gridsat, time, lat, lon, settings, plotProj);
+			long plotEndTime = System.currentTimeMillis();
+			System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
 		}
 
 		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
@@ -621,9 +643,112 @@ public class SatelliteImageGenerator {
 				(settings.getSize()));
 		PointD latLonProjectedDR = new PointD((settings.getSize() * settings.getAspectRatioFloat()),
 				-(settings.getSize()));
-
+		
 		DataField band13 = goes[4].field("rad");
 		int[] band13Shape = band13.getShape();
+
+		float[] redX = goes[1].field("x").array1D();
+		float[] redY = goes[1].field("y").array1D();
+		float redDx = goes[1].dataFromField("dx");
+		float redDy = goes[1].dataFromField("dy");
+		
+		// chunk optimization
+		long chunkStartTime = System.currentTimeMillis();
+		final int CHUNK_SIZE = 100;
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) redX.length/CHUNK_SIZE)]
+				[(int) Math.ceil((double) redY.length/CHUNK_SIZE)];
+		
+		int plotWidth = satPlot.getWidth();
+		int plotHeight = satPlot.getHeight();
+		
+		for(int i = 0; i < renderChunk.length; i++) {
+			for(int j = 0; j < renderChunk[i].length; j++) {
+				int i1Low = i * CHUNK_SIZE;
+				int j1Low = j * CHUNK_SIZE;
+				int i1High = (i + 1) * CHUNK_SIZE;
+				int j1High = (j + 1) * CHUNK_SIZE;
+				
+				if(i1High >= redX.length) {
+					i1High = redX.length - 1;
+				}
+				
+				if(j1High >= redY.length) {
+					j1High = redY.length - 1;
+				}
+				
+				int i1Mid = (i1Low + i1High)/2;
+				int j1Mid = (j1Low + j1High)/2;
+				
+				float x1 = -redX[i1Low] - redDx / 2.0f;
+				float y1 = redY[j1Low] - redDy / 2.0f;
+				float x2 = -redX[i1High] + redDx / 2.0f;
+				float y2 = redY[j1Low] - redDy / 2.0f;
+				float x3 = -redX[i1High] + redDx / 2.0f;
+				float y3 = redY[j1High] + redDy / 2.0f;
+				float x4 = -redX[i1Low] - redDx / 2.0f;
+				float y4 = redY[j1High] + redDy / 2.0f;
+				float x5 = -redX[i1Mid];
+				float y5 = redY[j1Mid];
+
+				GeoCoord latLon1 = satProj.projectXYToLatLon(x1, y1);
+				GeoCoord latLon2 = satProj.projectXYToLatLon(x2, y2);
+				GeoCoord latLon3 = satProj.projectXYToLatLon(x3, y3);
+				GeoCoord latLon4 = satProj.projectXYToLatLon(x4, y4);
+				GeoCoord latLon5 = satProj.projectXYToLatLon(x5, y5);
+				
+				boolean anyValid = !Float.isNaN(latLon1.getLat()) || !Float.isNaN(latLon2.getLat())
+						|| !Float.isNaN(latLon3.getLat()) || !Float.isNaN(latLon4.getLat()) || !Float.isNaN(latLon5.getLat())
+						|| !Float.isNaN(latLon1.getLon()) || !Float.isNaN(latLon2.getLon())
+						|| !Float.isNaN(latLon3.getLon()) || !Float.isNaN(latLon4.getLon()) || !Float.isNaN(latLon5.getLon());
+				
+				if(anyValid) {
+					GeoCoord p1 = plotProj.rotateLatLon(latLon1);
+					GeoCoord p2 = plotProj.rotateLatLon(latLon2);
+					GeoCoord p3 = plotProj.rotateLatLon(latLon3);
+					GeoCoord p4 = plotProj.rotateLatLon(latLon4);
+					GeoCoord p5 = plotProj.rotateLatLon(latLon5);
+
+					double _x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p1.getLon());
+					double _y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p1.getLat());
+					double _x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p2.getLon());
+					double _y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p2.getLat());
+					double _x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p3.getLon());
+					double _y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p3.getLat());
+					double _x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p4.getLon());
+					double _y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p4.getLat());
+					double _x5 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p5.getLon());
+					double _y5 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p5.getLat());
+					
+					if(_x1 > 0 && _x1 < plotWidth && _y1 > 0 && _y1 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x2 > 0 && _x2 < plotWidth && _y2 > 0 && _y2 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x3 > 0 && _x2 < plotWidth && _y3 > 0 && _y3 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x4 > 0 && _x4 < plotWidth && _y4 > 0 && _y4 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x5 > 0 && _x5 < plotWidth && _y5 > 0 && _y5 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else {
+						renderChunk[i][j] = false;
+					}
+				} else {
+					renderChunk[i][j] = false;
+				}
+			}
+		}
+		long chunkEndTime = System.currentTimeMillis();
+		System.out.println("chunk decision time: " + (chunkEndTime - chunkStartTime)/1000.0 + " s");
 
 		Color[][] satColors = new Color[band13Shape[1]][band13Shape[0]];
 
@@ -634,9 +759,13 @@ public class SatelliteImageGenerator {
 
 		System.out.println("image type: " + settings.getImageType());
 
+		long colorProcessingStartTime = System.currentTimeMillis();
+		int chunkSizeInBand = 0;
 		switch (settings.getImageType()) {
 		case GEOCOLOR:
-			satColors = GeocolorProcessing.createComposite(goes[0], goes[1], goes[2], goes[3], goes[4]);
+			chunkSizeInBand = 100;
+			
+			satColors = GeocolorProcessing.createComposite(goes[0], goes[1], goes[2], goes[3], goes[4], renderChunk, chunkSizeInBand);
 
 			x = goes[1].field("x").array1D();
 			y = goes[1].field("y").array1D();
@@ -646,12 +775,15 @@ public class SatelliteImageGenerator {
 			break;
 		case LONGWAVE_IR:
 			ColorTable brTempColors = brightnessTemperatureColorTable;
+			chunkSizeInBand = 25;
 
 			for (int i = 0; i < satColors.length; i++) {
 				for (int j = 0; j < satColors[i].length; j++) {
-					double brTemp = WeatherUtils.brightnessTemperatureFromWavenumber(band13.getData(j, i) / 100000.0,
-							WeatherUtils.wavelengthToWavenumber(goes[4].dataFromField("wavelength") / 1000000.0));
-					satColors[i][j] = brTempColors.getColor(brTemp);
+					if(renderChunk[i/chunkSizeInBand][j/chunkSizeInBand]) {
+						double brTemp = WeatherUtils.brightnessTemperatureFromWavenumber(band13.getData(j, i) / 100000.0,
+								WeatherUtils.wavelengthToWavenumber(goes[4].dataFromField("wavelength") / 1000000.0));
+						satColors[i][j] = brTempColors.getColor(brTemp);
+					}
 				}
 			}
 
@@ -662,6 +794,8 @@ public class SatelliteImageGenerator {
 
 			break;
 		}
+		long colorProcessingEndTime = System.currentTimeMillis();
+		System.out.println("color processing time: " + (colorProcessingEndTime - colorProcessingStartTime)/1000.0 + " s");
 
 		System.out.println("x[0]: " + x[0]);
 		System.out.println("y[0]: " + y[0]);
@@ -671,58 +805,63 @@ public class SatelliteImageGenerator {
 		GeoCoord testLL = satProj.projectXYToLatLon(-x[200] - dx / 2.0f, y[200] - dy / 2.0f);
 
 		System.out.println("testLL: " + testLL);
-
+		
+		long plottingStartTime = System.currentTimeMillis();
 		for (int i = 0; i < satColors.length; i++) {
 			for (int j = 0; j < satColors[0].length; j++) {
-				float x0 = -x[i];
-				float y0 = y[j];
-
-				GeoCoord latLon1 = satProj.projectXYToLatLon(x0 - dx / 2.0f, y0 - dy / 2.0f);
-				GeoCoord latLon2 = satProj.projectXYToLatLon(x0 + dx / 2.0f, y0 - dy / 2.0f);
-				GeoCoord latLon3 = satProj.projectXYToLatLon(x0 + dx / 2.0f, y0 + dy / 2.0f);
-				GeoCoord latLon4 = satProj.projectXYToLatLon(x0 - dx / 2.0f, y0 + dy / 2.0f);
-
-				GeoCoord p1 = plotProj.rotateLatLon(latLon1);
-				GeoCoord p2 = plotProj.rotateLatLon(latLon2);
-				GeoCoord p3 = plotProj.rotateLatLon(latLon3);
-				GeoCoord p4 = plotProj.rotateLatLon(latLon4);
-
-				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
-						p1.getLon());
-				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
-						p1.getLat());
-				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
-						p2.getLon());
-				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
-						p2.getLat());
-				double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
-						p3.getLon());
-				double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
-						p3.getLat());
-				double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
-						p4.getLon());
-				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
-						p4.getLat());
-
-//				if()
-//				System.out.println("satellite polygon ll1: " + latLon1);
-//				System.out.println("satellite polygon p1: " + p1);
-
-				int[] xPoints = new int[] { (int) x1, (int) x2, (int) x3, (int) x4 };
-				int[] yPoints = new int[] { (int) y1, (int) y2, (int) y3, (int) y4 };
-
-				boolean allValid = !Float.isNaN(latLon1.getLat()) && !Float.isNaN(latLon2.getLat())
-						&& !Float.isNaN(latLon3.getLat()) && !Float.isNaN(latLon4.getLat())
-						&& !Float.isNaN(latLon1.getLon()) && !Float.isNaN(latLon2.getLon())
-						&& !Float.isNaN(latLon3.getLon()) && !Float.isNaN(latLon4.getLon()) && x1 != 0 && x2 != 0
-						&& x3 != 0 && x4 != 0 && x1 != 0 && x2 != 0 && x3 != 0 && x4 != 0;
-
-				if (allValid) {
-					g.setColor(satColors[i][j]);
-					g.fillPolygon(xPoints, yPoints, 4);
+				if(renderChunk[i/chunkSizeInBand][j/chunkSizeInBand]) {
+					float x0 = -x[i];
+					float y0 = y[j];
+	
+					GeoCoord latLon1 = satProj.projectXYToLatLon(x0 - dx / 2.0f, y0 - dy / 2.0f);
+					GeoCoord latLon2 = satProj.projectXYToLatLon(x0 + dx / 2.0f, y0 - dy / 2.0f);
+					GeoCoord latLon3 = satProj.projectXYToLatLon(x0 + dx / 2.0f, y0 + dy / 2.0f);
+					GeoCoord latLon4 = satProj.projectXYToLatLon(x0 - dx / 2.0f, y0 + dy / 2.0f);
+	
+					GeoCoord p1 = plotProj.rotateLatLon(latLon1);
+					GeoCoord p2 = plotProj.rotateLatLon(latLon2);
+					GeoCoord p3 = plotProj.rotateLatLon(latLon3);
+					GeoCoord p4 = plotProj.rotateLatLon(latLon4);
+	
+					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p1.getLon());
+					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p1.getLat());
+					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p2.getLon());
+					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p2.getLat());
+					double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p3.getLon());
+					double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p3.getLat());
+					double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p4.getLon());
+					double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p4.getLat());
+	
+	//				if()
+	//				System.out.println("satellite polygon ll1: " + latLon1);
+	//				System.out.println("satellite polygon p1: " + p1);
+	
+					int[] xPoints = new int[] { (int) x1, (int) x2, (int) x3, (int) x4 };
+					int[] yPoints = new int[] { (int) y1, (int) y2, (int) y3, (int) y4 };
+	
+					boolean allValid = !Float.isNaN(latLon1.getLat()) && !Float.isNaN(latLon2.getLat())
+							&& !Float.isNaN(latLon3.getLat()) && !Float.isNaN(latLon4.getLat())
+							&& !Float.isNaN(latLon1.getLon()) && !Float.isNaN(latLon2.getLon())
+							&& !Float.isNaN(latLon3.getLon()) && !Float.isNaN(latLon4.getLon()) && x1 != 0 && x2 != 0
+							&& x3 != 0 && x4 != 0 && x1 != 0 && x2 != 0 && x3 != 0 && x4 != 0;
+	
+					if (allValid) {
+						g.setColor(satColors[i][j]);
+						g.fillPolygon(xPoints, yPoints, 4);
+					}
 				}
 			}
 		}
+		long plottingEndTime = System.currentTimeMillis();
+		System.out.println("plotting time: " + (plottingEndTime - plottingStartTime)/1000.0 + " s");
 
 		return satPlot;
 	}
@@ -751,37 +890,135 @@ public class SatelliteImageGenerator {
 		float dlat = 0;
 		float dlon = 0;
 
+		latArr = gridsat.field("lat").array1D();
+		lonArr = gridsat.field("lon").array1D();
+		dlat = gridsat.dataFromField("dlat");
+		dlon = gridsat.dataFromField("dlon");
+		
+		final int CHUNK_SIZE = 25;
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) lonArr.length/CHUNK_SIZE)]
+				[(int) Math.ceil((double) latArr.length/CHUNK_SIZE)];
+		
+		System.out.println("renderChunk shape: " + renderChunk.length + "\t" + renderChunk[0].length);
+		
+		int plotWidth = satPlot.getWidth();
+		int plotHeight = satPlot.getHeight();
+		
+		for(int i = 0; i < renderChunk.length; i++) {
+			for(int j = 0; j < renderChunk[i].length; j++) {
+				int i1Low = i * CHUNK_SIZE;
+				int j1Low = j * CHUNK_SIZE;
+				int i1High = (i + 1) * CHUNK_SIZE;
+				int j1High = (j + 1) * CHUNK_SIZE;
+				
+				if(i1High >= lonArr.length) {
+					i1High = lonArr.length - 1;
+				}
+				
+				if(j1High >= latArr.length) {
+					j1High = latArr.length - 1;
+				}
+				
+				int i1Mid = (i1Low + i1High)/2;
+				int j1Mid = (j1Low + j1High)/2;
+
+				float lat1 = latArr[j1Low];
+				float lon1 = lonArr[i1Low];
+				float lat2 = latArr[j1High];
+				float lon2 = lonArr[i1Low];
+				float lat3 = latArr[j1High];
+				float lon3 = lonArr[i1High];
+				float lat4 = latArr[j1Low];
+				float lon4 = lonArr[i1High];
+				float lat5 = latArr[j1Mid];
+				float lon5 = lonArr[i1Mid];
+
+				GeoCoord latLon1 = new GeoCoord(lat1 - dlat / 2.0f, lon1 - dlon / 2.0f);
+				GeoCoord latLon2 = new GeoCoord(lat2 + dlat / 2.0f, lon2 - dlon / 2.0f);
+				GeoCoord latLon3 = new GeoCoord(lat3 + dlat / 2.0f, lon3 + dlon / 2.0f);
+				GeoCoord latLon4 = new GeoCoord(lat4 - dlat / 2.0f, lon4 + dlon / 2.0f);
+				GeoCoord latLon5 = new GeoCoord(lat5, lon5);
+				
+				boolean anyValid = !Float.isNaN(latLon1.getLat()) || !Float.isNaN(latLon2.getLat())
+						|| !Float.isNaN(latLon3.getLat()) || !Float.isNaN(latLon4.getLat()) || !Float.isNaN(latLon5.getLat())
+						|| !Float.isNaN(latLon1.getLon()) || !Float.isNaN(latLon2.getLon())
+						|| !Float.isNaN(latLon3.getLon()) || !Float.isNaN(latLon4.getLon()) || !Float.isNaN(latLon5.getLon());
+				
+				if(anyValid) {
+					GeoCoord p1 = plotProj.rotateLatLon(latLon1);
+					GeoCoord p2 = plotProj.rotateLatLon(latLon2);
+					GeoCoord p3 = plotProj.rotateLatLon(latLon3);
+					GeoCoord p4 = plotProj.rotateLatLon(latLon4);
+					GeoCoord p5 = plotProj.rotateLatLon(latLon5);
+
+					double _x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p1.getLon());
+					double _y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p1.getLat());
+					double _x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p2.getLon());
+					double _y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p2.getLat());
+					double _x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p3.getLon());
+					double _y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p3.getLat());
+					double _x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p4.getLon());
+					double _y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p4.getLat());
+					double _x5 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p5.getLon());
+					double _y5 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p5.getLat());
+					
+					if(_x1 > 0 && _x1 < plotWidth && _y1 > 0 && _y1 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x2 > 0 && _x2 < plotWidth && _y2 > 0 && _y2 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x3 > 0 && _x2 < plotWidth && _y3 > 0 && _y3 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x4 > 0 && _x4 < plotWidth && _y4 > 0 && _y4 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x5 > 0 && _x5 < plotWidth && _y5 > 0 && _y5 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else {
+						renderChunk[i][j] = false;
+					}
+				} else {
+					renderChunk[i][j] = false;
+				}
+			}
+		}
+
 		System.out.println("image type: " + settings.getImageType());
 
 		switch (settings.getImageType()) {
 		case GEOCOLOR:
 			data = gridsat.field("vis").array3D()[0];
 
-			latArr = gridsat.field("lat").array1D();
-			lonArr = gridsat.field("lon").array1D();
-			dlat = gridsat.dataFromField("dlat");
-			dlon = gridsat.dataFromField("dlon");
-
 			for (int i = 0; i < satColors.length; i++) {
 				for (int j = 0; j < satColors[i].length; j++) {
-					int gray = (int) (255 * data[j][i]);
-
-					if(gray < 0) gray = 0;
-					if(gray > 255) gray = 255;
-					
-//					float alpha = 1.33f * data[j][i];
-//
-//					if(alpha < 0) alpha = 0;
-//					if(alpha > 1) alpha = 1;
-//					
-//					Color daytimeBackground = ModisBlueMarble.getColor(latArr[j], lonArr[i]);
-//					
-//					satColors[i][j] = new Color(
-//							(int) (alpha * 255 + (1 - alpha) * 0.5f * daytimeBackground.getRed()), 
-//							(int) (alpha * 255 + (1 - alpha) * 0.5f * daytimeBackground.getGreen()), 
-//							(int) (alpha * 255 + (1 - alpha) * 0.5f * daytimeBackground.getBlue()));
-					
-					satColors[i][j] = new Color(gray, gray, gray);
+					if(renderChunk[i/CHUNK_SIZE][j/CHUNK_SIZE]) {
+						int gray = (int) (255 * data[j][i]);
+	
+						if(gray < 0) gray = 0;
+						if(gray > 255) gray = 255;
+						
+	//					float alpha = 1.33f * data[j][i];
+	//
+	//					if(alpha < 0) alpha = 0;
+	//					if(alpha > 1) alpha = 1;
+	//					
+	//					Color daytimeBackground = ModisBlueMarble.getColor(latArr[j], lonArr[i]);
+	//					
+	//					satColors[i][j] = new Color(
+	//							(int) (alpha * 255 + (1 - alpha) * 0.5f * daytimeBackground.getRed()), 
+	//							(int) (alpha * 255 + (1 - alpha) * 0.5f * daytimeBackground.getGreen()), 
+	//							(int) (alpha * 255 + (1 - alpha) * 0.5f * daytimeBackground.getBlue()));
+						
+						satColors[i][j] = new Color(gray, gray, gray);
+					}
 				}
 			}
 			
@@ -792,66 +1029,65 @@ public class SatelliteImageGenerator {
 
 			for (int i = 0; i < satColors.length; i++) {
 				for (int j = 0; j < satColors[i].length; j++) {
-					satColors[i][j] = brTempColors.getColor(data[j][i]);
+					if(renderChunk[i/CHUNK_SIZE][j/CHUNK_SIZE]) {
+						satColors[i][j] = brTempColors.getColor(data[j][i]);
+					}
 				}
 			}
-
-			latArr = gridsat.field("lat").array1D();
-			lonArr = gridsat.field("lon").array1D();
-			dlat = gridsat.dataFromField("dlat");
-			dlon = gridsat.dataFromField("dlon");
 
 			break;
 		}
 
 		for (int i = 0; i < satColors.length; i++) {
 			for (int j = 0; j < satColors[0].length; j++) {
-				float lat0 = latArr[j];
-				float lon0 = lonArr[i];
-
-				GeoCoord latLon1 = new GeoCoord(lat0 + dlat / 2.0f, lon0 + dlon / 2.0f);
-				GeoCoord latLon2 = new GeoCoord(lat0 - dlat / 2.0f, lon0 + dlon / 2.0f);
-				GeoCoord latLon3 = new GeoCoord(lat0 - dlat / 2.0f, lon0 - dlon / 2.0f);
-				GeoCoord latLon4 = new GeoCoord(lat0 + dlat / 2.0f, lon0 - dlon / 2.0f);
-
-				GeoCoord p1 = plotProj.rotateLatLon(latLon1);
-				GeoCoord p2 = plotProj.rotateLatLon(latLon2);
-				GeoCoord p3 = plotProj.rotateLatLon(latLon3);
-				GeoCoord p4 = plotProj.rotateLatLon(latLon4);
-
-				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
-						p1.getLon());
-				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
-						p1.getLat());
-				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
-						p2.getLon());
-				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
-						p2.getLat());
-				double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
-						p3.getLon());
-				double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
-						p3.getLat());
-				double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
-						p4.getLon());
-				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
-						p4.getLat());
-
-//				if()
-//				System.out.println("satellite polygon ll1: " + latLon1);
-//				System.out.println("satellite polygon p1: " + p1);
-
-				int[] xPoints = new int[] { (int) x1, (int) x2, (int) x3, (int) x4 };
-				int[] yPoints = new int[] { (int) y1, (int) y2, (int) y3, (int) y4 };
-
-				boolean allValid = !Float.isNaN(latLon1.getLat()) && !Float.isNaN(latLon2.getLat())
-						&& !Float.isNaN(latLon3.getLat()) && !Float.isNaN(latLon4.getLat())
-						&& !Float.isNaN(latLon1.getLon()) && !Float.isNaN(latLon2.getLon())
-						&& !Float.isNaN(latLon3.getLon()) && !Float.isNaN(latLon4.getLon()) && x1 != 0 && x2 != 0
-						&& x3 != 0 && x4 != 0 && x1 != 0 && x2 != 0 && x3 != 0 && x4 != 0;
-				
-				if (allValid) {
-					g.setColor(satColors[i][j]);
-					g.fillPolygon(xPoints, yPoints, 4);
+				if(renderChunk[i/CHUNK_SIZE][j/CHUNK_SIZE]) {
+					float lat0 = latArr[j];
+					float lon0 = lonArr[i];
+	
+					GeoCoord latLon1 = new GeoCoord(lat0 + dlat / 2.0f, lon0 + dlon / 2.0f);
+					GeoCoord latLon2 = new GeoCoord(lat0 - dlat / 2.0f, lon0 + dlon / 2.0f);
+					GeoCoord latLon3 = new GeoCoord(lat0 - dlat / 2.0f, lon0 - dlon / 2.0f);
+					GeoCoord latLon4 = new GeoCoord(lat0 + dlat / 2.0f, lon0 - dlon / 2.0f);
+	
+					GeoCoord p1 = plotProj.rotateLatLon(latLon1);
+					GeoCoord p2 = plotProj.rotateLatLon(latLon2);
+					GeoCoord p3 = plotProj.rotateLatLon(latLon3);
+					GeoCoord p4 = plotProj.rotateLatLon(latLon4);
+	
+					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p1.getLon());
+					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p1.getLat());
+					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p2.getLon());
+					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p2.getLat());
+					double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p3.getLon());
+					double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p3.getLat());
+					double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p4.getLon());
+					double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p4.getLat());
+	
+	//				if()
+	//				System.out.println("satellite polygon ll1: " + latLon1);
+	//				System.out.println("satellite polygon p1: " + p1);
+	
+					int[] xPoints = new int[] { (int) x1, (int) x2, (int) x3, (int) x4 };
+					int[] yPoints = new int[] { (int) y1, (int) y2, (int) y3, (int) y4 };
+	
+					boolean allValid = !Float.isNaN(latLon1.getLat()) && !Float.isNaN(latLon2.getLat())
+							&& !Float.isNaN(latLon3.getLat()) && !Float.isNaN(latLon4.getLat())
+							&& !Float.isNaN(latLon1.getLon()) && !Float.isNaN(latLon2.getLon())
+							&& !Float.isNaN(latLon3.getLon()) && !Float.isNaN(latLon4.getLon()) && x1 != 0 && x2 != 0
+							&& x3 != 0 && x4 != 0 && x1 != 0 && x2 != 0 && x3 != 0 && x4 != 0;
+					
+					if (allValid) {
+						g.setColor(satColors[i][j]);
+						g.fillPolygon(xPoints, yPoints, 4);
+					}
 				}
 			}
 		}
@@ -1075,11 +1311,32 @@ public class SatelliteImageGenerator {
 
 	private static final int TIME_TOLERANCE = 20; // minutes
 	private static final DateTime GRIDSAT_GOES_16_OPERATIONAL_CUTOFF = new DateTime(2017, 3, 1, 0, 0, DateTimeZone.UTC);
+	private static final DateTime GRIDSAT_END = new DateTime(2018, 1, 1, 0, 0, DateTimeZone.UTC);
+	private static final DateTime GOES_17_OPERATIONAL_START = new DateTime(2018, 8, 28, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GOES_17_18_OPERATIONAL_CUTOFF = new DateTime(2023, 1, 3, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GOES_16_19_OPERATIONAL_CUTOFF = new DateTime(2099, 1, 1, 0, 0, DateTimeZone.UTC);
 
 	private static File[] getGoesData(DateTime time, SatelliteSource source, SatelliteSector sector)
 			throws NoValidSatelliteScansFoundException {
+		// bypasses download, uses data on hard drive
+		if(1 > 0) {
+			return new File[] {
+					new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Ima\n"
+							+ "			return new File[] {\n"
+							+ "					new File(\"/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/satellite-image-generator-temp2/sat_band1.nc\"),\n"
+							+ "					new File(\"/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/satellite-image-generator-temp2/sat_band2.nc\"),\n"
+							+ "					new File(\"/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/satellite-image-generator-temp2/sat_band3.nc\"),\n"
+							+ "					new File(\"/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/satellite-image-generator-temp2/sat_band7.nc\"),\n"
+							+ "					new File(\"/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/satellite-image-generator-temp2/sat_band13.nc\"),\n"
+							+ "			};\n"
+							+ "		}ge CLI/satellite-image-generator-temp2/sat_band1.nc"),
+					new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/satellite-image-generator-temp2/sat_band2.nc"),
+					new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/satellite-image-generator-temp2/sat_band3.nc"),
+					new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/satellite-image-generator-temp2/sat_band7.nc"),
+					new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/satellite-image-generator-temp2/sat_band13.nc"),
+			};
+		}
+		
 		ArrayList<String> validBand1Files = new ArrayList<>();
 		ArrayList<String> validBand2Files = new ArrayList<>();
 		ArrayList<String> validBand3Files = new ArrayList<>();
@@ -1106,7 +1363,13 @@ public class SatelliteImageGenerator {
 						prevUtcHour.getDayOfMonth(), prevUtcHour.getHourOfDay(), sector);
 			}
 		} else if (source == SatelliteSource.GOES_WEST) {
-			if (time.isBefore(GOES_17_18_OPERATIONAL_CUTOFF)) {
+			if (time.isBefore(GOES_17_OPERATIONAL_START)) {
+				System.out.println("Downloading GOES-16 data...");
+				satFilesCurr = GoesAws.goes16Level1Files(time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
+						time.getHourOfDay(), sector);
+				satFilesPrev = GoesAws.goes16Level1Files(prevUtcHour.getYear(), prevUtcHour.getMonthOfYear(),
+						prevUtcHour.getDayOfMonth(), prevUtcHour.getHourOfDay(), sector);
+			} else if (time.isBefore(GOES_17_18_OPERATIONAL_CUTOFF)) {
 				System.out.println("Downloading GOES-17 data...");
 				satFilesCurr = GoesAws.goes17Level1Files(time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
 						time.getHourOfDay(), sector);
@@ -1358,7 +1621,11 @@ public class SatelliteImageGenerator {
 //			String gridsatUrl = "https://www.ncei.noaa.gov/data/gridsat-goes/access/conus/2016/04/GridSat-CONUS.goes13.2016.04.11.2300.v01.nc";
 //			File gridsatFile = downloadFile(gridsatUrl, "gridsat.nc");
 			
-			String sector = "conus";
+			String sector = "goes";
+			
+			if(lat > 24 && lat <= 50 && lon > -125 && lon <= -73) {
+				sector = "conus";
+			}
 			
 			String webFolderUrl = String.format("https://www.ncei.noaa.gov/data/gridsat-goes/access/%s/%04d/%02d/",
 					sector, time.getYear(), time.getMonthOfYear());
@@ -1367,8 +1634,10 @@ public class SatelliteImageGenerator {
 			
 			HashMap<Integer, ArrayList<String>> gridsatFilesBySatId = new HashMap<>();
 			
+			int noConusMod = ("conus".equals(sector) ? 0 : 1);
+			
 			for(String filename : gridsatFiles) {
-				int satId = Integer.valueOf(filename.substring(18, 20));
+				int satId = Integer.valueOf(filename.substring(18 - noConusMod, 20 - noConusMod));
 				
 				if(!gridsatFilesBySatId.containsKey(satId)) {
 					gridsatFilesBySatId.put(satId, new ArrayList<>());
@@ -1392,11 +1661,11 @@ public class SatelliteImageGenerator {
 				for(int i = 0; i < gridsatFilesBySatId.get(satId).size(); i++) {
 					String filename = gridsatFilesBySatId.get(satId).get(i);
 					
-					int year = Integer.valueOf(filename.substring(21, 25));
-					int month = Integer.valueOf(filename.substring(26, 28));
-					int day = Integer.valueOf(filename.substring(29, 31));
-					int hour = Integer.valueOf(filename.substring(32, 34));
-					int minute = Integer.valueOf(filename.substring(34, 36));
+					int year = Integer.valueOf(filename.substring(21 - noConusMod, 25 - noConusMod));
+					int month = Integer.valueOf(filename.substring(26 - noConusMod, 28 - noConusMod));
+					int day = Integer.valueOf(filename.substring(29 - noConusMod, 31 - noConusMod));
+					int hour = Integer.valueOf(filename.substring(32 - noConusMod, 34 - noConusMod));
+					int minute = Integer.valueOf(filename.substring(34 - noConusMod, 36 - noConusMod));
 					int second = 0;
 
 //					System.out.println(year + "\t" + month + "\t" + hour + "\t" + minute + "\t" + second);
@@ -1437,11 +1706,31 @@ public class SatelliteImageGenerator {
 						}
 					}
 				}
+
+				for(int i = 0; i < goesWestSats.length; i++) {
+					if(mostRecentFileBySatId.containsKey(goesWestSats[i])) {
+						if(mostRecentFileBySatId.get(goesWestSats[i]).length() != 0) {
+							selectedFile = mostRecentFileBySatId.get(goesWestSats[i]);
+						} else {
+							continue;
+						}
+					}
+				}
 			} else {
 				for(int i = 0; i < goesWestSats.length; i++) {
 					if(mostRecentFileBySatId.containsKey(goesWestSats[i])) {
 						if(mostRecentFileBySatId.get(goesWestSats[i]).length() != 0) {
 							selectedFile = mostRecentFileBySatId.get(goesWestSats[i]);
+						} else {
+							continue;
+						}
+					}
+				}
+
+				for(int i = 0; i < goesEastSats.length; i++) {
+					if(mostRecentFileBySatId.containsKey(goesEastSats[i])) {
+						if(mostRecentFileBySatId.get(goesEastSats[i]).length() != 0) {
+							selectedFile = mostRecentFileBySatId.get(goesEastSats[i]);
 						} else {
 							continue;
 						}

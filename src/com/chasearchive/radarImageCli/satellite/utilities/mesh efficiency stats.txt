@@ -1,0 +1,11 @@
+geostationary projection time: 0.105 us
+geostationary full-mesh projection time: 25.2 s
+
+rotate lat-lon projection time: 0.1 us
+rotate lat-lon full-mesh projection time: 24.0 s
+
+variable read time: 0.004 us
+variable full-mesh read time: 0.96 s
+
+actual mesh write time: 38.782 s
+

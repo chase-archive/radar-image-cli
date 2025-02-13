@@ -182,14 +182,33 @@ public class GeocolorProcessing {
 
 	// temu geocolor
 	public static Color[][] createComposite(GoesImage band1, GoesImage band2, GoesImage band3, GoesImage band7, GoesImage band13) {
-		Color[][] trueColor = createTrueColorGoes(band1, band2, band3);
-		Color[][] irColor = createIRGoes(band7, band13);
+		int[] band2Shape = band2.field("rad").getShape();
+
+		final int CHUNK_SIZE = 100;
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[1]/CHUNK_SIZE)]
+				[(int) Math.ceil((double) band2Shape[0]/CHUNK_SIZE)];
+		
+		for(int i = 0; i < renderChunk.length; i++) {
+			for(int j = 0; j < renderChunk[i].length; j++) {
+				renderChunk[i][j] = true;
+			}
+		}
+		
+		return createComposite(band1, band2, band3, band7, band13, renderChunk, CHUNK_SIZE);
+	}
+
+	// temu geocolor
+	public static Color[][] createComposite(GoesImage band1, GoesImage band2, GoesImage band3, GoesImage band7, GoesImage band13, boolean[][] renderChunks, int chunkSize) {
+		Color[][] trueColor = createTrueColorGoes(band1, band2, band3, renderChunks, chunkSize);
+		Color[][] irColor = createIRGoes(band7, band13, renderChunks, chunkSize);
 
 		Color[][] goesComposite = new Color[trueColor.length][trueColor[0].length];
 
 		for (int i = 0; i < goesComposite.length; i++) {
 			for (int j = 0; j < goesComposite[0].length; j++) {
-				goesComposite[i][j] = maxTristims(trueColor[i][j], irColor[i / 4][j / 4]);
+				if(renderChunks[i/chunkSize][j/chunkSize]) {
+					goesComposite[i][j] = maxTristims(trueColor[i][j], irColor[i / 4][j / 4]);
+				}
 			}
 		}
 
@@ -197,15 +216,46 @@ public class GeocolorProcessing {
 	}
 	
 	public static Color[][] createTrueColorGoes(GoesImage band1, GoesImage band2, GoesImage band3) {
+		int[] band2Shape = band2.field("rad").getShape();
+
+		final int CHUNK_SIZE = 100;
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[0]/CHUNK_SIZE)]
+				[(int) Math.ceil((double) band2Shape[1]/CHUNK_SIZE)];
+		
+		for(int i = 0; i < renderChunk.length; i++) {
+			for(int j = 0; j < renderChunk[i].length; j++) {
+				renderChunk[i][j] = true;
+			}
+		}
+		
+		return createTrueColorGoes(band1, band2, band3, renderChunk, CHUNK_SIZE);
+	}
+	
+	public static Color[][] createTrueColorGoes(GoesImage band1, GoesImage band2, GoesImage band3, boolean[][] renderChunks, int chunkSize) {
 		float[][] band1Rad = band1.field("rad").array2D();
 		float[][] band2Rad = band2.field("rad").array2D();
 		float[][] band3Rad = band3.field("rad").array2D();
 		
 		// VERY IMPORTANT!! normalize radiances to the correct specific ranges
 
-		float[][] band1Clip = clip(band1Rad, 0, 1000);
-		float[][] band2Clip = clip(band2Rad, 0, 1000);
-		float[][] band3Clip = clip(band3Rad, 0, 1000);
+//		float[][] band1Clip = clip(band1Rad, 0, 1000);
+//		float[][] band2Clip = clip(band2Rad, 0, 1000);
+//		float[][] band3Clip = clip(band3Rad, 0, 1000);
+
+		float[][] band1Clip = new float[band1Rad.length][band1Rad[0].length];
+		float[][] band2Clip = new float[band2Rad.length][band2Rad[0].length];
+		float[][] band3Clip = new float[band3Rad.length][band3Rad[0].length];
+		for (int i = 0; i < band2Clip.length; i++) {
+			for (int j = 0; j < band2Clip[i].length; j++) {
+				if(renderChunks[j/chunkSize][i/chunkSize]) {
+					if(i % 2 == 0 && j % 2 == 0) {
+						band1Clip[i/2][j/2] = clip(band1Rad[i/2][j/2], 0, 1000);
+						band3Clip[i/2][j/2] = clip(band3Rad[i/2][j/2], 0, 1000);
+					}
+					band2Clip[i][j] = clip(band2Rad[i][j], 0, 1000);
+				}
+			}
+		}
 		
 		band1Clip = normalize(band1Rad, 0, 1);
 		band2Clip = normalize(band2Rad, 0, 1);
@@ -213,20 +263,31 @@ public class GeocolorProcessing {
 
 		final float GAMMA = 2.2f;
 
-		float[][] band1NormG = gammaCorrect(band1Clip, GAMMA);
-		float[][] band2NormG = gammaCorrect(band2Clip, GAMMA);
-		float[][] band3NormG = gammaCorrect(band3Clip, GAMMA);
+		float[][] band1NormG = new float[band1Clip.length][band1Clip[0].length];
+		float[][] band2NormG = new float[band2Clip.length][band2Clip[0].length];
+		float[][] band3NormG = new float[band3Clip.length][band3Clip[0].length];
+		for (int i = 0; i < band2Clip.length; i++) {
+			for (int j = 0; j < band2Clip[i].length; j++) {
+				if(renderChunks[j/chunkSize][i/chunkSize]) {
+					if(i % 2 == 0 && j % 2 == 0) {
+						band1NormG[i/2][j/2] = gammaCorrect(band1Clip[i/2][j/2], GAMMA);
+						band3NormG[i/2][j/2] = gammaCorrect(band3Clip[i/2][j/2], GAMMA);
+					}
+					band2NormG[i][j] = gammaCorrect(band2Clip[i][j], GAMMA);
+				}
+			}
+		}
 
 		float[][] syntheticGreen = new float[band2Rad.length][band2Rad[0].length];
 
 		for (int i = 0; i < syntheticGreen.length; i++) {
 			for (int j = 0; j < syntheticGreen[i].length; j++) {
-				// calculate the "true" green
-				syntheticGreen[i][j] = 0.325f * band2NormG[i][j] + 0.35f * band3NormG[i / 2][j / 2] + 0.325f * band1NormG[i / 2][j / 2];
+				if(renderChunks[j/chunkSize][i/chunkSize]) {
+					// calculate the "true" green
+					syntheticGreen[i][j] = clip(0.325f * band2NormG[i][j] + 0.35f * band3NormG[i / 2][j / 2] + 0.325f * band1NormG[i / 2][j / 2], 0, 1);
+				}
 			}
 		}
-
-		syntheticGreen = clip(syntheticGreen, 0, 1);
 
 		float[][] red = band2NormG;
 		float[][] green = syntheticGreen;
@@ -235,17 +296,19 @@ public class GeocolorProcessing {
 		Color[][] goesComposite = new Color[red[0].length][red.length];
 
 		for (int i = 0; i < goesComposite[0].length; i++) {
-			if(i % 500 == 0) System.out.println("Goes True-Color Composite " + (100 * (float) i/goesComposite[0].length) + "% complete");
+//			if(i % 500 == 0) System.out.println("Goes True-Color Composite " + (100 * (float) i/goesComposite[0].length) + "% complete");
 			
 			for (int j = 0; j < goesComposite.length; j++) {
-				int r = (int) (255 * red[i][j]);
-
-				int gr = (int) (255 * green[i][j]);
-				int b = (int) (255 * blue[i / 2][j / 2]);
-
-				Color c = new Color(r, gr, b);
-
-				goesComposite[j][i] = contrast(c, 48);
+				if(renderChunks[j/chunkSize][i/chunkSize]) {
+					int r = (int) (255 * red[i][j]);
+	
+					int gr = (int) (255 * green[i][j]);
+					int b = (int) (255 * blue[i / 2][j / 2]);
+	
+					Color c = new Color(r, gr, b);
+	
+					goesComposite[j][i] = contrast(c, 48);
+				}
 			}
 		}
 
@@ -253,6 +316,22 @@ public class GeocolorProcessing {
 	}
 
 	public static Color[][] createIRGoes(GoesImage band7, GoesImage band13) {
+		int[] band2Shape = band7.field("rad").getShape();
+
+		final int CHUNK_SIZE = 100;
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[0]/CHUNK_SIZE)]
+				[(int) Math.ceil((double) band2Shape[1]/CHUNK_SIZE)];
+		
+		for(int i = 0; i < renderChunk.length; i++) {
+			for(int j = 0; j < renderChunk[i].length; j++) {
+				renderChunk[i][j] = true;
+			}
+		}
+		
+		return createIRGoes(band7, band13, renderChunk, CHUNK_SIZE);
+	}
+	
+	public static Color[][] createIRGoes(GoesImage band7, GoesImage band13, boolean[][] renderChunks, int chunkSize) {
 		float[][] band7Rad = band7.field("rad").array2D();
 		float[][] band13Rad = band13.field("rad").array2D();
 		
@@ -418,6 +497,12 @@ public class GeocolorProcessing {
 		return gammaCorr;
 	}
 
+	private static float gammaCorrect(float val, float gamma) {
+		float gammaCorr = (float) Math.pow(val, 1 / gamma);
+
+		return gammaCorr;
+	}
+
 	private static float[][] clip(float[][] arr, float min, float max) {
 		float[][] clipped = new float[arr.length][arr[0].length];
 
@@ -452,7 +537,7 @@ public class GeocolorProcessing {
 
 		for (int i = 0; i < arr.length; i++) {
 			for (int j = 0; j < arr[i].length; j++) {
-				if (arr[i][j] != maxO) {
+				if (arr[i][j] != maxO && arr[i][j] != -1024.0) {
 					max = Float.max(arr[i][j], max);
 				}
 			}

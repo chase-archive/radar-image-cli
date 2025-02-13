@@ -27,6 +27,15 @@ public class GridsatImage extends CdmFile implements SatelliteImage {
 		GridsatImage gridsat = GridsatImage.loadFromFile(datafile);
 		
 		float[][] vis = gridsat.field("vis").array3D()[0];
+		float[] lat = gridsat.field("lat").array1D();
+		float[] lon = gridsat.field("lon").array1D();
+		
+		System.out.println(lat[0]);
+		System.out.println(lat[649]);
+		System.out.println(lon[0]);
+		System.out.println(lon[1299]);
+		System.out.println(lat[1] - lat[0]);
+		System.out.println(lon[1] - lon[0]);
 		
 		BufferedImage visImg = new BufferedImage(vis[0].length, vis.length, BufferedImage.TYPE_3BYTE_BGR);
 		Graphics2D g = visImg.createGraphics();
