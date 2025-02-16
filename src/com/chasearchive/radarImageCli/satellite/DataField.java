@@ -170,6 +170,33 @@ public class DataField {
 		return array;
 	}
 	
+	public float[] array1D(int startI, int endI) {
+		return subsetArray1D(data, startI, endI);
+	}
+	
+	public float[][] array2D(int startI, int endI, int startJ, int endJ) {
+		int[] array2DShape = new int[2];
+
+		for(int i = 0; i < array2DShape.length; i++) {
+			array2DShape[i] = 1;
+		}
+		
+		for(int i = 0; i < shape.length; i++) {
+			int idx = Integer.min(i, shape.length - 1);
+			
+			array2DShape[idx] *= shape[i];
+		}
+		
+		float[][] array = new float[array2DShape[0]][array2DShape[1]];
+		for(int i = 0; i < array.length; i++) {
+			for(int j = 0; j < array[i].length; j++) {
+				array[i][j] = getData(i, j);
+			}
+		}
+		
+		return subsetArray2D(array, startI, endI, startJ, endJ);
+	}
+	
 	public float[][][] array3D() {
 		int[] array3DShape = new int[3];
 
@@ -193,6 +220,44 @@ public class DataField {
 		}
 		
 		return array;
+	}
+	
+	/**
+	 * 
+	 * @param arr
+	 * @param startI (inclusive)
+	 * @param endI (inclusive)
+	 * @return
+	 */
+	private static float[] subsetArray1D(float[] arr, int startI, int endI) {
+		float[] subset = new float[endI + 1 - startI];
+		
+		for(int i = 0; i < subset.length; i++) {
+			subset[i] = arr[startI + i];
+		}
+		
+		return subset;
+	}
+	
+	/**
+	 * 
+	 * @param arr
+	 * @param startI (inclusive)
+	 * @param endI (inclusive)
+	 * @param startJ (inclusive)
+	 * @param endJ (inclusive)
+	 * @return
+	 */
+	private static float[][] subsetArray2D(float[][] arr, int startI, int endI, int startJ, int endJ) {
+		float[][] subset = new float[endI + 1 - startI][endJ + 1 - startJ];
+		
+		for(int i = 0; i < subset.length; i++) {
+			for(int j = 0; j < subset[i].length; j++) {
+				subset[i][j] = arr[startI + i][startJ + j];
+			}
+		}
+		
+		return subset;
 	}
 	
 	public int[] getShape() {

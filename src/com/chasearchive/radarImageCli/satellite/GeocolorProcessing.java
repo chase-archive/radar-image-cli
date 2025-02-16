@@ -77,80 +77,97 @@ public class GeocolorProcessing {
 	}
 	
 	// temu geocolor
-	public static Color[][] createComposite(GoesMultibandImage goes) {
-		Color[][] trueColor = createTrueColorGoes(goes);
-		Color[][] irColor = createIRGoes(goes);
+	public static Color[][] createComposite(GoesMultibandImage goes, boolean[][] renderChunks, int chunkSize) {
+		Color[][] trueColor = createTrueColorGoes(goes, renderChunks, chunkSize);
+		Color[][] irColor = createIRGoes(goes, renderChunks, chunkSize);
 
 		Color[][] goesComposite = new Color[trueColor.length][trueColor[0].length];
 
 		for (int i = 0; i < goesComposite.length; i++) {
 			for (int j = 0; j < goesComposite[0].length; j++) {
-				goesComposite[i][j] = maxTristims(trueColor[i][j], irColor[i][j]);
+				if(renderChunks[i/chunkSize][j/chunkSize]) {
+					goesComposite[i][j] = maxTristims(trueColor[i][j], irColor[i][j]);
+				}
 			}
 		}
 
 		return goesComposite;
 	}
 	
-	public static Color[][] createTrueColorGoes(GoesMultibandImage goes) {
+	public static Color[][] createTrueColorGoes(GoesMultibandImage goes, boolean[][] renderChunks, int chunkSize) {
 		float[][] band1Rad = goes.field("band_1").array2D();
 		float[][] band2Rad = goes.field("band_2").array2D();
 		float[][] band3Rad = goes.field("band_3").array2D();
+		
+		// VERY IMPORTANT!! normalize radiances to the correct specific ranges
 
-		float[][] band1Clip = clip(band1Rad, 0, 1);
-		float[][] band2Clip = clip(band2Rad, 0, 1);
-		float[][] band3Clip = clip(band3Rad, 0, 1);
+		float[][] band1Clip = new float[band1Rad.length][band1Rad[0].length];
+		float[][] band2Clip = new float[band2Rad.length][band2Rad[0].length];
+		float[][] band3Clip = new float[band3Rad.length][band3Rad[0].length];
+		for (int i = 0; i < band2Clip.length; i++) {
+			for (int j = 0; j < band2Clip[i].length; j++) {
+				if(renderChunks[j/chunkSize][i/chunkSize]) {
+					band1Clip[i][j] = clip(band1Rad[i][j], 0, 1);
+					band3Clip[i][j] = clip(band3Rad[i][j], 0, 1);
+					band2Clip[i][j] = clip(band2Rad[i][j], 0, 1);
+				}
+			}
+		}
+		
+//		band1Clip = normalize(band1Rad, 0, 1);
+//		band2Clip = normalize(band2Rad, 0, 1);
+//		band3Clip = normalize(band3Rad, 0, 1);
 
 		final float GAMMA = 2.2f;
 
-		float[][] band1NormG = gammaCorrect(band1Clip, GAMMA);
-		float[][] band2NormG = gammaCorrect(band2Clip, GAMMA);
-		float[][] band3NormG = gammaCorrect(band3Clip, GAMMA);
-
-		float[][] syntheticGreen = new float[band3Rad.length][band3Rad[0].length];
-
-		for (int i = 0; i < syntheticGreen.length; i++) {
-			for (int j = 0; j < syntheticGreen[i].length; j++) {
-				// calculate the "true" green
-				syntheticGreen[i][j] = 0.325f * band2NormG[i][j] + 0.35f * band3NormG[i][j] + 0.325f * band1NormG[i][j];
+		float[][] band1NormG = new float[band1Clip.length][band1Clip[0].length];
+		float[][] band2NormG = new float[band2Clip.length][band2Clip[0].length];
+		float[][] band3NormG = new float[band3Clip.length][band3Clip[0].length];
+		for (int i = 0; i < band2Clip.length; i++) {
+			for (int j = 0; j < band2Clip[i].length; j++) {
+				if(renderChunks[j/chunkSize][i/chunkSize]) {
+					band1NormG[i][j] = gammaCorrect(band1Clip[i][j], GAMMA);
+					band3NormG[i][j] = gammaCorrect(band3Clip[i][j], GAMMA);
+					band2NormG[i][j] = gammaCorrect(band2Clip[i][j], GAMMA);
+				}
 			}
 		}
 
-		syntheticGreen = clip(syntheticGreen, 0, 1);
+		float[][] syntheticGreen = new float[band2Rad.length][band2Rad[0].length];
+
+		for (int i = 0; i < syntheticGreen.length; i++) {
+			for (int j = 0; j < syntheticGreen[i].length; j++) {
+				if(renderChunks[j/chunkSize][i/chunkSize]) {
+					// calculate the "true" green
+					syntheticGreen[i][j] = clip(0.375f * band2NormG[i][j] + 0.25f * band3NormG[i][j] + 0.375f * band1NormG[i][j], 0, 1);
+				}
+			}
+		}
 
 		float[][] red = band2NormG;
 		float[][] green = syntheticGreen;
 		float[][] blue = band1NormG;
 
-		boolean hiResRed = false;
-		if (red.length >= 2 * blue.length) {
-			hiResRed = true;
-		}
-
 		Color[][] goesComposite = new Color[green[0].length][green.length];
 
 		for (int i = 0; i < goesComposite[0].length; i++) {
 			for (int j = 0; j < goesComposite.length; j++) {
-				int r;
-				if (hiResRed) {
-					r = (int) (255 * red[2 * i][2 * j]);
-				} else {
-					r = (int) (255 * red[i][j]);
+				if(renderChunks[j/chunkSize][i/chunkSize]) {
+					int r = (int) (255 * red[i][j]);
+					int gr = (int) (255 * green[i][j]);
+					int b = (int) (255 * blue[i][j]);
+	
+					Color c = new Color(r, gr, b);
+	
+					goesComposite[j][i] = contrast(c, 48);
 				}
-
-				int gr = (int) (255 * green[i][j]);
-				int b = (int) (255 * blue[i][j]);
-
-				Color c = new Color(r, gr, b);
-
-				goesComposite[j][i] = contrast(c, 48);
 			}
 		}
 
 		return goesComposite;
 	}
 
-	public static Color[][] createIRGoes(GoesMultibandImage goes) {
+	public static Color[][] createIRGoes(GoesMultibandImage goes, boolean[][] renderChunks, int chunkSize) {
 		float[][] band7Temp = goes.field("band_7").array2D();
 		float[][] band13Temp = goes.field("band_13").array2D();
 
@@ -161,18 +178,20 @@ public class GeocolorProcessing {
 
 		for (int i = 0; i < goesComposite[0].length; i++) {
 			for (int j = 0; j < goesComposite.length; j++) {
-				float fog = band13Temp[i][j] - band7Temp[i][j];
-
-				float fogBlue = clip(linScale(0, 5, 0, 200, fog), 0, 200);
-
-				Color fogColor = new Color((int) (0.5 * fogBlue), (int) (0.75 * fogBlue), (int) (1.0 * fogBlue));
-				Color band13Color = new Color((int) band13Norm[i][j], (int) band13Norm[i][j],
-						(int) Double.max(band13Norm[i][j], fogBlue));
-
-				goesComposite[j][i] = maxTristims(fogColor, band13Color);
-
-				if (band13Temp[i][j] == -1024) {
-					goesComposite[j][i] = Color.BLACK;
+				if(renderChunks[j/chunkSize][i/chunkSize]) {
+					float fog = band13Temp[i][j] - band7Temp[i][j];
+	
+					float fogBlue = clip(linScale(0, 5, 0, 200, fog), 0, 200);
+	
+					Color fogColor = new Color((int) (0.5 * fogBlue), (int) (0.75 * fogBlue), (int) (1.0 * fogBlue));
+					Color band13Color = new Color((int) band13Norm[i][j], (int) band13Norm[i][j],
+							(int) Double.max(band13Norm[i][j], fogBlue));
+	
+					goesComposite[j][i] = maxTristims(fogColor, band13Color);
+	
+					if (band13Temp[i][j] == -1024) {
+						goesComposite[j][i] = Color.BLACK;
+					}
 				}
 			}
 		}
@@ -238,10 +257,6 @@ public class GeocolorProcessing {
 		
 		// VERY IMPORTANT!! normalize radiances to the correct specific ranges
 
-//		float[][] band1Clip = clip(band1Rad, 0, 1000);
-//		float[][] band2Clip = clip(band2Rad, 0, 1000);
-//		float[][] band3Clip = clip(band3Rad, 0, 1000);
-
 		float[][] band1Clip = new float[band1Rad.length][band1Rad[0].length];
 		float[][] band2Clip = new float[band2Rad.length][band2Rad[0].length];
 		float[][] band3Clip = new float[band3Rad.length][band3Rad[0].length];
@@ -284,7 +299,7 @@ public class GeocolorProcessing {
 			for (int j = 0; j < syntheticGreen[i].length; j++) {
 				if(renderChunks[j/chunkSize][i/chunkSize]) {
 					// calculate the "true" green
-					syntheticGreen[i][j] = clip(0.325f * band2NormG[i][j] + 0.35f * band3NormG[i / 2][j / 2] + 0.325f * band1NormG[i / 2][j / 2], 0, 1);
+					syntheticGreen[i][j] = clip(0.375f * band2NormG[i][j] + 0.25f * band3NormG[i / 2][j / 2] + 0.375f * band1NormG[i / 2][j / 2], 0, 1);
 				}
 			}
 		}
@@ -556,6 +571,44 @@ public class GeocolorProcessing {
 		}
 
 		return max;
+	}
+	
+	/**
+	 * 
+	 * @param arr
+	 * @param startI (inclusive)
+	 * @param endI (inclusive)
+	 * @return
+	 */
+	private static float[] subsetArray1D(float[] arr, int startI, int endI) {
+		float[] subset = new float[endI + 1 - startI];
+		
+		for(int i = 0; i < subset.length; i++) {
+			subset[i] = arr[startI + i];
+		}
+		
+		return subset;
+	}
+	
+	/**
+	 * 
+	 * @param arr
+	 * @param startI (inclusive)
+	 * @param endI (inclusive)
+	 * @param startJ (inclusive)
+	 * @param endJ (inclusive)
+	 * @return
+	 */
+	private static float[][] subsetArray2D(float[][] arr, int startI, int endI, int startJ, int endJ) {
+		float[][] subset = new float[endI + 1 - startI][endJ + 1 - startJ];
+		
+		for(int i = 0; i < subset.length; i++) {
+			for(int j = 0; j < subset[i].length; j++) {
+				subset[i][j] = arr[startI + i][startJ + j];
+			}
+		}
+		
+		return subset;
 	}
 
 	private static float linScale(float preMin, float preMax, float postMin, float postMax, float value) {
