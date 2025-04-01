@@ -94,10 +94,10 @@ public class SatelliteImageCli {
 		logger.println(lon, DebugLoggerLevel.BRIEF);
 		
 		try {
-			BufferedImage radar = SatelliteImageGenerator.generateSatellite(dt, lat, lon, settings);
+			BufferedImage satellite = SatelliteImageGenerator.generateSatellite(dt, lat, lon, settings);
 			
 			File outputFile = new File(outputFileString);
-			ImageIO.write(radar, "PNG", outputFile);
+			ImageIO.write(satellite, "PNG", outputFile);
 			logger.println("Output file to: " + outputFile.getAbsolutePath(), DebugLoggerLevel.BRIEF);
 			
 			try {

@@ -11,6 +11,7 @@ import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 import ucar.ma2.Array;
+import ucar.nc2.Attribute;
 import ucar.nc2.NetcdfFile;
 import ucar.nc2.Variable;
 
@@ -84,6 +85,117 @@ public class RadarScan {
 	@SuppressWarnings("deprecation")
 	public RadarScan(File file) throws IOException {
 		NetcdfFile ncfile = NetcdfFile.open(file.getAbsolutePath());
+		Variable reflHi = ncfile.findVariable("Reflectivity_HI");
+		
+		if(reflHi == null) {
+			initializeNoSuperRes(file);
+		} else {
+			initializeSuperRes(file);
+		}
+	}
+	
+	@SuppressWarnings("deprecation")
+	private void initializeNoSuperRes(File file) throws IOException {
+		NetcdfFile ncfile = NetcdfFile.open(file.getAbsolutePath());
+		System.out.println(ncfile);
+		
+		logger.println(ncfile, DebugLoggerLevel.BRIEF);
+		logger.println(Arrays.toString(ncfile.getGlobalAttributes().toArray()), DebugLoggerLevel.VERBOSE);
+		
+		String timestampStart = ncfile.findGlobalAttribute("time_coverage_start").getStringValue();
+		logger.println(timestampStart, DebugLoggerLevel.BRIEF);
+
+		// these fields don't exist in 
+//		String station = ncfile.findGlobalAttribute("Station").getStringValue();
+//
+//		radarLat = ncfile.findGlobalAttribute("StationLatitude").getNumericValue().doubleValue();
+//		radarLon = ncfile.findGlobalAttribute("StationLongitude").getNumericValue().doubleValue();
+//		
+//		if("PAHG".equals(station)) {
+//			radarLat = 60.72399361822732;
+//			radarLon = -151.3386685958528;
+//		}
+
+		logger.println(radarLat, DebugLoggerLevel.BRIEF);
+		logger.println(radarLon, DebugLoggerLevel.BRIEF);
+		
+		scanTime = new DateTime(
+				Integer.valueOf(timestampStart.substring(0, 4)),
+				Integer.valueOf(timestampStart.substring(5, 7)),
+				Integer.valueOf(timestampStart.substring(8, 10)),
+				Integer.valueOf(timestampStart.substring(11, 13)),
+				Integer.valueOf(timestampStart.substring(14, 16)),
+				Integer.valueOf(timestampStart.substring(17, 19)),
+				DateTimeZone.UTC
+			);
+		logger.println(scanTime, DebugLoggerLevel.BRIEF);
+		
+		Variable baseRefl = ncfile.findVariable("Reflectivity");
+		Variable baseReflAzi = ncfile.findVariable("azimuthR");
+		Variable baseReflTime = ncfile.findVariable("timeR");
+		Variable baseReflElev = ncfile.findVariable("elevationR");
+
+		Variable baseVlcy = ncfile.findVariable("RadialVelocity");
+		Variable baseVlcyAzi = ncfile.findVariable("azimuthV");
+		Variable baseVlcyTime = ncfile.findVariable("timeV");
+		Variable baseVlcyElev = ncfile.findVariable("elevationV");
+		
+//		float[] distVar = varToArray1D(baseReflDist);
+//		for(int i = 0; i < 10; i++) {
+//			System.out.println(i + ":\t" + distVar[i]);
+//		}
+
+		reflectivity = readNexradData(baseRefl, baseReflAzi, reflPostProc, -1024, -32.5, -1);
+		radialVelocity = readNexradData(baseVlcy, baseVlcyAzi, vlcyPostProc, -64.5, -64.0, -1);
+		
+		float[][] reflTimeRaw = varToArray2D(baseReflTime);
+		reflectivityTime = new float[reflTimeRaw.length];
+		for(int i = 0; i < reflectivityTime.length; i++) {
+			reflectivityTime[i] = reflTimeRaw[i][0] / 1000.0f;
+			
+			reflectivityTime[i] -= reflTimeRaw[0][0] / 1000.0f;
+		}
+		
+		float[][] reflElevRaw = varToArray2D(baseReflElev);
+		reflectivityElev = new float[reflElevRaw.length];
+		for(int i = 0; i < reflectivityElev.length; i++) {
+			float avgElev = 0.0f;
+			
+			for(int j = 0; j < reflElevRaw[i].length; j++) {
+				avgElev += reflElevRaw[i][j];
+			}
+			
+			reflectivityElev[i] = avgElev / 720.0f;
+		}
+		
+		float[][] vlcyTimeRaw = varToArray2D(baseVlcyTime);
+		velocityTime = new float[vlcyTimeRaw.length];
+		for(int i = 0; i < velocityTime.length; i++) {
+			velocityTime[i] = vlcyTimeRaw[i][0] / 1000.0f;
+			velocityTime[i] -= vlcyTimeRaw[0][0] / 1000.0f;
+		}
+		
+		float[][] vlcyElevRaw = varToArray2D(baseVlcyElev);
+		velocityElev = new float[vlcyElevRaw.length];
+		for(int i = 0; i < velocityElev.length; i++) {
+			float avgElev = 0.0f;
+			
+			for(int j = 0; j < vlcyElevRaw[i].length; j++) {
+				avgElev += vlcyElevRaw[i][j];
+			}
+			
+			velocityElev[i] = avgElev / 720.0f;
+		}
+		
+		dr = 1;
+		da = 360.0/367.0;
+		coneOfSilence = 0.5;
+		
+		ncfile.close();
+	}
+	
+	private void initializeSuperRes(File file) throws IOException {
+		NetcdfFile ncfile = NetcdfFile.open(file.getAbsolutePath());
 		
 		logger.println(ncfile, DebugLoggerLevel.BRIEF);
 		logger.println(Arrays.toString(ncfile.getGlobalAttributes().toArray()), DebugLoggerLevel.VERBOSE);
@@ -125,8 +237,8 @@ public class RadarScan {
 		Variable baseVlcyTime = ncfile.findVariable("timeV_HI");
 		Variable baseVlcyElev = ncfile.findVariable("elevationV_HI");
 
-		reflectivity = readNexradData(baseRefl, baseReflAzi, reflPostProc, -1024, -32.5, -1);
-		radialVelocity = readNexradData(baseVlcy, baseVlcyAzi, vlcyPostProc, -64.5, -64.0, -1);
+		reflectivity = readNexradDataSuperRes(baseRefl, baseReflAzi, reflPostProc, -1024, -32.5, -1);
+		radialVelocity = readNexradDataSuperRes(baseVlcy, baseVlcyAzi, vlcyPostProc, -64.5, -64.0, -1);
 		
 		float[][] reflTimeRaw = varToArray2D(baseReflTime);
 		reflectivityTime = new float[reflTimeRaw.length];
@@ -167,9 +279,11 @@ public class RadarScan {
 			
 			velocityElev[i] = avgElev / 720.0f;
 		}
+		
+		ncfile.close();
 	}
 
-	private static float[][][] readNexradData(Variable rawData, Variable azimuths, PostProc proc, double ndValue,
+	private static float[][][] readNexradDataSuperRes(Variable rawData, Variable azimuths, PostProc proc, double ndValue,
 			double rfValue, int maxAmtTilts) throws IOException {
 		if(rawData == null) return new float[1][720][1832];
 		
@@ -262,6 +376,104 @@ public class RadarScan {
 		return data;
 	}
 
+	private static float[][][] readNexradData(Variable rawData, Variable azimuths, PostProc proc, double ndValue,
+			double rfValue, int maxAmtTilts) throws IOException {
+		if(rawData == null) return new float[1][367][460];
+		
+		int[] shape = rawData.getShape();
+		Array _data = null;
+		Array _azi = null;
+
+//		System.out.println("maxamttilt check: " + shape[0] + "\t" + maxAmtTilts);
+
+		if (maxAmtTilts != -1)
+			shape[0] = Integer.min(shape[0], maxAmtTilts);
+		
+		if(azimuths == null) {
+			System.err.println("readNexradData() - azimuths is null!");
+			return new float[1][720][1832];
+		}
+
+		_data = rawData.read();
+		_azi = azimuths.read();
+
+		@SuppressWarnings("deprecation")
+		boolean isDiffRefl = ("DifferentialReflectivity_HI".equals(rawData.getName()));
+
+		if (isDiffRefl) {
+//			System.out.println(Arrays.toString(shape));
+		}
+
+		double[][] azi = new double[shape[0]][shape[1]];
+		for (int h = 0; h < _azi.getSize(); h++) {
+			int i = h / (shape[1]);
+			int j = h % shape[1];
+
+			if (i >= shape[0])
+				break;
+
+			azi[i][j] = _azi.getDouble(h);
+		}
+
+		float[][][] data = new float[shape[0]][shape[1]][shape[2]];
+//		System.out.print(data.length + "\t");
+//		System.out.print(data[0].length + "\t");
+//		System.out.println(data[0][0].length);
+		for (int h = 0; h < _data.getSize(); h++) {
+			int i = h / (shape[1] * shape[2]);
+			int j = h / (shape[2]) % shape[1];
+			int k = h % shape[2];
+
+			if (i >= shape[0])
+				break;
+
+			if (isDiffRefl) {
+				if (k % 2 == 1) {
+					k /= 2;
+				} else {
+					k /= 2;
+					k += shape[2] / 2;
+				}
+			}
+
+			float record = proc.process(_data.getFloat(h));
+
+//			int[] coords = { h, i, j, k };
+
+			if (isDiffRefl) {
+//				if(i == 0 && h % shape[2] < 6) {
+//					System.out.printf("%25s", Arrays.toString(coords) + " " + record);
+//				}
+//				
+//				if(i == 0 && k == 6) {
+//					System.out.println();
+//				}
+			}
+
+			int selectedRadial = (int) Math.floor(shape[1]/360.0 * azi[0][0]) + j;
+			if(selectedRadial >= shape[1]) {
+				selectedRadial -= shape[1];
+			}
+			
+			if (record == ndValue) {
+				data[i]
+						[selectedRadial]
+								[k] = -1024;
+			} else if (record == rfValue) {
+				data[i][selectedRadial][k] = -2048;
+			} else {
+				data[i][selectedRadial][k] = record;
+			}
+		}
+
+//		System.out.println(rawData);
+//		System.out.println(rawData.getName());
+//		System.out.println(Arrays.toString(shape));
+//		System.out.println();
+
+		return data;
+	}
+
 	private float[][] varToArray2D(Variable v) {
 		if(v == null) return new float[0][0];
 		
@@ -284,6 +496,28 @@ public class RadarScan {
 		return new float[0][0];
 	}
 
+	private static float[] varToArray1D(Variable v) {
+		int[] shape = v.getShape();
+		Array _data = null;
+
+		try {
+			_data = v.read();
+		} catch (IOException e) {
+			e.printStackTrace();
+			return new float[shape[0]];
+		}
+
+		float[] data = new float[shape[0]];
+		for (int i = 0; i < _data.getSize(); i++) {
+			int t = i;
+
+			float record = _data.getFloat(i);
+
+			data[t] = record;
+		}
+
+		return data;
+	}
 
 	public float[][][] getReflectivity() {
 		if (reflectivity == null)

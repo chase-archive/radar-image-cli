@@ -47,6 +47,7 @@ import com.chasearchive.radarImageCli.City;
 import com.chasearchive.radarImageCli.ColorTable;
 import com.chasearchive.radarImageCli.DebugLoggerLevel;
 import com.chasearchive.radarImageCli.PointD;
+import com.chasearchive.radarImageCli.RadarGeneratorSettings;
 import com.chasearchive.radarImageCli.RadarImageGenerator;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
@@ -187,16 +188,20 @@ public class SatelliteImageGenerator {
 			System.out.println("download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
 			
 			System.out.println(gridsatFile);
-
-			long fileLoadStartTime = System.currentTimeMillis();
-			GridsatImage gridsat = GridsatImage.loadFromFile(gridsatFile);
-			long fileLoadEndTime = System.currentTimeMillis();
-			System.out.println("file load time: " + (fileLoadEndTime - fileLoadStartTime)/1000.0 + " s");
-
-			long plotStartTime = System.currentTimeMillis();
-			satPlot = generateSatellitePlot(gridsat, time, lat, lon, settings, plotProj);
-			long plotEndTime = System.currentTimeMillis();
-			System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
+			
+			if(gridsatFile != null) {
+				long fileLoadStartTime = System.currentTimeMillis();
+				GridsatImage gridsat = GridsatImage.loadFromFile(gridsatFile);
+				long fileLoadEndTime = System.currentTimeMillis();
+				System.out.println("file load time: " + (fileLoadEndTime - fileLoadStartTime)/1000.0 + " s");
+	
+				long plotStartTime = System.currentTimeMillis();
+				satPlot = generateSatellitePlot(gridsat, time, lat, lon, settings, plotProj);
+				long plotEndTime = System.currentTimeMillis();
+				System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
+			} else {
+				satPlot = null;
+			}
 		}
 
 //		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
@@ -210,11 +215,18 @@ public class SatelliteImageGenerator {
 		g.setColor(Color.BLACK);
 		g.fillRect(0, 0, basemap.getWidth(), basemap.getHeight());
 
-		g.drawImage(satPlot, 0, 0, null);
+		if(satPlot != null) {
+			g.drawImage(satPlot, 0, 0, null);
+		}
 		g.drawImage(basemap, 0, 0, null);
-		g.drawImage(citiesPlot, 0, 0, null);
-//		g.drawImage(warningPlot, 0, 0, null);
+		if(satPlot != null) {
+			g.drawImage(citiesPlot, 0, 0, null);
+//			g.drawImage(warningPlot, 0, 0, null);
+		}
 		g.drawImage(logo, 0, 0, null);
+		if(satPlot == null) {
+			g.drawImage(noDataAvailableNotice(settings), 0, 0, null);
+		}
 
 //		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
 //		g.setColor(Color.WHITE);
@@ -1669,6 +1681,24 @@ public class SatelliteImageGenerator {
 		return warningPlot;
 	}
 
+	private static final Font NOTICE_FONT = new Font(Font.MONOSPACED, Font.BOLD + Font.ITALIC, 36);
+	private static BufferedImage noDataAvailableNotice(SatelliteGeneratorSettings settings) {
+		BufferedImage noticePlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
+				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g = noticePlot.createGraphics();
+		g.setFont(NOTICE_FONT);
+		
+		int centerX = noticePlot.getWidth() / 2;
+		int centerY = noticePlot.getHeight() / 2;
+		
+		g.setColor(new Color(220, 20, 60));
+		drawCenteredOutlinedString("DATA IS NOT AVAILABLE.", g, centerX, centerY);
+		
+		g.dispose();
+		
+		return noticePlot;
+	}
+
 	private static final int TIME_TOLERANCE = 20; // minutes
 	private static final DateTime GRIDSAT_GOES_16_OPERATIONAL_CUTOFF = new DateTime(2017, 3, 1, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GRIDSAT_END = new DateTime(2018, 1, 1, 0, 0, DateTimeZone.UTC);
@@ -2278,6 +2308,38 @@ public class SatelliteImageGenerator {
 		int ht = fm.getAscent() + fm.getDescent();
 		int width = fm.stringWidth(s);
 		g.drawString(s, x - width / 2, y + (fm.getAscent() - ht / 2));
+	}
+
+	public static void drawOutlinedString(String s, Graphics2D g, int x, int y, Color c) {
+		g.setColor(Color.BLACK);
+		g.drawString(s, x - 1, y - 1);
+		g.drawString(s, x - 1, y);
+		g.drawString(s, x - 1, y + 1);
+		g.drawString(s, x, y - 1);
+		g.drawString(s, x, y + 1);
+		g.drawString(s, x + 1, y - 1);
+		g.drawString(s, x + 1, y);
+		g.drawString(s, x + 1, y + 1);
+
+		g.setColor(c);
+		g.drawString(s, x, y);
+	}
+
+	public static void drawCenteredOutlinedString(String s, Graphics2D g, int x, int y) {
+		Color c = g.getColor();
+		
+		g.setColor(Color.BLACK);
+		drawCenteredString(s, g, x - 1, y - 1);
+		drawCenteredString(s, g, x - 1, y);
+		drawCenteredString(s, g, x - 1, y + 1);
+		drawCenteredString(s, g, x, y - 1);
+		drawCenteredString(s, g, x, y + 1);
+		drawCenteredString(s, g, x + 1, y - 1);
+		drawCenteredString(s, g, x + 1, y);
+		drawCenteredString(s, g, x + 1, y + 1);
+
+		g.setColor(c);
+		drawCenteredString(s, g, x, y);
 	}
 
 	private static ArrayList<ArrayList<PointD>> getPolygons(File kml) {
