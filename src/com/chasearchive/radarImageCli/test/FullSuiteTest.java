@@ -9,10 +9,10 @@ import com.chasearchive.radarImageCli.satellite.SatelliteImageCli;
 public class FullSuiteTest {
 	public static void main(String[] args) {
 		// Case info
-		DateTime time = new DateTime(1999, 5, 4, 0, 30, DateTimeZone.UTC);
-		double lat = 35.33088658087733;
-		double lon = -97.44403457545207;
-		String caseName = "moore1999tore";
+		DateTime time = new DateTime(2024, 5, 3, 0, 15, 0, DateTimeZone.UTC);
+		double lat = 32.607;
+		double lon = -99.855;
+		String caseName = "hawley2024";
 
 		// Run full suite
 		runSuite(time, lat, lon, caseName);
@@ -29,10 +29,10 @@ public class FullSuiteTest {
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
 				"-a", "1:1", "-s", "2.0", "-c", "MRMS", "-r", "1200", "-debug", "SILENT", "-o", "caseTests/radreg-" + caseName + ".png"};
 		String[] argsSatReg = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "1:1", "-s", "2.0", "-r", "1200", "-debug", "SILENT", "-o", "caseTests/satreg-" + caseName + ".png"};
+				"-a", "4:3", "-s", "2.0", "-r", "1080", "-debug", "SILENT", "-o", "caseTests/satreg-" + caseName + ".png"};
 
-		RadarImageCli.main(argsRadLoc);
-		RadarImageCli.main(argsRadReg);
+//		RadarImageCli.main(argsRadLoc);
+//		RadarImageCli.main(argsRadReg);
 		SatelliteImageCli.main(argsSatReg);
 	}
 }

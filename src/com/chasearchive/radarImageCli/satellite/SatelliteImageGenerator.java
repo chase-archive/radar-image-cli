@@ -887,7 +887,7 @@ public class SatelliteImageGenerator {
 		case GEOCOLOR:
 			chunkSizeInBand = 100;
 			
-			satColors = GeocolorProcessing.createComposite(goes[0], goes[1], goes[2], goes[3], goes[4], renderChunk, chunkSizeInBand);
+			satColors = GeocolorProcessing.createComposite(goes[0], goes[1], goes[2], goes[3], goes[4], satProj, time, renderChunk, chunkSizeInBand);
 
 			x = goes[1].field("x").array1D();
 			y = goes[1].field("y").array1D();
@@ -1704,7 +1704,7 @@ public class SatelliteImageGenerator {
 	private static final DateTime GRIDSAT_END = new DateTime(2018, 1, 1, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GOES_17_OPERATIONAL_START = new DateTime(2018, 8, 28, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GOES_17_18_OPERATIONAL_CUTOFF = new DateTime(2023, 1, 3, 0, 0, DateTimeZone.UTC);
-	private static final DateTime GOES_16_19_OPERATIONAL_CUTOFF = new DateTime(2099, 1, 1, 0, 0, DateTimeZone.UTC);
+	private static final DateTime GOES_16_19_OPERATIONAL_CUTOFF = new DateTime(2025, 4, 7, 15, 0, DateTimeZone.UTC);
 
 	private static File[] getGoesData(DateTime time, SatelliteSource source, SatelliteSector sector)
 			throws NoValidSatelliteScansFoundException {
