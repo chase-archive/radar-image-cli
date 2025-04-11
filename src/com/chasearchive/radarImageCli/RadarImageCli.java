@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 
 import javax.imageio.ImageIO;
 
@@ -24,7 +25,7 @@ public class RadarImageCli {
 		double lat = -1024;
 		double lon = -1024;
 		RadarGeneratorSettings settings = new RadarGeneratorSettings();
-		String outputFileString = null;
+		String outputFolderString = null;
 		
 		// flag/argument parsing logic
 		for(int i = 0; i < args.length; i+=2) {
@@ -52,6 +53,8 @@ public class RadarImageCli {
 			} else if("-a".equals(flag)) {
 				if("1:1".equals(arg)) {
 					settings.setAspectRatio(AspectRatio.SQUARE);
+				} else if("3:2".equals(arg)) {
+					settings.setAspectRatio(AspectRatio.THREE_TWO);
 				} else if("4:3".equals(arg)) {
 					settings.setAspectRatio(AspectRatio.FOUR_THREE);
 				} else if("16:9".equals(arg)) {
@@ -89,8 +92,18 @@ public class RadarImageCli {
 				} else {
 					continue;
 				}
+			} else if("-lyr".equals(flag)) {
+				if("COMPOSITE".equals(arg)) {
+					settings.setLayering(Layering.COMPOSITE_ONLY);
+				} else if("SEPARATE".equals(arg)) {
+					settings.setLayering(Layering.SEPARATE_ONLY);
+				} else if("BOTH".equals(arg)) {
+					settings.setLayering(Layering.BOTH);
+				} else {
+					continue;
+				}
 			} else if("-o".equals(flag)) {
-				outputFileString = arg;
+				outputFolderString = arg;
 			} else {
 				continue; // no flags recognized, carry on to next one
 			}
@@ -101,11 +114,22 @@ public class RadarImageCli {
 		logger.println(lon, DebugLoggerLevel.BRIEF);
 		
 		try {
-			BufferedImage radar = RadarImageGenerator.generateRadar(dt, lat, lon, settings);
+			HashMap<String, BufferedImage> images = RadarImageGenerator.generateRadar(dt, lat, lon, settings);
+			String caseType = caseTypeStr(settings);
 			
-			File outputFile = new File(outputFileString);
-			ImageIO.write(radar, "PNG", outputFile);
-			logger.println("Output file to: " + outputFile.getAbsolutePath(), DebugLoggerLevel.BRIEF);
+			String exportDirectory = outputFolderString + "/" + caseType + "/";
+			new File(exportDirectory).mkdirs();
+			
+			for(String imgName : images.keySet()) {
+				System.out.println("imgName: " + imgName);
+				File outputFile = new File(exportDirectory + imgName);
+				BufferedImage image = images.get(imgName);
+				
+				if(image != null) {
+					ImageIO.write(image, "PNG", outputFile);
+					logger.println("Output file to: " + outputFile.getAbsolutePath(), DebugLoggerLevel.BRIEF);
+				}
+			}
 			
 			try {
 				FileUtils.deleteDirectory(new File("radar-image-generator-temp"));
@@ -125,5 +149,17 @@ public class RadarImageCli {
 			
 			System.exit(1);
 		}
+	}
+
+	private static String caseTypeStr(RadarGeneratorSettings settings) {
+		String caseType = "radar-";
+
+		if (settings.getSource() == Source.NEXRAD) {
+			caseType += "local";
+		} else if (settings.getSource() == Source.MRMS) {
+			caseType += "regional";
+		}
+		
+		return caseType;
 	}
 }

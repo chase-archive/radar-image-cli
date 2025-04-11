@@ -13,16 +13,17 @@ There are four mandatory flags and four additional optional flags that can be us
 | -dt  | UTC date and time of the case. Formatted as yyyymmdd_hhmm.  |
 | -lat  | Latitude of case, in degrees north.  |
 | -lon  | Longitude of case, in degrees east.  |
-| -o | Output file name. File is made in the same directory as the JAR file. |
-| -a (optional) | Aspect ratio of image. Options are "1:1", "4:3", and "16:9". <br> Default is "1:1". |
+| -o | Output folder name. Folder is made in the same directory as the JAR file. |
+| -a (optional) | Aspect ratio of image. Options are "1:1", "4:3", "3:2", and "16:9". <br> Default is "3:2". |
 | -m (optional) | "Moment" from the NEXRAD file. <br> Options are "BR" (base reflectivity) and "BV" (base velocity). <br> Default is "BR". |
 | -s (optional) | Size of image, in degrees of arc from the center of the image to the edge. <br> Default is 0.5. |
 | -c (optional) | Source of data. <br> Options are "NEXRAD" and "MRMS". <br> Default is "NEXRAD". |
 | -r (optional) | Resolution of image, in pixels. Default is 1080. |
+| -lyr (optional) | Whether to export as one image or as individual layers. <br> Options are "COMPOSITE", "SEPARATE", and "BOTH". <br> Default is "COMPOSITE".  |
 
 A more detailed CLI call may look like this:
 
-`java -jar RadarImageCLI.jar -dt 20240430_2353 -lat 34.86 -lon -98.96 -a 4:3 -m BV -r 720 -s 2.0 -o radargen-case-rooseveltOk.png`
+`java -jar RadarImageCLI.jar -dt 20240430_2353 -lat 34.86 -lon -98.96 -a 4:3 -m BV -r 720 -s 2.0 -lyr BOTH -o radargen-case-rooseveltOk.png`
 
 NOTES: 
 * This prototype is built in Java, since most of my already-existing code was in Java and the reuse of that code allowed for faster development. I am considering switching from Java to C++ later on for the best possible speed.
@@ -41,12 +42,13 @@ There are four mandatory flags and four additional optional flags that can be us
 | -dt  | UTC date and time of the case. Formatted as yyyymmdd_hhmm.  |
 | -lat  | Latitude of case, in degrees north.  |
 | -lon  | Longitude of case, in degrees east.  |
-| -o | Output file name. File is made in the same directory as the JAR file. |
-| -a (optional) | Aspect ratio of image. Options are "1:1", "4:3", and "16:9". <br> Default is "1:1". |
+| -o | Output folder name. Folder is made in the same directory as the JAR file. |
+| -a (optional) | Aspect ratio of image. Options are "1:1", "4:3", "3:2", and "16:9". <br> Default is "3:2". |
 | -t (optional) | Type of satellite image to plot. <br> Options are "VIS" (Visible/Geocolor) and "LIR" (Longwave IR). <br> Default is "VIS". |
 | -s (optional) | Size of image, in degrees of arc from the center of the image to the edge. <br> Default is 0.5. |
 | -r (optional) | Resolution of image, in pixels. Default is 1080. |
+| -lyr (optional) | Whether to export as one image or as individual layers. <br> Options are "COMPOSITE", "SEPARATE", and "BOTH". <br> Default is "COMPOSITE".  |
 
 A more detailed CLI call may look like this:
 
-`java -jar RadarImageCLI.jar -dt 20240430_2353 -lat 34.86 -lon -98.96 -a 4:3 -t LIR -r 720 -s 2.0 -o satgen-case-rooseveltOk-LIR.png`
+`java -jar RadarImageCLI.jar -dt 20240430_2353 -lat 34.86 -lon -98.96 -a 4:3 -t LIR -r 720 -s 2.0 -lyr BOTH -o satgen-case-rooseveltOk-LIR.png`

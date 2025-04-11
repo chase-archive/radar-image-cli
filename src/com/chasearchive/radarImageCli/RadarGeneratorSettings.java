@@ -1,11 +1,12 @@
 package com.chasearchive.radarImageCli;
 
 public class RadarGeneratorSettings {
-	private AspectRatio aspectRatio = AspectRatio.SQUARE;
+	private AspectRatio aspectRatio = AspectRatio.FOUR_THREE;
 	private Moment moment = Moment.REFLECTIVITY;
 	private Source source = Source.NEXRAD;
 	private double size = 0.5; // domain height in degrees
 	private double resolution = 1080; // height in pixels
+	private Layering layering = Layering.COMPOSITE_ONLY;
 	
 	public AspectRatio getAspectRatio() {
 		return aspectRatio;
@@ -13,12 +14,14 @@ public class RadarGeneratorSettings {
 	
 	public double getAspectRatioFloat() {
 		switch(aspectRatio) {
-		case FOUR_THREE:
-			return 4.0/3.0;
-		case SIXTEEN_NINE:
-			return 16.0/9.0;
 		case SQUARE:
 			return 1;
+		case FOUR_THREE:
+			return 4.0/3.0;
+		case THREE_TWO:
+			return 3.0/2.0;
+		case SIXTEEN_NINE:
+			return 16.0/9.0;
 		default:
 			return 1;
 		}
@@ -58,5 +61,13 @@ public class RadarGeneratorSettings {
 
 	public void setSource(Source source) {
 		this.source = source;
+	}
+
+	public Layering getLayering() {
+		return layering;
+	}
+
+	public void setLayering(Layering layering) {
+		this.layering = layering;
 	}
 }

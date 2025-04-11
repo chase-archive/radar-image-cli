@@ -9,10 +9,10 @@ import com.chasearchive.radarImageCli.satellite.SatelliteImageCli;
 public class FullSuiteTest {
 	public static void main(String[] args) {
 		// Case info
-		DateTime time = new DateTime(2024, 5, 3, 0, 15, 0, DateTimeZone.UTC);
-		double lat = 32.607;
-		double lon = -99.855;
-		String caseName = "hawley2024";
+		DateTime time = new DateTime(2019, 5, 7, 20, 36, 0, DateTimeZone.UTC);
+		double lat = 36.04;
+		double lon = -101.25;
+		String caseName = "spearman-2019";
 
 		// Run full suite
 		runSuite(time, lat, lon, caseName);
@@ -25,14 +25,17 @@ public class FullSuiteTest {
 		String _lon = String.valueOf(lon);
 		
 		String[] argsRadLoc = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "1:1", "-s", "0.5", "-r", "1200", "-debug", "SILENT", "-o", "caseTests/radloc-" + caseName + ".png"};
+				"-a", "4:3", "-s", "0.5", "-r", "1080", "-debug", "SILENT", "-lyr", "BOTH", "-o", "caseTests/" + caseName};
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "1:1", "-s", "2.0", "-c", "MRMS", "-r", "1200", "-debug", "SILENT", "-o", "caseTests/radreg-" + caseName + ".png"};
-		String[] argsSatReg = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "4:3", "-s", "2.0", "-r", "1080", "-debug", "SILENT", "-o", "caseTests/satreg-" + caseName + ".png"};
-
-//		RadarImageCli.main(argsRadLoc);
-//		RadarImageCli.main(argsRadReg);
-		SatelliteImageCli.main(argsSatReg);
+				"-a", "4:3", "-s", "2.0", "-c", "MRMS", "-r", "1080", "-debug", "SILENT", "-lyr", "BOTH", "-o", "caseTests/" + caseName};
+		String[] argsSatVis = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
+				"-a", "4:3", "-s", "2.0", "-r", "1080", "-debug", "SILENT", "-lyr", "BOTH", "-o", "caseTests/" + caseName};
+		String[] argsSatLir = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
+				"-a", "4:3", "-s", "2.0", "-t", "LIR", "-r", "1080", "-debug", "SILENT", "-lyr", "BOTH", "-o", "caseTests/" + caseName};
+		
+		RadarImageCli.main(argsRadLoc);
+		RadarImageCli.main(argsRadReg);
+		SatelliteImageCli.main(argsSatVis);
+		SatelliteImageCli.main(argsSatLir);
 	}
 }

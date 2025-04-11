@@ -46,8 +46,8 @@ import com.ameliaWx.wxArchives.earthWeather.iemWarnings.WarningPolygon;
 import com.chasearchive.radarImageCli.City;
 import com.chasearchive.radarImageCli.ColorTable;
 import com.chasearchive.radarImageCli.DebugLoggerLevel;
+import com.chasearchive.radarImageCli.Layering;
 import com.chasearchive.radarImageCli.PointD;
-import com.chasearchive.radarImageCli.RadarGeneratorSettings;
 import com.chasearchive.radarImageCli.RadarImageGenerator;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
@@ -73,7 +73,7 @@ public class SatelliteImageGenerator {
 		}
 	}
 
-	public static BufferedImage generateSatellite(DateTime time, double lat, double lon,
+	public static HashMap<String, BufferedImage> generateSatellite(DateTime time, double lat, double lon,
 			SatelliteGeneratorSettings settings) throws IOException {
 		SatelliteSource source = SatelliteSource.GOES_EAST;
 		SatelliteSector sector = SatelliteSector.GOES_CONUS;
@@ -131,7 +131,7 @@ public class SatelliteImageGenerator {
 				long downloadStartTime = System.currentTimeMillis();
 				File[] satFiles = null;
 				try {
-					satFiles = getGoesData(time, settings.getSource(), settings.getSector());
+					satFiles = getGoesData(time, settings.getImageType(), settings.getSource(), settings.getSector());
 				} catch (NoValidSatelliteScansFoundException e) {
 					e.printStackTrace();
 				}
@@ -206,11 +206,27 @@ public class SatelliteImageGenerator {
 
 //		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
 		BufferedImage citiesPlot = generateCityPlot(lat, lon, settings, plotProj);
+		BufferedImage availabilityNoticeLayer = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);;
 
 		BufferedImage logo = ImageIO.read(RadarImageGenerator.loadResourceAsFile("res/chase-archive-logo-256pix.png"));
 
-		BufferedImage plot = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-		Graphics2D g = plot.createGraphics();
+		BufferedImage timestampLayer = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g = timestampLayer.createGraphics();
+
+		g.setColor(new Color(0, 0, 0, 96));
+		g.fillRect(0, timestampLayer.getHeight() - 56, 530, 56);
+		
+		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
+		g.setColor(Color.BLACK);
+		g.drawString(dateStringAlt(time), 9, basemap.getHeight() - 14);
+		g.drawString(dateStringAlt(time), 11, basemap.getHeight() - 16);
+		g.drawString(dateStringAlt(time), 9, basemap.getHeight() - 16);
+		g.drawString(dateStringAlt(time), 11, basemap.getHeight() - 14);
+		g.setColor(Color.WHITE);
+		g.drawString(dateStringAlt(time), 10, basemap.getHeight() - 15);
+		
+		BufferedImage compositePlot = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+		g = compositePlot.createGraphics();
 
 		g.setColor(Color.BLACK);
 		g.fillRect(0, 0, basemap.getWidth(), basemap.getHeight());
@@ -224,28 +240,28 @@ public class SatelliteImageGenerator {
 //			g.drawImage(warningPlot, 0, 0, null);
 		}
 		g.drawImage(logo, 0, 0, null);
+		g.drawImage(timestampLayer, 0, 0, null);
 		if(satPlot == null) {
-			g.drawImage(noDataAvailableNotice(settings), 0, 0, null);
+			availabilityNoticeLayer = noDataAvailableNotice(settings);
+			g.drawImage(availabilityNoticeLayer, 0, 0, null);
 		}
-
-//		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
-//		g.setColor(Color.WHITE);
-//		g.drawString("Ⓒ Chase Archive ", 3, basemap.getHeight() - 45);
-		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
-		g.setColor(Color.BLACK);
-		g.drawString(dateStringAlt(time), 2, basemap.getHeight() - 14);
-		g.drawString(dateStringAlt(time), 4, basemap.getHeight() - 16);
-		g.drawString(dateStringAlt(time), 2, basemap.getHeight() - 16);
-		g.drawString(dateStringAlt(time), 4, basemap.getHeight() - 14);
-		g.setColor(Color.WHITE);
-		g.drawString(dateStringAlt(time), 3, basemap.getHeight() - 15);
-//		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 24));
-//		g.setColor(Color.LIGHT_GRAY);
-//		g.drawString("chasearchive.com ", 63, basemap.getHeight() - 15);
 
 		g.dispose();
 
-		return plot;
+		HashMap<String, BufferedImage> imagesToExport = new HashMap<>();
+		
+		if (settings.getLayering() != Layering.COMPOSITE_ONLY) {
+			imagesToExport.put("basemap.png", basemap);
+			imagesToExport.put("cities.png", citiesPlot);
+			imagesToExport.put("availability.png", availabilityNoticeLayer);
+			imagesToExport.put("satellite.png", satPlot);
+			imagesToExport.put("timestamp.png", timestampLayer);
+		}
+		if (settings.getLayering() != Layering.SEPARATE_ONLY) {
+			imagesToExport.put("composite.png", compositePlot);
+		}
+
+		return imagesToExport;
 	}
 
 	public static DateTimeZone timeZone = DateTimeZone.forID("America/Chicago");
@@ -310,11 +326,11 @@ public class SatelliteImageGenerator {
 		geoboundariesADM1 = getPolygons(geoboundariesADM1Poly, geoboundariesADM1PolyMeta);
 
 		GeoCoord latLonProjected = plotProj.rotateLatLon(lon, lat);
-		System.out.println("latLonProjected (need to zero this out): " + latLonProjected);
-		GeoCoord latLonProjected1 = plotProj.rotateLatLon(lon, lat + 10);
-		System.out.println("latLonProjected (need to 10 this out): " + latLonProjected1);
-		GeoCoord latLonProjected2 = plotProj.rotateLatLon(lon + 10, lat);
-		System.out.println("latLonProjected (need to ??? this out): " + latLonProjected2);
+//		System.out.println("latLonProjected (need to zero this out): " + latLonProjected);
+//		GeoCoord latLonProjected1 = plotProj.rotateLatLon(lon, lat + 10);
+//		System.out.println("latLonProjected (need to 10 this out): " + latLonProjected1);
+//		GeoCoord latLonProjected2 = plotProj.rotateLatLon(lon + 10, lat);
+//		System.out.println("latLonProjected (need to ??? this out): " + latLonProjected2);
 		GeoCoord trueNorthPointer = plotProj.rotateLatLon(lon, lat + 0.01); // i love finite differencing
 
 		double trueNorth_dx = trueNorthPointer.getLat() - latLonProjected.getLat();
@@ -748,6 +764,10 @@ public class SatelliteImageGenerator {
 
 	private static BufferedImage generateSatellitePlot(GoesImage[] goes, DateTime time, double lat, double lon,
 			SatelliteGeneratorSettings settings, GeostationaryProjection satProj, RotateLatLonProjection plotProj) {
+		if(lat < -82 || lat > 82 || (lon > -1 && lon < 142)) {
+			return null;
+		}
+		
 		BufferedImage satPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = satPlot.createGraphics();
@@ -760,16 +780,16 @@ public class SatelliteImageGenerator {
 		DataField band13 = goes[4].field("rad");
 		int[] band13Shape = band13.getShape();
 
-		float[] redX = goes[1].field("x").array1D();
-		float[] redY = goes[1].field("y").array1D();
-		float redDx = goes[1].dataFromField("dx");
-		float redDy = goes[1].dataFromField("dy");
+		float[] lirX = goes[4].field("x").array1D();
+		float[] lirY = goes[4].field("y").array1D();
+		float lirDx = goes[4].dataFromField("dx");
+		float lirDy = goes[4].dataFromField("dy");
 		
 		// chunk optimization
 		long chunkStartTime = System.currentTimeMillis();
-		final int CHUNK_SIZE = 100;
-		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) redX.length/CHUNK_SIZE)]
-				[(int) Math.ceil((double) redY.length/CHUNK_SIZE)];
+		final int CHUNK_SIZE = 25;
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) lirX.length/CHUNK_SIZE)]
+				[(int) Math.ceil((double) lirY.length/CHUNK_SIZE)];
 		
 		int plotWidth = satPlot.getWidth();
 		int plotHeight = satPlot.getHeight();
@@ -781,27 +801,27 @@ public class SatelliteImageGenerator {
 				int i1High = (i + 1) * CHUNK_SIZE;
 				int j1High = (j + 1) * CHUNK_SIZE;
 				
-				if(i1High >= redX.length) {
-					i1High = redX.length - 1;
+				if(i1High >= lirX.length) {
+					i1High = lirX.length - 1;
 				}
 				
-				if(j1High >= redY.length) {
-					j1High = redY.length - 1;
+				if(j1High >= lirY.length) {
+					j1High = lirY.length - 1;
 				}
 				
 				int i1Mid = (i1Low + i1High)/2;
 				int j1Mid = (j1Low + j1High)/2;
 				
-				float x1 = -redX[i1Low] - redDx / 2.0f;
-				float y1 = redY[j1Low] - redDy / 2.0f;
-				float x2 = -redX[i1High] + redDx / 2.0f;
-				float y2 = redY[j1Low] - redDy / 2.0f;
-				float x3 = -redX[i1High] + redDx / 2.0f;
-				float y3 = redY[j1High] + redDy / 2.0f;
-				float x4 = -redX[i1Low] - redDx / 2.0f;
-				float y4 = redY[j1High] + redDy / 2.0f;
-				float x5 = -redX[i1Mid];
-				float y5 = redY[j1Mid];
+				float x1 = -lirX[i1Low] - lirDx / 2.0f;
+				float y1 = lirY[j1Low] - lirDy / 2.0f;
+				float x2 = -lirX[i1High] + lirDx / 2.0f;
+				float y2 = lirY[j1Low] - lirDy / 2.0f;
+				float x3 = -lirX[i1High] + lirDx / 2.0f;
+				float y3 = lirY[j1High] + lirDy / 2.0f;
+				float x4 = -lirX[i1Low] - lirDx / 2.0f;
+				float y4 = lirY[j1High] + lirDy / 2.0f;
+				float x5 = -lirX[i1Mid];
+				float y5 = lirY[j1Mid];
 
 				GeoCoord latLon1 = satProj.projectXYToLatLon(x1, y1);
 				GeoCoord latLon2 = satProj.projectXYToLatLon(x2, y2);
@@ -919,14 +939,14 @@ public class SatelliteImageGenerator {
 		long colorProcessingEndTime = System.currentTimeMillis();
 		System.out.println("color processing time: " + (colorProcessingEndTime - colorProcessingStartTime)/1000.0 + " s");
 
-		System.out.println("x[0]: " + x[0]);
-		System.out.println("y[0]: " + y[0]);
-		System.out.println("x[1400]: " + x[1400]);
-		System.out.println("y[1400]: " + y[1400]);
+//		System.out.println("x[0]: " + x[0]);
+//		System.out.println("y[0]: " + y[0]);
+//		System.out.println("x[1400]: " + x[1400]);
+//		System.out.println("y[1400]: " + y[1400]);
 
-		GeoCoord testLL = satProj.projectXYToLatLon(-x[200] - dx / 2.0f, y[200] - dy / 2.0f);
+//		GeoCoord testLL = satProj.projectXYToLatLon(-x[200] - dx / 2.0f, y[200] - dy / 2.0f);
 
-		System.out.println("testLL: " + testLL);
+//		System.out.println("testLL: " + testLL);
 		
 		long plottingStartTime = System.currentTimeMillis();
 		for (int i = 0; i < satColors.length; i++) {
@@ -989,7 +1009,11 @@ public class SatelliteImageGenerator {
 	}
 	
 	private static BufferedImage generateSatellitePlot(GoesMultibandImage goes, DateTime time, double lat, double lon,
-			SatelliteGeneratorSettings settings, GeostationaryProjection satProj, RotateLatLonProjection plotProj) {
+			SatelliteGeneratorSettings settings, GeostationaryProjection satProj, RotateLatLonProjection plotProj) {System.out.println(lat < -82);
+		if(lat < -82 || lat > 82 || (lon > -1 && lon < 142)) {
+			return null;
+		}
+		
 		BufferedImage satPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = satPlot.createGraphics();
@@ -1131,7 +1155,7 @@ public class SatelliteImageGenerator {
 		case GEOCOLOR:
 			chunkSizeInBand = 25;
 			
-			satColors = GeocolorProcessing.createComposite(goes, renderChunk, chunkSizeInBand);
+			satColors = GeocolorProcessing.createComposite(goes, satProj, renderChunk, chunkSizeInBand);
 
 			x = goes.field("x").array1D();
 			y = goes.field("y").array1D();
@@ -1241,6 +1265,10 @@ public class SatelliteImageGenerator {
 
 	private static BufferedImage generateSatellitePlot(GridsatImage gridsat, DateTime time, double lat, double lon,
 			SatelliteGeneratorSettings settings, RotateLatLonProjection plotProj) {
+		if(lat < -82 || lat > 82 || (lon > -1 && lon < 142)) {
+			return null;
+		}
+		
 		BufferedImage satPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = satPlot.createGraphics();
@@ -1706,7 +1734,7 @@ public class SatelliteImageGenerator {
 	private static final DateTime GOES_17_18_OPERATIONAL_CUTOFF = new DateTime(2023, 1, 3, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GOES_16_19_OPERATIONAL_CUTOFF = new DateTime(2025, 4, 7, 15, 0, DateTimeZone.UTC);
 
-	private static File[] getGoesData(DateTime time, SatelliteSource source, SatelliteSector sector)
+	private static File[] getGoesData(DateTime time, SatelliteImageType imageType, SatelliteSource source, SatelliteSector sector)
 			throws NoValidSatelliteScansFoundException {
 		// bypasses download, uses data on hard drive
 //		if(1 > 0) {
@@ -1981,15 +2009,27 @@ public class SatelliteImageGenerator {
 		try {
 			logger.println("try returning file: " + mostRecentBand1File, DebugLoggerLevel.BRIEF);
 
-			File band1File = downloadFile(mostRecentBand1File, "sat_band1.nc");
-			File band2File = downloadFile(mostRecentBand2File, "sat_band2.nc");
-			File band3File = downloadFile(mostRecentBand3File, "sat_band3.nc");
-			File band7File = downloadFile(mostRecentBand7File, "sat_band7.nc");
-			File band13File = downloadFile(mostRecentBand13File, "sat_band13.nc");
-
-			logger.println("returning file: " + mostRecentBand1File, DebugLoggerLevel.BRIEF);
-
-			return new File[] { band1File, band2File, band3File, band7File, band13File };
+			if(imageType == SatelliteImageType.GEOCOLOR) {
+				File band1File = downloadFile(mostRecentBand1File, "sat_band1.nc");
+				File band2File = downloadFile(mostRecentBand2File, "sat_band2.nc");
+				File band3File = downloadFile(mostRecentBand3File, "sat_band3.nc");
+				File band7File = downloadFile(mostRecentBand7File, "sat_band7.nc");
+				File band13File = downloadFile(mostRecentBand13File, "sat_band13.nc");
+		
+				logger.println("returning file: " + mostRecentBand1File, DebugLoggerLevel.BRIEF);
+		
+				return new File[] { band1File, band2File, band3File, band7File, band13File };
+			} else {
+//				File band1File = downloadFile(mostRecentBand1File, "sat_band1.nc");
+//				File band2File = downloadFile(mostRecentBand2File, "sat_band2.nc");
+//				File band3File = downloadFile(mostRecentBand3File, "sat_band3.nc");
+//				File band7File = downloadFile(mostRecentBand7File, "sat_band7.nc");
+				File band13File = downloadFile(mostRecentBand13File, "sat_band13.nc");
+		
+				logger.println("returning file: " + mostRecentBand1File, DebugLoggerLevel.BRIEF);
+		
+				return new File[] { null, null, null, null, band13File };
+			}
 		} catch (IOException e) {
 			return null;
 		}
@@ -2464,7 +2504,7 @@ public class SatelliteImageGenerator {
 			kbDownloaded += 16;
 			
 			if((kbDownloaded/1024.0)%8 == 0) {
-				System.out.printf("%d MB downloaded... (%d)\n", (kbDownloaded/1024), kbDownloaded);
+//				System.out.printf("%d MB downloaded... (%d)\n", (kbDownloaded/1024), kbDownloaded);
 			}
 		}
 		is.close();
@@ -2499,6 +2539,7 @@ public class SatelliteImageGenerator {
 	 * @param endI (inclusive)
 	 * @return
 	 */
+	@SuppressWarnings("unused")
 	private static float[] subsetArray1D(float[] arr, int startI, int endI) {
 		float[] subset = new float[endI + 1 - startI];
 		
@@ -2518,6 +2559,7 @@ public class SatelliteImageGenerator {
 	 * @param endJ (inclusive)
 	 * @return
 	 */
+	@SuppressWarnings("unused")
 	private static float[][] subsetArray2D(float[][] arr, int startI, int endI, int startJ, int endJ) {
 		float[][] subset = new float[endI + 1 - startI][endJ + 1 - startJ];
 		

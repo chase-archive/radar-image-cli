@@ -49,8 +49,6 @@ import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.tsv.TsvParser;
 import com.univocity.parsers.tsv.TsvParserSettings;
 
-import ucar.nc2.NetcdfFile;
-
 public class RadarImageGenerator {
 	public static ArrayList<City> cities;
 	static {
@@ -59,7 +57,7 @@ public class RadarImageGenerator {
 		loadRadarSites();
 	}
 
-	public static BufferedImage generateRadar(DateTime time, double lat, double lon, RadarGeneratorSettings settings)
+	public static HashMap<String, BufferedImage> generateRadar(DateTime time, double lat, double lon, RadarGeneratorSettings settings)
 			throws IOException {
 		RotateLatLonProjection plotProj = new RotateLatLonProjection(lat, lon, 111.32, 111.32, 1000, 1000);
 
@@ -75,24 +73,24 @@ public class RadarImageGenerator {
 				e.printStackTrace();
 			}
 
-			if (radarFile != null) {				
+			if (radarFile != null) {
 				if (radarFile.getAbsolutePath().endsWith(".gz")) {
-	
+
 					File radarFileUnzipped = unzipGz(radarFile);
-	
+
 					radarFile = radarFileUnzipped;
 				}
-	
+
 				RadarScan radarScan = new RadarScan(radarFile);
-				
-				if(radarScan.radarLat == 0) {
+
+				if (radarScan.radarLat == 0) {
 					String station = radarFile.getName().substring(6, 10);
 					PointD stationCoords = radarSiteMap.get(station).getSiteCoords();
-					
+
 					radarScan.radarLat = stationCoords.getX();
 					radarScan.radarLon = stationCoords.getY();
 				}
-	
+
 				radarPlot = generateRadarPlot(radarScan, time, lat, lon, settings, plotProj);
 			} else {
 				radarPlot = null;
@@ -103,46 +101,63 @@ public class RadarImageGenerator {
 
 		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
 		BufferedImage citiesPlot = generateCityPlot(lat, lon, settings, plotProj);
+		BufferedImage availabilityNoticeLayer = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);;
 
 		BufferedImage logo = ImageIO.read(loadResourceAsFile("res/chase-archive-logo-256pix.png"));
 
-		BufferedImage plot = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
-		Graphics2D g = plot.createGraphics();
+		BufferedImage timestampLayer = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g = timestampLayer.createGraphics();
 
+		g.setColor(new Color(0, 0, 0, 96));
+		g.fillRect(0, timestampLayer.getHeight() - 56, 530, 56);
+		
+		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
+		g.setColor(Color.BLACK);
+		g.drawString(dateStringAlt(time), 9, basemap.getHeight() - 14);
+		g.drawString(dateStringAlt(time), 11, basemap.getHeight() - 16);
+		g.drawString(dateStringAlt(time), 9, basemap.getHeight() - 16);
+		g.drawString(dateStringAlt(time), 11, basemap.getHeight() - 14);
+		g.setColor(Color.WHITE);
+		g.drawString(dateStringAlt(time), 10, basemap.getHeight() - 15);
+
+		BufferedImage compositePlot = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+		g = compositePlot.createGraphics();
+		
 		g.setColor(Color.BLACK);
 		g.fillRect(0, 0, basemap.getWidth(), basemap.getHeight());
 
-		if(radarPlot != null) {
+		if (radarPlot != null) {
 			g.drawImage(radarPlot, 0, 0, null);
 		}
 		g.drawImage(basemap, 0, 0, null);
-		if(radarPlot != null) {
+		if (radarPlot != null) {
 			g.drawImage(citiesPlot, 0, 0, null);
 			g.drawImage(warningPlot, 0, 0, null);
 		}
 		g.drawImage(logo, 0, 0, null);
-		if(radarPlot == null) {
-			g.drawImage(noDataAvailableNotice(settings), 0, 0, null);
+		g.drawImage(timestampLayer, 0, 0, null);
+		if (radarPlot == null) {
+			availabilityNoticeLayer = noDataAvailableNotice(settings);
+			g.drawImage(availabilityNoticeLayer, 0, 0, null);
 		}
-
-//		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
-//		g.setColor(Color.WHITE);
-//		g.drawString("Ⓒ Chase Archive ", 3, basemap.getHeight() - 45);
-		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
-		g.setColor(Color.BLACK);
-		g.drawString(dateStringAlt(time), 2, basemap.getHeight() - 14);
-		g.drawString(dateStringAlt(time), 4, basemap.getHeight() - 16);
-		g.drawString(dateStringAlt(time), 2, basemap.getHeight() - 16);
-		g.drawString(dateStringAlt(time), 4, basemap.getHeight() - 14);
-		g.setColor(Color.WHITE);
-		g.drawString(dateStringAlt(time), 3, basemap.getHeight() - 15);
-//		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 24));
-//		g.setColor(Color.LIGHT_GRAY);
-//		g.drawString("chasearchive.com ", 63, basemap.getHeight() - 15);
 
 		g.dispose();
 
-		return plot;
+		HashMap<String, BufferedImage> imagesToExport = new HashMap<>();
+		
+		if (settings.getLayering() != Layering.COMPOSITE_ONLY) {
+			imagesToExport.put("basemap.png", basemap);
+			imagesToExport.put("warnings.png", warningPlot);
+			imagesToExport.put("cities.png", citiesPlot);
+			imagesToExport.put("availability.png", availabilityNoticeLayer);
+			imagesToExport.put("radar.png", radarPlot);
+			imagesToExport.put("timestamp.png", timestampLayer);
+		}
+		if (settings.getLayering() != Layering.SEPARATE_ONLY) {
+			imagesToExport.put("composite.png", compositePlot);
+		}
+
+		return imagesToExport;
 	}
 
 	public static DateTimeZone timeZone = DateTimeZone.forID("America/Chicago");
@@ -173,25 +188,47 @@ public class RadarImageGenerator {
 		ArrayList<ArrayList<PointD>> stateBorders;
 		ArrayList<ArrayList<PointD>> interstates;
 		ArrayList<ArrayList<PointD>> majorRoads;
+		ArrayList<ArrayList<PointD>> estadoBorders;
+		ArrayList<ArrayList<PointD>> provinceBorders;
+		ArrayList<ArrayList<PointD>> caSubdBorders;
+		ArrayList<ArrayList<PointD>> geoboundariesADM0;
+		ArrayList<ArrayList<PointD>> geoboundariesADM1;
 
-		File countyBordersKML = loadResourceAsFile("res/usCounties.kml");
-		File stateBordersKML = loadResourceAsFile("res/usStates.kml");
-		File interstatesPoly = loadResourceAsFile("res/primary-roads.poly");
-		File interstatesPolyMeta = loadResourceAsFile("res/primary-roads.poly.meta");
-		File majorRoadsPoly = loadResourceAsFile("res/prisec-roads.poly");
-		File majorRoadsPolyMeta = loadResourceAsFile("res/prisec-roads.poly.meta");
+		File countyBordersKML = RadarImageGenerator.loadResourceAsFile("res/usCounties.kml");
+		File stateBordersKML = RadarImageGenerator.loadResourceAsFile("res/usStates.kml");
+		File interstatesPoly = RadarImageGenerator.loadResourceAsFile("res/primary-roads.poly");
+		File interstatesPolyMeta = RadarImageGenerator.loadResourceAsFile("res/primary-roads.poly.meta");
+		File majorRoadsPoly = RadarImageGenerator.loadResourceAsFile("res/prisec-roads.poly");
+		File majorRoadsPolyMeta = RadarImageGenerator.loadResourceAsFile("res/prisec-roads.poly.meta");
+
+		File mxEstadosPoly = RadarImageGenerator.loadResourceAsFile("res/mxEstados.poly");
+		File mxEstadosPolyMeta = RadarImageGenerator.loadResourceAsFile("res/mxEstados.poly.meta");
+		File caProvincesPoly = RadarImageGenerator.loadResourceAsFile("res/caProvinces.poly");
+		File caProvincesPolyMeta = RadarImageGenerator.loadResourceAsFile("res/caProvinces.poly.meta");
+		File caAdminSubdPoly = RadarImageGenerator.loadResourceAsFile("res/caAdminSubd.poly");
+		File caAdminSubdPolyMeta = RadarImageGenerator.loadResourceAsFile("res/caAdminSubd.poly.meta");
+
+		File geoboundariesADM0Poly = RadarImageGenerator.loadResourceAsFile("res/geoboundaries-ADM0.poly");
+		File geoboundariesADM0PolyMeta = RadarImageGenerator.loadResourceAsFile("res/geoboundaries-ADM0.poly.meta");
+		File geoboundariesADM1Poly = RadarImageGenerator.loadResourceAsFile("res/geoboundaries-ADM1.poly");
+		File geoboundariesADM1PolyMeta = RadarImageGenerator.loadResourceAsFile("res/geoboundaries-ADM1.poly.meta");
 
 		countyBorders = getPolygons(countyBordersKML);
 		stateBorders = getPolygons(stateBordersKML);
 		interstates = getPolygons(interstatesPoly, interstatesPolyMeta);
 		majorRoads = getPolygons(majorRoadsPoly, majorRoadsPolyMeta);
+		estadoBorders = getPolygons(mxEstadosPoly, mxEstadosPolyMeta);
+		provinceBorders = getPolygons(caProvincesPoly, caProvincesPolyMeta);
+		caSubdBorders = getPolygons(caAdminSubdPoly, caAdminSubdPolyMeta);
+		geoboundariesADM0 = getPolygons(geoboundariesADM0Poly, geoboundariesADM0PolyMeta);
+		geoboundariesADM1 = getPolygons(geoboundariesADM1Poly, geoboundariesADM1PolyMeta);
 
 		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
-		System.out.println("latLonProjected (need to zero this out): " + latLonProjected);
-		PointD latLonProjected1 = plotProj.rotateLatLon(lon, lat + 10);
-		System.out.println("latLonProjected (need to 10 this out): " + latLonProjected1);
-		PointD latLonProjected2 = plotProj.rotateLatLon(lon + 10, lat);
-		System.out.println("latLonProjected (need to ??? this out): " + latLonProjected2);
+//		System.out.println("latLonProjected (need to zero this out): " + latLonProjected);
+//		PointD latLonProjected1 = plotProj.rotateLatLon(lon, lat + 10);
+//		System.out.println("latLonProjected (need to 10 this out): " + latLonProjected1);
+//		PointD latLonProjected2 = plotProj.rotateLatLon(lon + 10, lat);
+//		System.out.println("latLonProjected (need to ??? this out): " + latLonProjected2);
 		PointD trueNorthPointer = plotProj.rotateLatLon(lon, lat + 0.01); // i love finite differencing
 
 		double trueNorth_dx = trueNorthPointer.getX() - latLonProjected.getX();
@@ -267,6 +304,89 @@ public class RadarImageGenerator {
 				}
 			}
 		}
+		for (ArrayList<PointD> polygon : estadoBorders) {
+			for (int i = 0; i < polygon.size(); i++) {
+				int j = i + 1;
+				if (j == polygon.size())
+					j = 0;
+
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
+
+				if (Math.abs(p1.getY() - p2.getY()) < 100) {
+					g1.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
+			}
+		}
+		for (ArrayList<PointD> polygon : provinceBorders) {
+			for (int i = 0; i < polygon.size(); i++) {
+				int j = i + 1;
+				if (j == polygon.size())
+					j = 0;
+
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
+
+				if (Math.abs(p1.getY() - p2.getY()) < 100) {
+					g1.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
+			}
+		}
+		for (ArrayList<PointD> polygon : geoboundariesADM0) {
+			for (int i = 0; i < polygon.size(); i++) {
+				int j = i + 1;
+				if (j == polygon.size())
+					j = 0;
+
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
+
+				if (Math.abs(p1.getY() - p2.getY()) < 100) {
+//					if (!(((polygon.get(i).getY() > 24 && polygon.get(i).getY() <= 51 && polygon.get(i).getX() > -162 && polygon.get(i).getX() <= -59) &&
+//							(polygon.get(j).getY() > 24 && polygon.get(j).getY() <= 51 && polygon.get(j).getX() > -162 && polygon.get(j).getX() <= -59)) &&
+//							!((polygon.get(i).getY() <= 28 && polygon.get(i).getX() > -79.5 && polygon.get(i).getX() <= -70) &&
+//							!(polygon.get(j).getY() <= 28 && polygon.get(j).getX() > -79.5 && polygon.get(j).getX() <= -70)) &&
+//							!((polygon.get(i).getY() <= 33 && polygon.get(i).getX() > -67) &&
+//							!(polygon.get(j).getY() <= 33 && polygon.get(j).getX() > -67)))) {
+					if (!(((polygon.get(i).getY() > 24 && polygon.get(i).getY() <= 51 && polygon.get(i).getX() > -162 && polygon.get(i).getX() <= -59) &&
+							(polygon.get(j).getY() > 24 && polygon.get(j).getY() <= 51 && polygon.get(j).getX() > -162 && polygon.get(j).getX() <= -59)))) {
+						g1.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+					} else if((polygon.get(i).getY() <= 28 && polygon.get(i).getX() > -79.5 && polygon.get(i).getX() <= -70 &&
+							polygon.get(j).getY() <= 28 && polygon.get(j).getX() > -79.5 && polygon.get(j).getX() <= -70) ||
+							(polygon.get(i).getY() <= 33 && polygon.get(i).getX() > -67 &&
+							polygon.get(j).getY() <= 33 && polygon.get(j).getX() > -67)) {
+						g1.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+					}
+				}
+			}
+		}
 
 		g2.setColor(new Color(255, 255, 255));
 		g2.setStroke(bs);
@@ -290,6 +410,60 @@ public class RadarImageGenerator {
 
 				if (Math.abs(p1.getY() - p2.getY()) < 100) {
 					g2.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
+			}
+		}
+		for (ArrayList<PointD> polygon : caSubdBorders) {
+			for (int i = 0; i < polygon.size(); i++) {
+				int j = i + 1;
+				if (j == polygon.size())
+					j = 0;
+
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
+
+				if (Math.abs(p1.getY() - p2.getY()) < 100) {
+					g2.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+				}
+			}
+		}
+		for (ArrayList<PointD> polygon : geoboundariesADM1) {
+			for (int i = 0; i < polygon.size(); i++) {
+				int j = i + 1;
+				if (j == polygon.size())
+					j = 0;
+
+				PointD p1 = plotProj.rotateLatLon(polygon.get(i).getX(), polygon.get(i).getY());
+				PointD p2 = plotProj.rotateLatLon(polygon.get(j).getX(), polygon.get(j).getY());
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p1.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p1.getX());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, basemap.getWidth(),
+						p2.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, basemap.getHeight(),
+						p2.getX());
+
+				if (Math.abs(p1.getY() - p2.getY()) < 100) {
+					if (!(((polygon.get(i).getY() > 24 && polygon.get(i).getY() <= 51 && polygon.get(i).getX() > -162 && polygon.get(i).getX() <= -59) &&
+							(polygon.get(j).getY() > 24 && polygon.get(j).getY() <= 51 && polygon.get(j).getX() > -162 && polygon.get(j).getX() <= -59)))) {
+						g2.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+					} else if((polygon.get(i).getY() <= 28 && polygon.get(i).getX() > -79.5 && polygon.get(i).getX() <= -70 &&
+							polygon.get(j).getY() <= 28 && polygon.get(j).getX() > -79.5 && polygon.get(j).getX() <= -70) ||
+							(polygon.get(i).getY() <= 33 && polygon.get(i).getX() > -67 &&
+							polygon.get(j).getY() <= 33 && polygon.get(j).getX() > -67)) {
+						g2.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+					}
 				}
 			}
 		}
@@ -603,26 +777,34 @@ public class RadarImageGenerator {
 		return radarPlot;
 	}
 
-	private static DateTime GRIDRAD_OP_START = new DateTime(1995, 1, 1, 0, 0, 0, DateTimeZone.UTC);
-	private static DateTime GRIDRAD_OP_END = new DateTime(2017, 12, 31, 23, 0, 1, DateTimeZone.UTC);
+	private static DateTime GRIDRAD_V3_OP_START = new DateTime(1995, 1, 1, 0, 0, 0, DateTimeZone.UTC);
+	private static DateTime GRIDRAD_v3_OP_END = new DateTime(2017, 12, 31, 23, 0, 1, DateTimeZone.UTC);
 	private static DateTime MRMS_OP_START = new DateTime(2020, 10, 14, 21, 14, 0, DateTimeZone.UTC);
 
 	private static BufferedImage generateRadarMosaicPlot(DateTime time, double lat, double lon,
 			RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
-		if(!time.isBefore(GRIDRAD_OP_START) && !time.isAfter(GRIDRAD_OP_END)) {
-			return generateGridradPlot(time, lat,  lon, settings, plotProj);
-		} else if(time.isAfter(GRIDRAD_OP_END) && !time.isAfter(MRMS_OP_START)) {
-			return null;
-		} else if(!time.isBefore(MRMS_OP_START)) {
-			return generateMrmsPlot(time, lat,  lon, settings, plotProj);
+		if (!time.isBefore(GRIDRAD_V3_OP_START) && !time.isAfter(GRIDRAD_v3_OP_END)) {
+			return generateGridradV3Plot(time, lat, lon, settings, plotProj);
+		} else if (time.isAfter(GRIDRAD_v3_OP_END) && !time.isAfter(MRMS_OP_START)) {
+			if(time.getMonthOfYear() >= 4 && time.getMonthOfYear() <= 8) {
+				return generateGridradV4Plot(time, lat, lon, settings, plotProj);
+			} else {
+				return null;
+			}
+		} else if (!time.isBefore(MRMS_OP_START)) {
+			return generateMrmsPlot(time, lat, lon, settings, plotProj);
 		} else {
 			return null;
 		}
 	}
 
-	private static BufferedImage generateGridradPlot(DateTime time, double lat, double lon,
+	private static BufferedImage generateGridradV3Plot(DateTime time, double lat, double lon,
 			RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
 //		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
+		
+		if(lat < 25 || lat > 55 || lon < -130 || lon > -60) {
+			return null;
+		}
 
 		BufferedImage radarPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
@@ -635,11 +817,11 @@ public class RadarImageGenerator {
 
 		String gridradUrl = String.format(
 				"https://data.rda.ucar.edu/d841000/%04d%02d/nexrad_3d_v3_1_%04d%02d%02dT%02d%02d%02dZ.nc",
-				time.getYear(), time.getMonthOfYear(), time.getYear(), time.getMonthOfYear(),
-				time.getDayOfMonth(), time.getHourOfDay(), 0, 0);
+				time.getYear(), time.getMonthOfYear(), time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
+				time.getHourOfDay(), 0, 0);
 		File gridradFile = downloadFile(gridradUrl, "gridrad.composite");
 //		File gridradFile = unzipGz(gridradGz);
-		GridradScan gridrad = new GridradScan(gridradFile);
+		GridradV3Scan gridrad = new GridradV3Scan(gridradFile);
 
 		float[][] data = null;
 		ColorTable colorTable = null;
@@ -712,7 +894,126 @@ public class RadarImageGenerator {
 				}
 			}
 		}
+
+//		BufferedImage gridradTest = new BufferedImage(data[0].length, data.length, BufferedImage.TYPE_3BYTE_BGR);
+//		Graphics2D g2 = gridradTest.createGraphics();
+//		
+//		for(int i = 0; i < gridradTest.getWidth(); i++) {
+//			for(int j = 0; j < gridradTest.getHeight(); j++) {
+//				Color c = colorTable.getColor(data[j][i]);
+//				
+//				System.out.println("data[j][i]::color - " + data[j][i] + "::" + c);
+//				
+//				g2.setColor(c);
+//				g2.fillRect(i, j, 1, 1);
+//			}
+//		}
+//		
+//		ImageIO.write(gridradTest, "PNG", new File("gridrad-test.png"));
+
+		return radarPlot;
+	}
+
+	/**
+	 * Only works from April through August
+	 */
+	private static BufferedImage generateGridradV4Plot(DateTime time, double lat, double lon,
+			RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
+//		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
 		
+		if(lat < 25 || lat > 55 || lon < -130 || lon > -60) {
+			return null;
+		}
+
+		BufferedImage radarPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
+				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g = radarPlot.createGraphics();
+
+		PointD latLonProjectedUL = new PointD(-(settings.getSize() * settings.getAspectRatioFloat()),
+				(settings.getSize()));
+		PointD latLonProjectedDR = new PointD((settings.getSize() * settings.getAspectRatioFloat()),
+				-(settings.getSize()));
+
+		String gridradUrl = String.format(
+				"https://data.rda.ucar.edu/d841001/%04d%02d/nexrad_3d_v4_2_%04d%02d%02dT%02d%02d%02dZ.nc",
+				time.getYear(), time.getMonthOfYear(), time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
+				time.getHourOfDay(), 0, 0);
+		File gridradFile = downloadFile(gridradUrl, "gridrad.composite");
+//		File gridradFile = unzipGz(gridradGz);
+		GridradV4Scan gridrad = new GridradV4Scan(gridradFile);
+
+		float[][] data = null;
+		ColorTable colorTable = null;
+
+		switch (settings.getMoment()) {
+		case REFLECTIVITY:
+			data = gridrad.refl1km;
+			colorTable = reflectivityColorTable;
+			break;
+		default:
+			return radarPlot;
+		}
+
+		System.out.println("gridrad.lat.length: " + gridrad.lat.length);
+		System.out.println("gridrad.lon.length: " + gridrad.lon.length);
+		for (int i = 0; i < data.length; i++) {
+			for (int j = 0; j < data[i].length; j++) {
+				float qLat = gridrad.lat[gridrad.lat.length - 1 - i];
+				float qLon = gridrad.lon[j];
+
+				float lat1 = qLat - gridrad.dLat / 2.0f;
+				float lat2 = qLat + gridrad.dLat / 2.0f;
+				float lon1 = qLon - gridrad.dLat / 2.0f;
+				float lon2 = qLon + gridrad.dLat / 2.0f;
+
+				PointD p1P = plotProj.rotateLatLon(lon1, lat1);
+				PointD p2P = plotProj.rotateLatLon(lon1, lat2);
+				PointD p3P = plotProj.rotateLatLon(lon2, lat2);
+				PointD p4P = plotProj.rotateLatLon(lon2, lat1);
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p1P.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p1P.getX());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p2P.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p2P.getX());
+				double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p3P.getY());
+				double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p3P.getX());
+				double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p4P.getY());
+				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p4P.getX());
+
+				double value = data[i][j];
+				Color color = colorTable.getColor(value);
+
+				int[] xPoints = { (int) Math.round(x1), (int) Math.round(x2), (int) Math.round(x3),
+						(int) Math.round(x4) };
+				int[] yPoints = { (int) Math.round(y1), (int) Math.round(y2), (int) Math.round(y3),
+						(int) Math.round(y4) };
+
+				boolean anyInsideImage = false;
+				for (int k = 0; k < 4; k++) {
+					int x = xPoints[k];
+					int y = yPoints[k];
+
+					if (x >= 0 && x < radarPlot.getWidth() && y >= 0 && y < radarPlot.getHeight()) {
+						anyInsideImage = true;
+						break;
+					}
+				}
+
+				if (anyInsideImage) {
+					g.setColor(color);
+					g.fillPolygon(xPoints, yPoints, 4);
+				}
+			}
+		}
+
 //		BufferedImage gridradTest = new BufferedImage(data[0].length, data.length, BufferedImage.TYPE_3BYTE_BGR);
 //		Graphics2D g2 = gridradTest.createGraphics();
 //		
@@ -735,6 +1036,11 @@ public class RadarImageGenerator {
 	private static BufferedImage generateMrmsPlot(DateTime time, double lat, double lon,
 			RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
 //		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
+		
+		if(lat < 25 || lat > 55 || lon < -130 || lon > -60) {
+			System.err.println("Returning null on MRMS");
+			return null;
+		}
 
 		BufferedImage radarPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
@@ -1046,20 +1352,21 @@ public class RadarImageGenerator {
 	}
 
 	private static final Font NOTICE_FONT = new Font(Font.MONOSPACED, Font.BOLD + Font.ITALIC, 36);
+
 	private static BufferedImage noDataAvailableNotice(RadarGeneratorSettings settings) {
 		BufferedImage noticePlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = noticePlot.createGraphics();
 		g.setFont(NOTICE_FONT);
-		
+
 		int centerX = noticePlot.getWidth() / 2;
 		int centerY = noticePlot.getHeight() / 2;
 
 		g.setColor(new Color(220, 20, 60));
 		drawCenteredOutlinedString("DATA IS NOT AVAILABLE.", g, centerX, centerY);
-		
+
 		g.dispose();
-		
+
 		return noticePlot;
 	}
 
@@ -1309,7 +1616,7 @@ public class RadarImageGenerator {
 
 	public static void drawCenteredOutlinedString(String s, Graphics2D g, int x, int y) {
 		Color c = g.getColor();
-		
+
 		g.setColor(Color.BLACK);
 		drawCenteredString(s, g, x - 1, y - 1);
 		drawCenteredString(s, g, x - 1, y);

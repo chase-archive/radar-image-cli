@@ -48,25 +48,30 @@ public class GeocolorProcessing {
 //		System.out.println((float) WeatherUtils.brightnessTemperatureFromWavenumber(77 * 1000000, WeatherUtils.wavelengthToWavenumber(0.0000103)));
 //		
 //		System.exit(0);
-		
-		GoesImage band1 = GoesImage.loadFromFile(new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C01_G16_s20250372301171_e20250372303544_c20250372303599.nc"));
-		GoesImage band2 = GoesImage.loadFromFile(new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C02_G16_s20250372301171_e20250372303544_c20250372303571.nc"));
-		GoesImage band3 = GoesImage.loadFromFile(new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C03_G16_s20250372301171_e20250372303544_c20250372303583.nc"));
-		GoesImage band7 = GoesImage.loadFromFile(new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C07_G16_s20250372301171_e20250372303556_c20250372304028.nc"));
-		GoesImage band13 = GoesImage.loadFromFile(new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C13_G16_s20250372301171_e20250372303556_c20250372304042.nc"));
-		
+
+		GoesImage band1 = GoesImage.loadFromFile(new File(
+				"/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C01_G16_s20250372301171_e20250372303544_c20250372303599.nc"));
+		GoesImage band2 = GoesImage.loadFromFile(new File(
+				"/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C02_G16_s20250372301171_e20250372303544_c20250372303571.nc"));
+		GoesImage band3 = GoesImage.loadFromFile(new File(
+				"/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C03_G16_s20250372301171_e20250372303544_c20250372303583.nc"));
+		GoesImage band7 = GoesImage.loadFromFile(new File(
+				"/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C07_G16_s20250372301171_e20250372303556_c20250372304028.nc"));
+		GoesImage band13 = GoesImage.loadFromFile(new File(
+				"/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C13_G16_s20250372301171_e20250372303556_c20250372304042.nc"));
+
 //		NetcdfFile band1File = NetcdfFile.open("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C01_G16_s20250372301171_e20250372303544_c20250372303599.nc");
 //		NetcdfFile band2File = NetcdfFile.open("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C02_G16_s20250372301171_e20250372303544_c20250372303571.nc");
 //		NetcdfFile band3File = NetcdfFile.open("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/OR_ABI-L1b-RadC-M6C03_G16_s20250372301171_e20250372303544_c20250372303583.nc");
 //		
 //		System.out.println(band3File);
 
-		Color[][] comp = createComposite(band1, band2, band3, band7, band13, GeostationaryProjection.GOES_EAST, new DateTime(2025, 2, 6, 23, 01, 17, DateTimeZone.UTC));
+		Color[][] comp = createComposite(band1, band2, band3, band7, band13, GeostationaryProjection.GOES_EAST,
+				new DateTime(2025, 2, 6, 23, 01, 17, DateTimeZone.UTC));
 //		createIRGoes(band7, band13);
 //		Color[][] comp = createTrueColorGoes(band1, band2, band3);
 
-		BufferedImage geocolorImg = new BufferedImage(comp.length, comp[0].length,
-				BufferedImage.TYPE_3BYTE_BGR);
+		BufferedImage geocolorImg = new BufferedImage(comp.length, comp[0].length, BufferedImage.TYPE_3BYTE_BGR);
 		Graphics2D g = geocolorImg.createGraphics();
 
 		for (int i = 0; i < geocolorImg.getWidth(); i++) {
@@ -76,47 +81,133 @@ public class GeocolorProcessing {
 			}
 		}
 
-		ImageIO.write(geocolorImg, "PNG", new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/goes.png"));
+		ImageIO.write(geocolorImg, "PNG",
+				new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/hires-band-test/goes.png"));
 	}
-	
+
 	// temu geocolor
-	public static Color[][] createComposite(GoesMultibandImage goes, boolean[][] renderChunks, int chunkSize) {
-		Color[][] trueColor = createTrueColorGoes(goes, renderChunks, chunkSize);
+	public static Color[][] createComposite(GoesMultibandImage goes, GeostationaryProjection satProj) {
+		int[] band2Shape = goes.field("band_2").getBundledField("rad").getShape();
+
+		final int CHUNK_SIZE = 100;
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[1] / CHUNK_SIZE)][(int) Math
+				.ceil((double) band2Shape[0] / CHUNK_SIZE)];
+
+		for (int i = 0; i < renderChunk.length; i++) {
+			for (int j = 0; j < renderChunk[i].length; j++) {
+				renderChunk[i][j] = true;
+			}
+		}
+
+		return createComposite(goes, satProj, renderChunk, CHUNK_SIZE);
+	}
+
+	// temu geocolor
+	public static Color[][] createComposite(GoesMultibandImage goes, GeostationaryProjection satProj,
+			boolean[][] renderChunks, int chunkSize) {
+		String timeStart = goes.field("time_start").getAnnotation();
+
+		int timeStartYear = Integer.valueOf(timeStart.substring(0, 4));
+		int timeStartMonth = Integer.valueOf(timeStart.substring(5, 7));
+		int timeStartDay = Integer.valueOf(timeStart.substring(8, 10));
+		int timeStartHour = Integer.valueOf(timeStart.substring(11, 13));
+		int timeStartMinute = Integer.valueOf(timeStart.substring(14, 16));
+		int timeStartSecond = Integer.valueOf(timeStart.substring(17, 19));
+
+		DateTime dt = new DateTime(timeStartYear, timeStartMonth, timeStartDay, timeStartHour, timeStartMinute,
+				timeStartSecond, DateTimeZone.UTC);
+		GeoCoord[][] latLon = createLatLonMatrix(goes, satProj, renderChunks, chunkSize);
+		float[][] solarAlt = createSolarAltitudeMatrix(latLon, dt, renderChunks, chunkSize);
+
+//		float latMin = Float.MAX_VALUE;
+//		float latMax = -Float.MAX_VALUE;
+//		float lonMin = Float.MAX_VALUE;
+//		float lonMax = -Float.MAX_VALUE;
+//		
+//		for(int i = 0; i < latLon.length; i++) {
+//			for(int j = 0; j < latLon[i].length; j++) {
+//				float lat = latLon[i][j].getLat();
+//				float lon = latLon[i][j].getLon();
+//				
+//				if(lat < latMin) latMin = lat;
+//				if(lat > latMax) latMax = lat;
+//				if(lon < lonMin) lonMin = lon;
+//				if(lon > lonMax) lonMax = lon;
+//			}
+//		}
+//		
+//		System.out.println(latMin + "\t" + latMax);
+//		System.out.println(lonMin + "\t" + lonMax);
+//		System.out.println(min(solarAlt) + "\t" + max(solarAlt));
+//		System.exit(44);
+
+		Color[][] trueColor = createTrueColorGoes(goes, latLon, dt, renderChunks, chunkSize);
 		Color[][] irColor = createIRGoes(goes, renderChunks, chunkSize);
 
 		Color[][] goesComposite = new Color[trueColor.length][trueColor[0].length];
 
 		for (int i = 0; i < goesComposite.length; i++) {
 			for (int j = 0; j < goesComposite[0].length; j++) {
-				if(renderChunks[i/chunkSize][j/chunkSize]) {
-					goesComposite[i][j] = maxTristims(trueColor[i][j], irColor[i][j]);
+				if (renderChunks[i / chunkSize][j / chunkSize]) {
+					float blendFactor = (solarAlt[j][i]) / TERMINATOR_WIDTH;
+					if (blendFactor < 0) {
+						blendFactor = 0;
+					} else if (blendFactor > 1) {
+						blendFactor = 1;
+					}
+
+//					goesComposite[i][j] = trueColor[i][j];
+//					goesComposite[j][i] = maxTristims(trueColor[i][j], irColor[i][j]);
+
+					goesComposite[i][j] = blendTristims(trueColor[i][j], irColor[i][j], blendFactor);
 				}
 			}
 		}
 
 		return goesComposite;
 	}
-	
-	public static Color[][] createTrueColorGoes(GoesMultibandImage goes, boolean[][] renderChunks, int chunkSize) {
+
+	public static Color[][] createTrueColorGoes(GoesMultibandImage goes, GeoCoord[][] latLon, DateTime dt,
+			boolean[][] renderChunks, int chunkSize) {
+		float[][] solarMult = createSolarMultiplierMatrix(latLon, dt, renderChunks, chunkSize);
+
 		float[][] band1Rad = goes.field("band_1").array2D();
 		float[][] band2Rad = goes.field("band_2").array2D();
 		float[][] band3Rad = goes.field("band_3").array2D();
-		
-		// VERY IMPORTANT!! normalize radiances to the correct specific ranges
 
+//		System.out.println(goes.field("band_1").getBundledField("wavelength"));
+
+		for (int i = 0; i < band2Rad.length; i++) {
+			for (int j = 0; j < band2Rad[i].length; j++) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
+					if (renderChunks[j / chunkSize][i / chunkSize]) {
+						float mult = 0.9f * (float) Math.sqrt(solarMult[i][j]);
+
+						if (!Double.isNaN(mult)) {
+							band1Rad[i][j] = band1Rad[i][j] * mult;
+							band3Rad[i][j] = band3Rad[i][j] * mult;
+							band2Rad[i][j] = band2Rad[i][j] * mult;
+						}
+					}
+				}
+			}
+		}
+//		System.exit(44);
+
+		// VERY IMPORTANT!! normalize radiances to the correct specific ranges
 		float[][] band1Clip = new float[band1Rad.length][band1Rad[0].length];
 		float[][] band2Clip = new float[band2Rad.length][band2Rad[0].length];
 		float[][] band3Clip = new float[band3Rad.length][band3Rad[0].length];
 		for (int i = 0; i < band2Clip.length; i++) {
 			for (int j = 0; j < band2Clip[i].length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					band1Clip[i][j] = clip(band1Rad[i][j], 0, 1);
 					band3Clip[i][j] = clip(band3Rad[i][j], 0, 1);
 					band2Clip[i][j] = clip(band2Rad[i][j], 0, 1);
 				}
 			}
 		}
-		
+
 //		band1Clip = normalize(band1Rad, 0, 1);
 //		band2Clip = normalize(band2Rad, 0, 1);
 //		band3Clip = normalize(band3Rad, 0, 1);
@@ -128,7 +219,7 @@ public class GeocolorProcessing {
 		float[][] band3NormG = new float[band3Clip.length][band3Clip[0].length];
 		for (int i = 0; i < band2Clip.length; i++) {
 			for (int j = 0; j < band2Clip[i].length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					band1NormG[i][j] = gammaCorrect(band1Clip[i][j], GAMMA);
 					band3NormG[i][j] = gammaCorrect(band3Clip[i][j], GAMMA);
 					band2NormG[i][j] = gammaCorrect(band2Clip[i][j], GAMMA);
@@ -140,9 +231,10 @@ public class GeocolorProcessing {
 
 		for (int i = 0; i < syntheticGreen.length; i++) {
 			for (int j = 0; j < syntheticGreen[i].length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					// calculate the "true" green
-					syntheticGreen[i][j] = clip(0.375f * band2NormG[i][j] + 0.25f * band3NormG[i][j] + 0.375f * band1NormG[i][j], 0, 1);
+					syntheticGreen[i][j] = clip(
+							0.375f * band2NormG[i][j] + 0.25f * band3NormG[i][j] + 0.375f * band1NormG[i][j], 0, 1);
 				}
 			}
 		}
@@ -155,13 +247,13 @@ public class GeocolorProcessing {
 
 		for (int i = 0; i < goesComposite[0].length; i++) {
 			for (int j = 0; j < goesComposite.length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					int r = (int) (255 * red[i][j]);
 					int gr = (int) (255 * green[i][j]);
 					int b = (int) (255 * blue[i][j]);
-	
+
 					Color c = new Color(r, gr, b);
-	
+
 					goesComposite[j][i] = contrast(c, 48);
 				}
 			}
@@ -175,23 +267,23 @@ public class GeocolorProcessing {
 		float[][] band13Temp = goes.field("band_13").array2D();
 
 		float[][] band13Clip = clip(band13Temp, 90, 273);
-		float[][] band13Norm = clip(invNormalize(band13Clip, 0, 350), 0, 255);
+		float[][] band13Norm = clip(invNormalize(band13Clip, 0, 500), 0, 255);
 
 		Color[][] goesComposite = new Color[band13Temp[0].length][band13Temp.length];
 
 		for (int i = 0; i < goesComposite[0].length; i++) {
 			for (int j = 0; j < goesComposite.length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					float fog = band13Temp[i][j] - band7Temp[i][j];
-	
+
 					float fogBlue = clip(linScale(0, 5, 0, 200, fog), 0, 200);
-	
+
 					Color fogColor = new Color((int) (0.5 * fogBlue), (int) (0.75 * fogBlue), (int) (1.0 * fogBlue));
 					Color band13Color = new Color((int) band13Norm[i][j], (int) band13Norm[i][j],
 							(int) Double.max(band13Norm[i][j], fogBlue));
-	
+
 					goesComposite[j][i] = maxTristims(fogColor, band13Color);
-	
+
 					if (band13Temp[i][j] == -1024) {
 						goesComposite[j][i] = Color.BLACK;
 					}
@@ -203,28 +295,31 @@ public class GeocolorProcessing {
 	}
 
 	// temu geocolor
-	public static Color[][] createComposite(GoesImage band1, GoesImage band2, GoesImage band3, GoesImage band7, GoesImage band13, GeostationaryProjection satProj, DateTime dt) {
+	public static Color[][] createComposite(GoesImage band1, GoesImage band2, GoesImage band3, GoesImage band7,
+			GoesImage band13, GeostationaryProjection satProj, DateTime dt) {
 		int[] band2Shape = band2.field("rad").getShape();
 
 		final int CHUNK_SIZE = 100;
-		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[1]/CHUNK_SIZE)]
-				[(int) Math.ceil((double) band2Shape[0]/CHUNK_SIZE)];
-		
-		for(int i = 0; i < renderChunk.length; i++) {
-			for(int j = 0; j < renderChunk[i].length; j++) {
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[1] / CHUNK_SIZE)][(int) Math
+				.ceil((double) band2Shape[0] / CHUNK_SIZE)];
+
+		for (int i = 0; i < renderChunk.length; i++) {
+			for (int j = 0; j < renderChunk[i].length; j++) {
 				renderChunk[i][j] = true;
 			}
 		}
-		
+
 		return createComposite(band1, band2, band3, band7, band13, satProj, dt, renderChunk, CHUNK_SIZE);
 	}
 
 	// temu geocolor
 	private static final float TERMINATOR_WIDTH = 2.0f; // degrees of arc
-	public static Color[][] createComposite(GoesImage band1, GoesImage band2, GoesImage band3, GoesImage band7, GoesImage band13, GeostationaryProjection satProj, DateTime dt, boolean[][] renderChunks, int chunkSize) {
+
+	public static Color[][] createComposite(GoesImage band1, GoesImage band2, GoesImage band3, GoesImage band7,
+			GoesImage band13, GeostationaryProjection satProj, DateTime dt, boolean[][] renderChunks, int chunkSize) {
 		GeoCoord[][] latLon = createLatLonMatrix(band2, satProj, renderChunks, chunkSize);
 		float[][] solarAlt = createSolarAltitudeMatrix(latLon, dt, renderChunks, chunkSize);
-		
+
 		Color[][] trueColor = createTrueColorGoes(band1, band2, band3, latLon, dt, renderChunks, chunkSize);
 		Color[][] irColor = createIRGoes(band7, band13, renderChunks, chunkSize);
 
@@ -232,14 +327,14 @@ public class GeocolorProcessing {
 
 		for (int i = 0; i < goesComposite.length; i++) {
 			for (int j = 0; j < goesComposite[0].length; j++) {
-				if(renderChunks[i/chunkSize][j/chunkSize]) {
+				if (renderChunks[i / chunkSize][j / chunkSize]) {
 					float blendFactor = (solarAlt[j][i]) / TERMINATOR_WIDTH;
-					if(blendFactor < 0) {
+					if (blendFactor < 0) {
 						blendFactor = 0;
-					} else if(blendFactor > 1) {
+					} else if (blendFactor > 1) {
 						blendFactor = 1;
 					}
-					
+
 					goesComposite[i][j] = blendTristims(trueColor[i][j], irColor[i / 4][j / 4], blendFactor);
 				}
 			}
@@ -247,47 +342,48 @@ public class GeocolorProcessing {
 
 		return goesComposite;
 	}
-	
-	public static Color[][] createTrueColorGoes(GoesImage band1, GoesImage band2, GoesImage band3, GeoCoord[][] latLon, DateTime dt) {
+
+	public static Color[][] createTrueColorGoes(GoesImage band1, GoesImage band2, GoesImage band3, GeoCoord[][] latLon,
+			DateTime dt) {
 		int[] band2Shape = band2.field("rad").getShape();
 
 		final int CHUNK_SIZE = 100;
-		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[0]/CHUNK_SIZE)]
-				[(int) Math.ceil((double) band2Shape[1]/CHUNK_SIZE)];
-		
-		for(int i = 0; i < renderChunk.length; i++) {
-			for(int j = 0; j < renderChunk[i].length; j++) {
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[0] / CHUNK_SIZE)][(int) Math
+				.ceil((double) band2Shape[1] / CHUNK_SIZE)];
+
+		for (int i = 0; i < renderChunk.length; i++) {
+			for (int j = 0; j < renderChunk[i].length; j++) {
 				renderChunk[i][j] = true;
 			}
 		}
-		
+
 		return createTrueColorGoes(band1, band2, band3, latLon, dt, renderChunk, CHUNK_SIZE);
 	}
-	
+
 	// found by trial and error
 	private static final float WHITE_POINT = 1000.0f;
 	private static final float WHITE_BALANCE_RED = 0.932f;
-	private static final float WHITE_BALANCE_GREEN = 1.183f;	
-	private static final float WHITE_BALANCE_BLUE = 0.755f;
-	public static Color[][] createTrueColorGoes(GoesImage band1, GoesImage band2, GoesImage band3, GeoCoord[][] latLon, DateTime dt, boolean[][] renderChunks, int chunkSize) {
-		long startSolarMult = System.currentTimeMillis();
+	private static final float WHITE_BALANCE_GREEN = 1.383f;
+	private static final float WHITE_BALANCE_BLUE = 0.785f;
+
+	public static Color[][] createTrueColorGoes(GoesImage band1, GoesImage band2, GoesImage band3, GeoCoord[][] latLon,
+			DateTime dt, boolean[][] renderChunks, int chunkSize) {
 		float[][] solarMult = createSolarMultiplierMatrix(latLon, dt, renderChunks, chunkSize);
-		System.out.println("solar mult (ms): " + (System.currentTimeMillis() - startSolarMult));
-		
+
 		float[][] band1Rad = band1.field("rad").array2D();
 		float[][] band2Rad = band2.field("rad").array2D();
 		float[][] band3Rad = band3.field("rad").array2D();
 
 		for (int i = 0; i < band2Rad.length; i++) {
 			for (int j = 0; j < band2Rad[i].length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
-					if(renderChunks[j/chunkSize][i/chunkSize]) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
+					if (renderChunks[j / chunkSize][i / chunkSize]) {
 						float mult = solarMult[i][j];
-						
-						if(!Double.isNaN(mult)) {
-							if(i % 2 == 0 && j % 2 == 0) {
-								band1Rad[i/2][j/2] = band1Rad[i/2][j/2] * mult;
-								band3Rad[i/2][j/2] = band3Rad[i/2][j/2] * mult;
+
+						if (!Double.isNaN(mult)) {
+							if (i % 2 == 0 && j % 2 == 0) {
+								band1Rad[i / 2][j / 2] = band1Rad[i / 2][j / 2] * mult;
+								band3Rad[i / 2][j / 2] = band3Rad[i / 2][j / 2] * mult;
 							}
 							band2Rad[i][j] = band2Rad[i][j] * mult;
 						}
@@ -295,27 +391,30 @@ public class GeocolorProcessing {
 				}
 			}
 		}
-		
-		// VERY IMPORTANT!! normalize and color-balance radiances to the correct specific ranges
+
+		// VERY IMPORTANT!! normalize and color-balance radiances to the correct
+		// specific ranges
 		float[][] band1Clip = new float[band1Rad.length][band1Rad[0].length];
 		float[][] band2Clip = new float[band2Rad.length][band2Rad[0].length];
 		float[][] band3Clip = new float[band3Rad.length][band3Rad[0].length];
 		for (int i = 0; i < band2Clip.length; i++) {
 			for (int j = 0; j < band2Clip[i].length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
-					if(i % 2 == 0 && j % 2 == 0) {
-						band1Clip[i/2][j/2] = clip(band1Rad[i/2][j/2] / (WHITE_POINT / WHITE_BALANCE_BLUE), 0, 1);
-						band3Clip[i/2][j/2] = clip(band3Rad[i/2][j/2] / (WHITE_POINT / WHITE_BALANCE_GREEN), 0, 1);
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
+					if (i % 2 == 0 && j % 2 == 0) {
+						band1Clip[i / 2][j / 2] = clip(band1Rad[i / 2][j / 2] / (WHITE_POINT / WHITE_BALANCE_BLUE), 0,
+								1);
+						band3Clip[i / 2][j / 2] = clip(band3Rad[i / 2][j / 2] / (WHITE_POINT / WHITE_BALANCE_GREEN), 0,
+								1);
 					}
 					band2Clip[i][j] = clip(band2Rad[i][j] / (WHITE_POINT / WHITE_BALANCE_RED), 0, 1);
 				}
 			}
 		}
-		
+
 		System.out.println(max2(band1Rad));
 		System.out.println(max2(band2Rad));
 		System.out.println(max2(band3Rad));
-		
+
 //		band1Clip = normalize(band1Rad, 0, 1);
 //		band2Clip = normalize(band2Rad, 0, 1);
 //		band3Clip = normalize(band3Rad, 0, 1);
@@ -327,10 +426,10 @@ public class GeocolorProcessing {
 		float[][] band3NormG = new float[band3Clip.length][band3Clip[0].length];
 		for (int i = 0; i < band2Clip.length; i++) {
 			for (int j = 0; j < band2Clip[i].length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
-					if(i % 2 == 0 && j % 2 == 0) {
-						band1NormG[i/2][j/2] = gammaCorrect(band1Clip[i/2][j/2], GAMMA);
-						band3NormG[i/2][j/2] = gammaCorrect(band3Clip[i/2][j/2], GAMMA);
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
+					if (i % 2 == 0 && j % 2 == 0) {
+						band1NormG[i / 2][j / 2] = gammaCorrect(band1Clip[i / 2][j / 2], GAMMA);
+						band3NormG[i / 2][j / 2] = gammaCorrect(band3Clip[i / 2][j / 2], GAMMA);
 					}
 					band2NormG[i][j] = gammaCorrect(band2Clip[i][j], GAMMA);
 				}
@@ -341,9 +440,10 @@ public class GeocolorProcessing {
 
 		for (int i = 0; i < syntheticGreen.length; i++) {
 			for (int j = 0; j < syntheticGreen[i].length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					// calculate the "true" green
-					syntheticGreen[i][j] = clip(0.375f * band2NormG[i][j] + 0.25f * band3NormG[i / 2][j / 2] + 0.375f * band1NormG[i / 2][j / 2], 0, 1);
+					syntheticGreen[i][j] = clip(0.375f * band2NormG[i][j] + 0.25f * band3NormG[i / 2][j / 2]
+							+ 0.375f * band1NormG[i / 2][j / 2], 0, 1);
 				}
 			}
 		}
@@ -356,16 +456,16 @@ public class GeocolorProcessing {
 
 		for (int i = 0; i < goesComposite[0].length; i++) {
 //			if(i % 500 == 0) System.out.println("Goes True-Color Composite " + (100 * (float) i/goesComposite[0].length) + "% complete");
-			
+
 			for (int j = 0; j < goesComposite.length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					int r = (int) (255 * red[i][j]);
-	
+
 					int gr = (int) (255 * green[i][j]);
 					int b = (int) (255 * blue[i / 2][j / 2]);
-	
+
 					Color c = new Color(r, gr, b);
-	
+
 					goesComposite[j][i] = contrast(c, 48);
 				}
 			}
@@ -378,22 +478,22 @@ public class GeocolorProcessing {
 		int[] band2Shape = band7.field("rad").getShape();
 
 		final int CHUNK_SIZE = 100;
-		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[0]/CHUNK_SIZE)]
-				[(int) Math.ceil((double) band2Shape[1]/CHUNK_SIZE)];
-		
-		for(int i = 0; i < renderChunk.length; i++) {
-			for(int j = 0; j < renderChunk[i].length; j++) {
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[0] / CHUNK_SIZE)][(int) Math
+				.ceil((double) band2Shape[1] / CHUNK_SIZE)];
+
+		for (int i = 0; i < renderChunk.length; i++) {
+			for (int j = 0; j < renderChunk[i].length; j++) {
 				renderChunk[i][j] = true;
 			}
 		}
-		
+
 		return createIRGoes(band7, band13, renderChunk, CHUNK_SIZE);
 	}
-	
+
 	public static Color[][] createIRGoes(GoesImage band7, GoesImage band13, boolean[][] renderChunks, int chunkSize) {
 		float[][] band7Rad = band7.field("rad").array2D();
 		float[][] band13Rad = band13.field("rad").array2D();
-		
+
 		float[][] band7Temp = new float[band7Rad.length][band7Rad[0].length];
 		float[][] band13Temp = new float[band13Rad.length][band13Rad[0].length];
 		float band7wavelength = band7.dataFromField("wavelength");
@@ -401,18 +501,22 @@ public class GeocolorProcessing {
 
 		System.out.println("band 7: " + band7wavelength + " um");
 		System.out.println("band 13: " + band13wavelength + " um");
-		
-		// VERY IMPORTANT!! figure out radiance -> brightness temperature conversion 
-		for(int i = 0; i < band13Rad.length; i++) {
-			for(int j = 0; j < band13Rad[i].length; j++) {
-				if(band13Rad[i][j] == -1024) {
+
+		// VERY IMPORTANT!! figure out radiance -> brightness temperature conversion
+		for (int i = 0; i < band13Rad.length; i++) {
+			for (int j = 0; j < band13Rad[i].length; j++) {
+				if (band13Rad[i][j] == -1024) {
 					band7Temp[i][j] = -1024;
 					band13Temp[i][j] = -1024;
 				} else {
 //					band7Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavelength(band7Rad[i][j] * 100000, band7wavelength / 1000000);
 //					band13Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavelength(band13Rad[i][j] * 100000, band13wavelength / 1000000);
-					band7Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(band7Rad[i][j] / 100000.0, WeatherUtils.wavelengthToWavenumber(band7wavelength / 1000000.0));
-					band13Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(band13Rad[i][j] / 100000.0, WeatherUtils.wavelengthToWavenumber(band13wavelength / 1000000.0));
+					band7Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(
+							band7Rad[i][j] / 100000.0,
+							WeatherUtils.wavelengthToWavenumber(band7wavelength / 1000000.0));
+					band13Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(
+							band13Rad[i][j] / 100000.0,
+							WeatherUtils.wavelengthToWavenumber(band13wavelength / 1000000.0));
 				}
 			}
 		}
@@ -451,69 +555,76 @@ public class GeocolorProcessing {
 
 		return goesComposite;
 	}
-	
-	private static float[][] createSolarAltitudeMatrix(GeoCoord[][] latLonMatrix, DateTime dt, boolean[][] renderChunks, int chunkSize) {
+
+	private static float[][] createSolarAltitudeMatrix(GeoCoord[][] latLonMatrix, DateTime dt, boolean[][] renderChunks,
+			int chunkSize) {
 		float[][] matrix = new float[latLonMatrix[0].length][latLonMatrix.length];
-		for(int i = 0; i < matrix.length; i++) {
-			for(int j = 0; j < matrix[0].length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
+		for (int i = 0; i < matrix.length; i++) {
+			for (int j = 0; j < matrix[0].length; j++) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					GeoCoord coord = latLonMatrix[j][i];
-					matrix[i][j] = (float) Math.toDegrees(SolarPosition.solarAltitude(dt, coord.getLat(), coord.getLon()));
+					matrix[i][j] = (float) Math
+							.toDegrees(SolarPosition.solarAltitude(dt, coord.getLat(), coord.getLon()));
 				}
 			}
 		}
-		
+
 		return matrix;
 	}
 
-	private static final float MAX_MULT = (float) (1.0f / Math.sin(Math.toRadians(TERMINATOR_WIDTH*3)));
-	private static float[][] createSolarMultiplierMatrix(GeoCoord[][] latLonMatrix, DateTime dt, boolean[][] renderChunks, int chunkSize) {
+	private static final float MAX_MULT = (float) (1.0f / Math.sin(Math.toRadians(TERMINATOR_WIDTH * 3)));
+
+	private static float[][] createSolarMultiplierMatrix(GeoCoord[][] latLonMatrix, DateTime dt,
+			boolean[][] renderChunks, int chunkSize) {
 		float[][] matrix = new float[latLonMatrix[0].length][latLonMatrix.length];
-		for(int i = 0; i < matrix.length; i++) {
-			for(int j = 0; j < matrix[0].length; j++) {
-				if(renderChunks[j/chunkSize][i/chunkSize]) {
+		for (int i = 0; i < matrix.length; i++) {
+			for (int j = 0; j < matrix[0].length; j++) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					GeoCoord coord = latLonMatrix[j][i];
-					float secantSolarZenith = (float) (1.0f / SolarPosition.cosSolarZenithAngle(dt, coord.getLat(), coord.getLon()));
-					
-					if(secantSolarZenith > MAX_MULT) {
+					float secantSolarZenith = (float) (1.0f
+							/ SolarPosition.cosSolarZenithAngle(dt, coord.getLat(), coord.getLon()));
+
+					if (secantSolarZenith > MAX_MULT) {
 						secantSolarZenith = MAX_MULT;
 					}
-					
+
 					matrix[i][j] = secantSolarZenith;
 				}
 			}
 		}
-		
+
 		return matrix;
 	}
-	
-	private static GeoCoord[][] createLatLonMatrix(GoesImage goes, GeostationaryProjection satProj, boolean[][] renderChunks, int chunkSize) {
+
+	private static GeoCoord[][] createLatLonMatrix(GoesImage goes, GeostationaryProjection satProj,
+			boolean[][] renderChunks, int chunkSize) {
 		float[] x = goes.field("x").array1D();
 		float[] y = goes.field("y").array1D();
-		
+
 		GeoCoord[][] matrix = new GeoCoord[x.length][y.length];
-		for(int i = 0; i < matrix.length; i++) {
-			for(int j = 0; j < matrix[0].length; j++) {
-				if(renderChunks[i/chunkSize][j/chunkSize]) {
+		for (int i = 0; i < matrix.length; i++) {
+			for (int j = 0; j < matrix[0].length; j++) {
+				if (renderChunks[i / chunkSize][j / chunkSize]) {
 					matrix[i][j] = satProj.projectXYToLatLon(-x[i], y[j]);
 				}
 			}
 		}
-		
+
 		return matrix;
 	}
-	
-	private static GeoCoord[][] createLatLonMatrix(GoesMultibandImage goes, GeostationaryProjection satProj, boolean[][] renderChunks, int chunkSize) {
+
+	private static GeoCoord[][] createLatLonMatrix(GoesMultibandImage goes, GeostationaryProjection satProj,
+			boolean[][] renderChunks, int chunkSize) {
 		float[] x = goes.field("x").array1D();
 		float[] y = goes.field("y").array1D();
-		
+
 		GeoCoord[][] matrix = new GeoCoord[x.length][y.length];
-		for(int i = 0; i < matrix.length; i++) {
-			for(int j = 0; j < matrix[0].length; j++) {
+		for (int i = 0; i < matrix.length; i++) {
+			for (int j = 0; j < matrix[0].length; j++) {
 				matrix[i][j] = satProj.projectXYToLatLon(-x[i], y[j]);
 			}
 		}
-		
+
 		return matrix;
 	}
 
@@ -539,16 +650,16 @@ public class GeocolorProcessing {
 		int rB = b.getRed();
 		int gB = b.getGreen();
 		int bB = b.getBlue();
-		
+
 		assert aWeight >= 0;
 		assert aWeight <= 1;
-		
+
 		float bWeight = 1 - aWeight;
 
 		int rC = (int) (aWeight * rA + bWeight * rB);
 		int gC = (int) (aWeight * gA + bWeight * gB);
 		int bC = (int) (aWeight * bA + bWeight * bB);
-		
+
 		Color comp = new Color(rC, gC, bC);
 
 		return comp;
@@ -704,42 +815,42 @@ public class GeocolorProcessing {
 
 		return max;
 	}
-	
+
 	/**
 	 * 
 	 * @param arr
 	 * @param startI (inclusive)
-	 * @param endI (inclusive)
+	 * @param endI   (inclusive)
 	 * @return
 	 */
 	private static float[] subsetArray1D(float[] arr, int startI, int endI) {
 		float[] subset = new float[endI + 1 - startI];
-		
-		for(int i = 0; i < subset.length; i++) {
+
+		for (int i = 0; i < subset.length; i++) {
 			subset[i] = arr[startI + i];
 		}
-		
+
 		return subset;
 	}
-	
+
 	/**
 	 * 
 	 * @param arr
 	 * @param startI (inclusive)
-	 * @param endI (inclusive)
+	 * @param endI   (inclusive)
 	 * @param startJ (inclusive)
-	 * @param endJ (inclusive)
+	 * @param endJ   (inclusive)
 	 * @return
 	 */
 	private static float[][] subsetArray2D(float[][] arr, int startI, int endI, int startJ, int endJ) {
 		float[][] subset = new float[endI + 1 - startI][endJ + 1 - startJ];
-		
-		for(int i = 0; i < subset.length; i++) {
-			for(int j = 0; j < subset[i].length; j++) {
+
+		for (int i = 0; i < subset.length; i++) {
+			for (int j = 0; j < subset[i].length; j++) {
 				subset[i][j] = arr[startI + i][startJ + j];
 			}
 		}
-		
+
 		return subset;
 	}
 

@@ -24,6 +24,10 @@ public class GoesImage extends CdmFile implements SatelliteImage {
 
 	@SuppressWarnings("deprecation")
 	public static GoesImage loadFromFile(File f) throws IOException {
+		if(f == null) {
+			return null;
+		}
+		
 		GoesImage image = new GoesImage();
 		
 		image.locationOnDisk = f.getAbsolutePath();
