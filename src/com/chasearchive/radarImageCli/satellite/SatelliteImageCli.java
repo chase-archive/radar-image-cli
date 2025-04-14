@@ -16,9 +16,6 @@ import com.chasearchive.radarImageCli.AspectRatio;
 import com.chasearchive.radarImageCli.DebugLogger;
 import com.chasearchive.radarImageCli.DebugLoggerLevel;
 import com.chasearchive.radarImageCli.Layering;
-import com.chasearchive.radarImageCli.RadarGeneratorSettings;
-import com.chasearchive.radarImageCli.RadarImageGenerator;
-import com.chasearchive.radarImageCli.Source;
 
 public class SatelliteImageCli {
 	public static final DebugLogger logger = new DebugLogger(DebugLoggerLevel.SILENT);
@@ -94,6 +91,8 @@ public class SatelliteImageCli {
 					settings.setLayering(Layering.COMPOSITE_ONLY);
 				} else if("SEPARATE".equals(arg)) {
 					settings.setLayering(Layering.SEPARATE_ONLY);
+				} else if("SEPARATE-NO-BASEMAP".equals(arg)) {
+					settings.setLayering(Layering.SEPARATE_ONLY_NO_BASEMAP);
 				} else if("BOTH".equals(arg)) {
 					settings.setLayering(Layering.BOTH);
 				} else {

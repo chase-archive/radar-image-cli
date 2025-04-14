@@ -97,6 +97,8 @@ public class RadarImageCli {
 					settings.setLayering(Layering.COMPOSITE_ONLY);
 				} else if("SEPARATE".equals(arg)) {
 					settings.setLayering(Layering.SEPARATE_ONLY);
+				} else if("SEPARATE-NO-BASEMAP".equals(arg)) {
+					settings.setLayering(Layering.SEPARATE_ONLY_NO_BASEMAP);
 				} else if("BOTH".equals(arg)) {
 					settings.setLayering(Layering.BOTH);
 				} else {

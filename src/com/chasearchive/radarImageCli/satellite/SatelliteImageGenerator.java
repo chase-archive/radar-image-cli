@@ -122,7 +122,16 @@ public class SatelliteImageGenerator {
 
 		}
 
-		BufferedImage basemap = generateBasemap(lat, lon, settings, plotProj);
+		int mapWidth = (int) (settings.getResolution() * settings.getAspectRatioFloat());
+		int mapHeight = (int) settings.getResolution();
+
+		BufferedImage[] basemapLayers = null;
+		BufferedImage basemap = null;
+		
+		if(settings.getLayering() != Layering.SEPARATE_ONLY_NO_BASEMAP) {
+			basemapLayers = generateBasemap(lat, lon, settings, plotProj);
+			basemap = basemapLayers[0];
+		}
 
 		BufferedImage satPlot = null;
 
@@ -206,30 +215,32 @@ public class SatelliteImageGenerator {
 
 //		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
 		BufferedImage citiesPlot = generateCityPlot(lat, lon, settings, plotProj);
-		BufferedImage availabilityNoticeLayer = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);;
+		BufferedImage availabilityNoticeLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);;
 
-		BufferedImage logo = ImageIO.read(RadarImageGenerator.loadResourceAsFile("res/chase-archive-logo-256pix.png"));
+		BufferedImage logo = ImageIO.read(RadarImageGenerator.loadResourceAsFile("res/chase-archive-logo-128pix.png"));
 
-		BufferedImage timestampLayer = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
+		BufferedImage timestampLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = timestampLayer.createGraphics();
+		
+		double timestampSizingMultiplier = mapHeight/1080.0;
 
 		g.setColor(new Color(0, 0, 0, 96));
-		g.fillRect(0, timestampLayer.getHeight() - 56, 530, 56);
+		g.fillRect(0, timestampLayer.getHeight() - (int) (timestampSizingMultiplier * 56), (int) (timestampSizingMultiplier * 530), (int) (timestampSizingMultiplier * 56));
 		
-		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, 36));
+		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, (int) (timestampSizingMultiplier * 36)));
 		g.setColor(Color.BLACK);
-		g.drawString(dateStringAlt(time), 9, basemap.getHeight() - 14);
-		g.drawString(dateStringAlt(time), 11, basemap.getHeight() - 16);
-		g.drawString(dateStringAlt(time), 9, basemap.getHeight() - 16);
-		g.drawString(dateStringAlt(time), 11, basemap.getHeight() - 14);
+		g.drawString(dateStringAlt(time), (int) (timestampSizingMultiplier * 9), mapHeight - (int) (timestampSizingMultiplier * 14));
+		g.drawString(dateStringAlt(time), (int) (timestampSizingMultiplier * 11), mapHeight - (int) (timestampSizingMultiplier * 16));
+		g.drawString(dateStringAlt(time), (int) (timestampSizingMultiplier * 9), mapHeight - (int) (timestampSizingMultiplier * 16));
+		g.drawString(dateStringAlt(time), (int) (timestampSizingMultiplier * 11), mapHeight - (int) (timestampSizingMultiplier * 14));
 		g.setColor(Color.WHITE);
-		g.drawString(dateStringAlt(time), 10, basemap.getHeight() - 15);
+		g.drawString(dateStringAlt(time), (int) (timestampSizingMultiplier * 10), mapHeight - (int) (timestampSizingMultiplier * 15));
 		
-		BufferedImage compositePlot = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+		BufferedImage compositePlot = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_3BYTE_BGR);
 		g = compositePlot.createGraphics();
 
 		g.setColor(Color.BLACK);
-		g.fillRect(0, 0, basemap.getWidth(), basemap.getHeight());
+		g.fillRect(0, 0, mapWidth, mapHeight);
 
 		if(satPlot != null) {
 			g.drawImage(satPlot, 0, 0, null);
@@ -251,13 +262,18 @@ public class SatelliteImageGenerator {
 		HashMap<String, BufferedImage> imagesToExport = new HashMap<>();
 		
 		if (settings.getLayering() != Layering.COMPOSITE_ONLY) {
-			imagesToExport.put("basemap.png", basemap);
-			imagesToExport.put("cities.png", citiesPlot);
+			if (settings.getLayering() != Layering.SEPARATE_ONLY_NO_BASEMAP) {
+				imagesToExport.put("states.png", basemapLayers[1]);
+				imagesToExport.put("counties.png", basemapLayers[2]);
+				imagesToExport.put("primary-roads.png", basemapLayers[3]);
+				imagesToExport.put("secondary-roads.png", basemapLayers[4]);
+				imagesToExport.put("cities.png", citiesPlot);
+			}
 			imagesToExport.put("availability.png", availabilityNoticeLayer);
 			imagesToExport.put("satellite.png", satPlot);
 			imagesToExport.put("timestamp.png", timestampLayer);
 		}
-		if (settings.getLayering() != Layering.SEPARATE_ONLY) {
+		if (settings.getLayering() != Layering.SEPARATE_ONLY && settings.getLayering() != Layering.SEPARATE_ONLY_NO_BASEMAP) {
 			imagesToExport.put("composite.png", compositePlot);
 		}
 
@@ -284,7 +300,7 @@ public class SatelliteImageGenerator {
 	private static final ColorTable brightnessTemperatureColorTable = new ColorTable(
 			RadarImageGenerator.loadResourceAsFile("res/aru-br-temp.pal"), 0.1f, 10, "dBZ");
 
-	private static BufferedImage generateBasemap(double lat, double lon, SatelliteGeneratorSettings settings,
+	private static BufferedImage[] generateBasemap(double lat, double lon, SatelliteGeneratorSettings settings,
 			RotateLatLonProjection plotProj) throws IOException {
 		ArrayList<ArrayList<PointD>> countyBorders;
 		ArrayList<ArrayList<PointD>> stateBorders;
@@ -347,8 +363,8 @@ public class SatelliteImageGenerator {
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = basemap.createGraphics();
 
-		BasicStroke bs = new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
-		BasicStroke ts = new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+		BasicStroke bs = new BasicStroke(1, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+		BasicStroke ts = new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
 
 		BufferedImage states = new BufferedImage(basemap.getWidth(), basemap.getHeight(),
 				BufferedImage.TYPE_4BYTE_ABGR);
@@ -669,7 +685,7 @@ public class SatelliteImageGenerator {
 		float[] scales = { 1f, 1f, 1f, 0.4f };
 		float[] offsets = new float[4];
 		RescaleOp rop = new RescaleOp(scales, offsets, null);
-		float[] scales2 = { 1f, 1f, 1f, 0.3f };
+		float[] scales2 = { 1f, 1f, 1f, 0.15f };
 		float[] offsets2 = new float[4];
 		RescaleOp rop2 = new RescaleOp(scales2, offsets2, null);
 
@@ -678,7 +694,9 @@ public class SatelliteImageGenerator {
 		g.drawImage(counties, rop, 0, 0);
 		g.drawImage(states, 0, 0, null);
 
-		return basemap;
+		BufferedImage[] ret = new BufferedImage[] {basemap, states, counties, highways, roads};
+		
+		return ret;
 	}
 
 	public static final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 18);
@@ -1501,13 +1519,13 @@ public class SatelliteImageGenerator {
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = warningPlot.createGraphics();
 
-//		BasicStroke bs = new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
-//		BasicStroke ts = new BasicStroke(12, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
-//		BasicStroke ets = new BasicStroke(16, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+//		BasicStroke bs = new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+//		BasicStroke ts = new BasicStroke(7, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+//		BasicStroke ets = new BasicStroke(11, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
 
-		BasicStroke bs = new BasicStroke(3, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
-		BasicStroke ts = new BasicStroke(7, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
-		BasicStroke ets = new BasicStroke(11, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+		BasicStroke bs = new BasicStroke(2, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+		BasicStroke ts = new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
+		BasicStroke ets = new BasicStroke(6, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
 
 		ArrayList<WarningPolygon> warnings = null;
 		try {
@@ -2038,9 +2056,9 @@ public class SatelliteImageGenerator {
 	private static File getGoesMultibandData(DateTime time, SatelliteSource source, SatelliteSector sector)
 			throws NoValidSatelliteScansFoundException {
 		// bypasses download, uses data on hard drive
-		if(1 > 0) {
-			return new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/sat_multiband.nc");
-		}
+//		if(1 > 0) {
+//			return new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/goes/sat_multiband.nc");
+//		}
 		
 		ArrayList<String> validFiles = new ArrayList<>();
 
