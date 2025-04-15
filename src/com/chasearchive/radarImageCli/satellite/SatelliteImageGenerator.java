@@ -1819,11 +1819,11 @@ public class SatelliteImageGenerator {
 		satFiles.addAll(satFilesPrev);
 		satFiles.addAll(satFilesCurr);
 
-		System.out.println("satFiles.size(): " + satFiles.size());
-
-		for (String str : satFiles) {
-			System.out.println("satFile: " + str);
-		}
+//		System.out.println("satFiles.size(): " + satFiles.size());
+//
+//		for (String str : satFiles) {
+//			System.out.println("satFile: " + str);
+//		}
 
 		ArrayList<String> band1FilesWithinTolerance = new ArrayList<>();
 		ArrayList<String> band2FilesWithinTolerance = new ArrayList<>();
@@ -1834,7 +1834,7 @@ public class SatelliteImageGenerator {
 			String[] awsPath = satFiles.get(j).split("/");
 			String filename = awsPath[awsPath.length - 1];
 
-			System.out.println("satFile name: " + filename);
+//			System.out.println("satFile name: " + filename);
 
 			int dayOfYear = Integer.valueOf(filename.substring(31, 34));
 
@@ -1844,7 +1844,7 @@ public class SatelliteImageGenerator {
 
 			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
-			System.out.println("fileTimestamp: " + fileTimestamp);
+//			System.out.println("fileTimestamp: " + fileTimestamp);
 
 			fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
@@ -2121,7 +2121,7 @@ public class SatelliteImageGenerator {
 			String[] awsPath = satFiles.get(j).split("/");
 			String filename = awsPath[awsPath.length - 1];
 
-			System.out.println("satFile name: " + filename);
+//			System.out.println("satFile name: " + filename);
 
 			int dayOfYear = Integer.valueOf(filename.substring(29, 32));
 
@@ -2130,7 +2130,7 @@ public class SatelliteImageGenerator {
 					Integer.valueOf(filename.substring(36, 38)), DateTimeZone.UTC);
 			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
-			System.out.println("fileTimestamp: " + fileTimestamp);
+//			System.out.println("fileTimestamp: " + fileTimestamp);
 
 			fileTimestamp.dayOfYear().setCopy(dayOfYear);
 

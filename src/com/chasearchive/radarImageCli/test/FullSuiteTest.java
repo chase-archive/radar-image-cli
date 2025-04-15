@@ -9,10 +9,10 @@ import com.chasearchive.radarImageCli.satellite.SatelliteImageCli;
 public class FullSuiteTest {
 	public static void main(String[] args) {
 		// Case info
-		DateTime time = new DateTime(2019, 5, 7, 20, 36, 0, DateTimeZone.UTC);
-		double lat = 36.04;
-		double lon = -101.25;
-		String caseName = "spearman-2019";
+		DateTime time = new DateTime(2025, 4, 4, 17, 45, 0, DateTimeZone.UTC);
+		double lat = 33;
+		double lon = -95.5;
+		String caseName = "clarksville-tx-2025";
 
 		// Run full suite
 		runSuite(time, lat, lon, caseName);
