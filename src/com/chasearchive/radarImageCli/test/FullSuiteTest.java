@@ -25,13 +25,13 @@ public class FullSuiteTest {
 		String _lon = String.valueOf(lon);
 		
 		String[] argsRadLoc = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "4:3", "-s", "0.5", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE", "-o", "caseTests/" + caseName};
+				"-a", "4:3", "-s", "0.5", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE", "-tms", "TRUE", "-o", "caseTests/" + caseName};
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "4:3", "-s", "2.0", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE", "-o", "caseTests/" + caseName};
+				"-a", "4:3", "-s", "2.0", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatVis = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "4:3", "-s", "2.0", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-o", "caseTests/" + caseName};
+				"-a", "4:3", "-s", "2.0", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatLir = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "4:3", "-s", "2.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-o", "caseTests/" + caseName};
+				"-a", "4:3", "-s", "2.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
 		RadarImageCli.main(argsRadLoc);
 		RadarImageCli.main(argsRadReg);

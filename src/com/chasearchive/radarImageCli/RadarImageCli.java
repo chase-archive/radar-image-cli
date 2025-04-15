@@ -104,6 +104,14 @@ public class RadarImageCli {
 				} else {
 					continue;
 				}
+			} else if("-tms".equals(flag)) {
+				if("TRUE".equals(arg)) {
+					settings.setDrawTimestamp(true);
+				} else if("FALSE".equals(arg)) {
+					settings.setDrawTimestamp(false);
+				} else {
+					continue;
+				}
 			} else if("-o".equals(flag)) {
 				outputFolderString = arg;
 			} else {

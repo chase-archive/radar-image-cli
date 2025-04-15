@@ -12,6 +12,7 @@ public class SatelliteGeneratorSettings {
 	private double size = 0.5; // domain height in degreesMoment
 	private double resolution = 1080; // height in pixels
 	private Layering layering = Layering.COMPOSITE_ONLY;
+	private boolean drawTimestamp = true;
 	
 	public AspectRatio getAspectRatio() {
 		return aspectRatio;
@@ -82,5 +83,13 @@ public class SatelliteGeneratorSettings {
 
 	public void setLayering(Layering layering) {
 		this.layering = layering;
+	}
+
+	public boolean isDrawTimestamp() {
+		return drawTimestamp;
+	}
+
+	public void setDrawTimestamp(boolean drawTimestamp) {
+		this.drawTimestamp = drawTimestamp;
 	}
 }

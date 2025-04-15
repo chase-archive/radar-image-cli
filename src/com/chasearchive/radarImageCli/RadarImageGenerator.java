@@ -167,9 +167,12 @@ public class RadarImageGenerator {
 			imagesToExport.put("warnings.png", warningPlot);
 			imagesToExport.put("availability.png", availabilityNoticeLayer);
 			imagesToExport.put("radar.png", radarPlot);
-			imagesToExport.put("timestamp.png", timestampLayer);
+			
+			if(settings.isDrawTimestamp()) {
+				imagesToExport.put("timestamp.png", timestampLayer);
+			}
 		}
-		if (settings.getLayering() != Layering.SEPARATE_ONLY) {
+		if (settings.getLayering() != Layering.SEPARATE_ONLY && settings.getLayering() != Layering.SEPARATE_ONLY_NO_BASEMAP) {
 			imagesToExport.put("composite.png", compositePlot);
 		}
 

@@ -20,10 +20,11 @@ There are four mandatory flags and four additional optional flags that can be us
 | -c (optional) | Source of data. <br> Options are "NEXRAD" and "MRMS". <br> Default is "NEXRAD". |
 | -r (optional) | Resolution of image, in pixels. Default is 1080. |
 | -lyr (optional) | Whether to export as one image or as individual layers. <br> Options are "COMPOSITE", "SEPARATE", "SEPARATE-NO-BASEMAP", and "BOTH". <br> Default is "COMPOSITE".  |
+| -tms (optional) | Whether to export the timestamp layer. <br> Options are "TRUE" and "FALSE". <br> Default is "TRUE".  |
 
 A more detailed CLI call may look like this:
 
-`java -jar RadarImageCLI.jar -dt 20240430_2353 -lat 34.86 -lon -98.96 -a 4:3 -m BV -r 720 -s 2.0 -lyr SEPARATE-NO-BASEMAP -o radargen-case-rooseveltOk.png`
+`java -jar RadarImageCLI.jar -dt 20240430_2353 -lat 34.86 -lon -98.96 -a 4:3 -m BV -r 720 -s 2.0 -lyr SEPARATE-NO-BASEMAP -tms FALSE -o radargen-case-rooseveltOk.png`
 
 NOTES: 
 * This prototype is built in Java, since most of my already-existing code was in Java and the reuse of that code allowed for faster development. I am considering switching from Java to C++ later on for the best possible speed.
@@ -48,7 +49,8 @@ There are four mandatory flags and four additional optional flags that can be us
 | -s (optional) | Size of image, in degrees of arc from the center of the image to the edge. <br> Default is 0.5. |
 | -r (optional) | Resolution of image, in pixels. Default is 1080. |
 | -lyr (optional) | Whether to export as one image or as individual layers. <br> Options are "COMPOSITE", "SEPARATE", "SEPARATE-NO-BASEMAP", and "BOTH". <br> Default is "COMPOSITE".  |
+| -tms (optional) | Whether to export the timestamp layer. <br> Options are "TRUE" and "FALSE". <br> Default is "TRUE".  |
 
 A more detailed CLI call may look like this:
 
-`java -jar SatelliteImageCLI.jar -dt 20240430_2353 -lat 34.86 -lon -98.96 -a 4:3 -t LIR -r 720 -s 2.0 -lyr SEPARATE-NO-BASEMAP -o satgen-case-rooseveltOk-LIR.png`
+`java -jar SatelliteImageCLI.jar -dt 20240430_2353 -lat 34.86 -lon -98.96 -a 4:3 -t LIR -r 720 -s 2.0 -lyr SEPARATE-NO-BASEMAP -tms FALSE -o satgen-case-rooseveltOk-LIR.png`

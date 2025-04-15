@@ -271,7 +271,10 @@ public class SatelliteImageGenerator {
 			}
 			imagesToExport.put("availability.png", availabilityNoticeLayer);
 			imagesToExport.put("satellite.png", satPlot);
-			imagesToExport.put("timestamp.png", timestampLayer);
+			
+			if(settings.isDrawTimestamp()) {
+				imagesToExport.put("timestamp.png", timestampLayer);
+			}
 		}
 		if (settings.getLayering() != Layering.SEPARATE_ONLY && settings.getLayering() != Layering.SEPARATE_ONLY_NO_BASEMAP) {
 			imagesToExport.put("composite.png", compositePlot);
