@@ -14,7 +14,9 @@ import org.joda.time.DateTimeZone;
 
 public class RadarImageCli {
 	// TODO:
-	// Nothing that I can think of tbh
+	// Make the background strokes more transparent
+	// Record that the font size for cities was slightly reduced
+	// GridSat too bright during the day, do the cosine multiplier thing
 	
 	public static final DebugLogger logger = new DebugLogger(DebugLoggerLevel.SILENT);
 	

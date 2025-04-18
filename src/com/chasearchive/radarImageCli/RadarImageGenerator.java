@@ -282,6 +282,14 @@ public class RadarImageGenerator {
 		BufferedImage roads = new BufferedImage(basemap.getWidth(), basemap.getHeight(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g4 = roads.createGraphics();
 
+		BufferedImage highwaysBg = new BufferedImage(basemap.getWidth(), basemap.getHeight(),
+				BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g5 = highwaysBg.createGraphics();
+
+		BufferedImage roadsBg = new BufferedImage(basemap.getWidth(), basemap.getHeight(),
+				BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g6 = roadsBg.createGraphics();
+
 		// lambert stuff
 //		PointD latLonProjectedUL = new PointD(
 //				latLonProjected.getX() - (111.32 / plotProj.dx * settings.getSize() * settings.getAspectRatioFloat()),
@@ -487,8 +495,8 @@ public class RadarImageGenerator {
 			}
 		}
 
-		g3.setColor(new Color(0, 0, 0));
-		g3.setStroke(ts);
+		g5.setColor(new Color(0, 0, 0));
+		g5.setStroke(ts);
 		for (ArrayList<PointD> polygon : interstates) {
 			for (int i = 0; i < polygon.size() - 1; i++) {
 				int j = i + 1;
@@ -506,7 +514,7 @@ public class RadarImageGenerator {
 						p2.getX());
 
 				if (Math.abs(p1.getY() - p2.getY()) < 100) {
-					g3.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+					g5.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
 			}
 		}
@@ -535,8 +543,8 @@ public class RadarImageGenerator {
 			}
 		}
 
-		g4.setColor(new Color(0, 0, 0));
-		g4.setStroke(ts);
+		g6.setColor(new Color(0, 0, 0));
+		g6.setStroke(ts);
 		for (ArrayList<PointD> polygon : majorRoads) {
 			for (int i = 0; i < polygon.size() - 1; i++) {
 				int j = i + 1;
@@ -554,7 +562,7 @@ public class RadarImageGenerator {
 						p2.getX());
 
 				if (Math.abs(p1.getY() - p2.getY()) < 100) {
-					g4.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+					g6.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 				}
 			}
 		}
@@ -583,6 +591,23 @@ public class RadarImageGenerator {
 			}
 		}
 
+		float[] scales3 = { 1f, 1f, 1f, 0.25f };
+		float[] offsets3 = new float[4];
+		RescaleOp rop3 = new RescaleOp(scales3, offsets3, null);
+
+		BufferedImage highwaysComp = new BufferedImage(basemap.getWidth(), basemap.getHeight(),
+				BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g7 = highwaysComp.createGraphics();
+
+		BufferedImage roadsComp = new BufferedImage(basemap.getWidth(), basemap.getHeight(), 
+				BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g8 = roadsComp.createGraphics();
+		
+		g7.drawImage(highwaysBg, rop3, 0, 0); // puts primary roads over their background strokes
+		g7.drawImage(highways, 0, 0, null);
+		g8.drawImage(roadsBg, rop3, 0, 0); // puts secondary roads over their background strokes
+		g8.drawImage(roads, 0, 0, null);
+		
 		float[] scales = { 1f, 1f, 1f, 0.4f };
 		float[] offsets = new float[4];
 		RescaleOp rop = new RescaleOp(scales, offsets, null);
@@ -590,12 +615,12 @@ public class RadarImageGenerator {
 		float[] offsets2 = new float[4];
 		RescaleOp rop2 = new RescaleOp(scales2, offsets2, null);
 
-		g.drawImage(roads, rop2, 0, 0);
-		g.drawImage(highways, 0, 0, null);
+		g.drawImage(roadsComp, rop2, 0, 0);
+		g.drawImage(highwaysComp, 0, 0, null);
 		g.drawImage(counties, rop, 0, 0);
 		g.drawImage(states, 0, 0, null);
 
-		BufferedImage[] ret = new BufferedImage[] {basemap, states, counties, highways, roads};
+		BufferedImage[] ret = new BufferedImage[] {basemap, states, counties, highwaysComp, roadsComp};
 		
 		return ret;
 	}
@@ -606,8 +631,8 @@ public class RadarImageGenerator {
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g2d = citiesImg.createGraphics();
 
-		final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 18);
-		final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 12);
+		final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 16);
+		final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 11);
 //		final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, (int) (18 * ((double) settings.getSize()/1080.0)));
 //		final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, (int) (12 * ((double) settings.getSize()/1080.0)));
 
