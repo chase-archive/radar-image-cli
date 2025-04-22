@@ -1,5 +1,8 @@
 package com.chasearchive.radarImageCli.test;
 
+import org.joda.time.DateTime;
+import org.joda.time.DateTimeZone;
+
 import com.chasearchive.radarImageCli.RadarImageCli;
 
 public class CliTest {
@@ -14,27 +17,27 @@ public class CliTest {
 //		String[] args1 = {"-dt", "20240430_2315", "-lat", "35.606786", "-lon", "-98.855", "-a", "4:3", "-s", "0.5", "-debug", "SILENT", "-o", "radargen-case-torP.png"};
 //		String[] args1 = {"-dt", "20240520_0105", "-lat", "38.37", "-lon", "-97.15", "-a", "4:3", "-s", "2.0", "-debug", "SILENT", "-o", "radargen-case-svrD.png"};
 
-		String[] args1 = {"-dt", "20150604_2345", "-lat", "39.14", "-lon", "-104.07", 
-				"-a", "4:3", "-c", "NEXRAD", "-s", "0.5", "-debug", "VERBOSE", "-o", "radargen-case-simlaCo.png"};
+//		String[] args1 = {"-dt", "20150604_2345", "-lat", "39.14", "-lon", "-104.07", 
+//				"-a", "4:3", "-c", "NEXRAD", "-s", "0.5", "-debug", "VERBOSE", "-o", "radargen-case-simlaCo.png"};
 		
 //		long startTime = System.currentTimeMillis();
 //		RadarImageCli.main(args1);
 //		long endTime = System.currentTimeMillis();
 		
-//		DateTime start = new DateTime(2023, 2, 26, 21, 50, 0,DateTimeZone.UTC);
-//		DateTime end = new DateTime(2023, 2, 27, 0, 0, 0,DateTimeZone.UTC);
+		DateTime start = new DateTime(1996, 4, 19, 22, 30, 0,DateTimeZone.UTC);
+		DateTime end = new DateTime(1996, 4, 20, 1, 30, 30, DateTimeZone.UTC);
 		
-//		while(start.isBefore(end)) {
-//			String dtArg = String.format("%04d%02d%02d-%02d%02d", start.getYear(), start.getMonthOfYear(), start.getDayOfMonth(), start.getHourOfDay(), start.getMinuteOfHour());
-//			String oArg = String.format("%04d%02d%02d%02d%02d", start.getYear(), start.getMonthOfYear(), start.getDayOfMonth(), start.getHourOfDay(), start.getMinuteOfHour());
-//			
-//			String[] args1 = {"-dt", dtArg, "-lat", "35.18", "-lon", "-97.44", "-a", "4:3", "-s", "3.0", "-c", "MRMS", "-debug", "SILENT", "-o", "radargen-apr27/" + oArg + ".png"};
-//
-//			RadarImageCli.main(args1);
-//			
-//			start = start.plusMinutes(2);
-//		}
+		while(start.isBefore(end)) {
+			String dtArg = String.format("%04d%02d%02d-%02d%02d", start.getYear(), start.getMonthOfYear(), start.getDayOfMonth(), start.getHourOfDay(), start.getMinuteOfHour());
+			String oArg = String.format("%04d%02d%02d%02d%02d", start.getYear(), start.getMonthOfYear(), start.getDayOfMonth(), start.getHourOfDay(), start.getMinuteOfHour());
+			
+			String[] args1 = {"-dt", dtArg, "-lat", "39.89", "-lon", "-88.95", "-a", "16:9", "-s", "1.0", "-debug", "SILENT", "-o", "metresearch-decatur/" + oArg};
 
-		RadarImageCli.main(args1);
+			RadarImageCli.main(args1);
+			
+			start = start.plusMinutes(1);
+		}
+
+//		RadarImageCli.main(args1);
 	}
 }

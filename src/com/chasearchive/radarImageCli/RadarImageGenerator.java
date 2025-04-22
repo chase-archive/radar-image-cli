@@ -112,7 +112,7 @@ public class RadarImageGenerator {
 		BufferedImage citiesPlot = generateCityPlot(lat, lon, settings, plotProj);
 		BufferedImage availabilityNoticeLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);;
 
-		BufferedImage logo = ImageIO.read(loadResourceAsFile("res/chase-archive-logo-128pix.png"));
+//		BufferedImage logo = ImageIO.read(loadResourceAsFile("res/chase-archive-logo-128pix.png"));
 
 		BufferedImage timestampLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = timestampLayer.createGraphics();
@@ -145,7 +145,7 @@ public class RadarImageGenerator {
 			g.drawImage(citiesPlot, 0, 0, null);
 			g.drawImage(warningPlot, 0, 0, null);
 		}
-		g.drawImage(logo, 0, 0, null);
+//		g.drawImage(logo, 0, 0, null);
 		g.drawImage(timestampLayer, 0, 0, null);
 		if (radarPlot == null) {
 			availabilityNoticeLayer = noDataAvailableNotice(settings);
@@ -669,7 +669,7 @@ public class RadarImageGenerator {
 			if (pixelsPerDegree < 1000 && prm < 0.1) {
 				continue;
 			}
-			if (pixelsPerDegree < 1200 && prm < 0.05) {
+			if (pixelsPerDegree < 1200 && prm < 0.05) { // decatur il group project render - 0.25
 				continue;
 			}
 			if (pixelsPerDegree < 1400 && prm < 0.025) {
@@ -826,6 +826,8 @@ public class RadarImageGenerator {
 	private static DateTime GRIDRAD_V3_OP_START = new DateTime(1995, 1, 1, 0, 0, 0, DateTimeZone.UTC);
 	private static DateTime GRIDRAD_v3_OP_END = new DateTime(2017, 12, 31, 23, 0, 1, DateTimeZone.UTC);
 	private static DateTime MRMS_OP_START = new DateTime(2020, 10, 14, 21, 14, 0, DateTimeZone.UTC);
+	private static DateTime MRMS_GAP1_START = new DateTime(2021, 5, 14, 22, 49, 0, DateTimeZone.UTC);
+	private static DateTime MRMS_GAP1_END = new DateTime(2021, 7, 28, 14, 29, 0, DateTimeZone.UTC);
 
 	private static BufferedImage generateRadarMosaicPlot(DateTime time, double lat, double lon,
 			RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
@@ -838,7 +840,11 @@ public class RadarImageGenerator {
 				return null;
 			}
 		} else if (!time.isBefore(MRMS_OP_START)) {
-			return generateMrmsPlot(time, lat, lon, settings, plotProj);
+			if(time.isAfter(MRMS_GAP1_START) && time.isBefore(MRMS_GAP1_END)) {
+				return generateGridradV4Plot(time, lat, lon, settings, plotProj);
+			} else {
+				return generateMrmsPlot(time, lat, lon, settings, plotProj);
+			}
 		} else {
 			return null;
 		}

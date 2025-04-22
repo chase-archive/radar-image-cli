@@ -93,6 +93,17 @@ public class GridradV4Scan {
 				}
 			}
 		}
+
+		// artifact removal
+		for(int j = 0; j < refl[0].length; j++) {
+			for(int k = 1; k < refl[0][j].length - 1; k++) {
+				if(refl[0][j][k] != -1023
+						&& refl[0][j][k - 1] == -1023
+						&& refl[0][j][k + 1] == -1023) {
+					refl1km[j][k] = -1023;
+				}
+			}
+		}
 	}
 
 	private static float[] readVariable1Dim(Variable rawData) {

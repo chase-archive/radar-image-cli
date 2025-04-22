@@ -81,6 +81,8 @@ public class RadarScan {
 	private float[] velocityElev; // degrees
 	
 	DateTime scanTime = null;
+	
+	private boolean isSuperRes = false;
 
 	@SuppressWarnings("deprecation")
 	public RadarScan(File file) throws IOException {
@@ -96,6 +98,8 @@ public class RadarScan {
 	
 	@SuppressWarnings("deprecation")
 	private void initializeNoSuperRes(File file) throws IOException {
+		isSuperRes = false;
+		
 		NetcdfFile ncfile = NetcdfFile.open(file.getAbsolutePath());
 		System.out.println(ncfile);
 		
@@ -195,6 +199,8 @@ public class RadarScan {
 	}
 	
 	private void initializeSuperRes(File file) throws IOException {
+		isSuperRes = true;
+		
 		NetcdfFile ncfile = NetcdfFile.open(file.getAbsolutePath());
 		
 		logger.println(ncfile, DebugLoggerLevel.BRIEF);
@@ -529,6 +535,7 @@ public class RadarScan {
 	public float[][] getReflectivity(DateTime time, boolean allScans) {
 		float secondTimeDifference = (time.getMillis() - scanTime.getMillis()) / 1000.0f;
 		
+		if(isSuperRes) {
 		if(allScans) {
 //			System.out.println("all-tilts");
 			for(int i = 1; i < reflectivityTime.length; i++) {
@@ -574,6 +581,9 @@ public class RadarScan {
 			}
 			
 			return reflectivity[validScanIds.get(validScanIds.size() - 1)];
+		}
+		} else {
+			return reflectivity[0];
 		}
 	}
 

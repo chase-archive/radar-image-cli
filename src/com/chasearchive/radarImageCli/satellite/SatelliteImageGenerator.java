@@ -728,8 +728,8 @@ public class SatelliteImageGenerator {
 		return ret;
 	}
 
-	public static final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 18);
-	public static final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 12);
+	public static final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 16);
+	public static final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 11);
 
 	private static BufferedImage generateCityPlot(double lat, double lon, SatelliteGeneratorSettings settings,
 			RotateLatLonProjection plotProj) {
