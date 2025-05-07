@@ -24,7 +24,7 @@ public class CliTest {
 //		RadarImageCli.main(args1);
 //		long endTime = System.currentTimeMillis();
 		
-		DateTime start = new DateTime(1996, 4, 19, 22, 30, 0,DateTimeZone.UTC);
+		DateTime start = new DateTime(1996, 4, 19, 23, 16, 0,DateTimeZone.UTC);
 		DateTime end = new DateTime(1996, 4, 20, 1, 30, 30, DateTimeZone.UTC);
 		
 		while(start.isBefore(end)) {

@@ -1855,11 +1855,11 @@ public class SatelliteImageGenerator {
 		satFiles.addAll(satFilesPrev);
 		satFiles.addAll(satFilesCurr);
 
-//		System.out.println("satFiles.size(): " + satFiles.size());
-//
-//		for (String str : satFiles) {
-//			System.out.println("satFile: " + str);
-//		}
+		System.out.println("satFiles.size(): " + satFiles.size());
+
+		for (String str : satFiles) {
+			System.out.println("satFile: " + str);
+		}
 
 		ArrayList<String> band1FilesWithinTolerance = new ArrayList<>();
 		ArrayList<String> band2FilesWithinTolerance = new ArrayList<>();

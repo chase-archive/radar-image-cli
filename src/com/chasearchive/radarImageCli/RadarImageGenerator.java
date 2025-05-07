@@ -219,7 +219,9 @@ public class RadarImageGenerator {
 		File interstatesPolyMeta = RadarImageGenerator.loadResourceAsFile("res/primary-roads.poly.meta");
 		File majorRoadsPoly = RadarImageGenerator.loadResourceAsFile("res/prisec-roads.poly");
 		File majorRoadsPolyMeta = RadarImageGenerator.loadResourceAsFile("res/prisec-roads.poly.meta");
-
+//		File majorRoadsPoly = new File("/media/nvme1/Oklahoma All-Roads Map/KMLs/Poly-Metas/ok-county-roads.poly");
+//		File majorRoadsPolyMeta = new File("/media/nvme1/Oklahoma All-Roads Map/KMLs/Poly-Metas/ok-county-roads.poly.meta");
+		
 		File mxEstadosPoly = RadarImageGenerator.loadResourceAsFile("res/mxEstados.poly");
 		File mxEstadosPolyMeta = RadarImageGenerator.loadResourceAsFile("res/mxEstados.poly.meta");
 		File caProvincesPoly = RadarImageGenerator.loadResourceAsFile("res/caProvinces.poly");
@@ -669,7 +671,7 @@ public class RadarImageGenerator {
 			if (pixelsPerDegree < 1000 && prm < 0.1) {
 				continue;
 			}
-			if (pixelsPerDegree < 1200 && prm < 0.05) { // decatur il group project render - 0.25
+			if (pixelsPerDegree < 1200 && prm < 0.05) {
 				continue;
 			}
 			if (pixelsPerDegree < 1400 && prm < 0.025) {
