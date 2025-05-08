@@ -470,6 +470,8 @@ public class GeocolorProcessing {
 				}
 			}
 		}
+		
+		goesComposite = correctOrangeBlueSpeckle(goesComposite);
 
 		return goesComposite;
 	}
@@ -554,6 +556,125 @@ public class GeocolorProcessing {
 		}
 
 		return goesComposite;
+	}
+	
+	private static void fillGaps(Color[][] img) {
+		for(int i = 1; i < img.length - 1; i++) {
+			for(int j = 1; j < img[i].length - 1; j++) {
+				Color cL = img[i - 1][j];
+				Color cR = img[i + 1][j];
+				Color cU = img[i][j - 1];
+				Color cD = img[i][j + 1];
+				Color cC = img[i][j];
+				
+				if(cL != null && cR != null && cU != null && cD != null && cC == null) {
+					Color avgColor = rgbAvg(cL, cR, cU, cD);
+					
+					img[i][j] = avgColor;
+				}
+			}
+		}
+	}
+	
+	private static Color[][] correctOrangeBlueSpeckle(Color[][] img) {
+		Color[][] ret = img.clone();
+		
+		assert img.length % 2 == 0;
+		assert img[0].length % 2 == 0;
+		
+		for(int i = 0; i < img.length; i+=2) {
+			for(int j = 0; j < img[i].length ; j+=2) {
+				Color c00 = img[i][j];
+				Color c10 = img[i + 1][j];
+				Color c01 = img[i][j + 1];
+				Color c11 = img[i + 1][j + 1];
+				
+				if(c00 == null && c10 == null && c01 == null && c11 == null) {
+					continue;
+				}
+				
+				Color avg = rgbAvg(c00, c10, c01, c11);
+				
+				if(c00 == null) c00 = avg;
+				if(c10 == null) c10 = avg;
+				if(c01 == null) c01 = avg;
+				if(c11 == null) c11 = avg;
+
+				double r00 = c00.getRed();
+				double r10 = c10.getRed();
+				double r01 = c01.getRed();
+				double r11 = c11.getRed();
+				
+				double averageRed = avg.getRed();
+				
+				double mult00 = r00/averageRed;
+				double mult10 = r10/averageRed;
+				double mult01 = r01/averageRed;
+				double mult11 = r11/averageRed;
+				
+				double b00 = Double.min(mult00 * c00.getBlue(), 255);
+				double b10 = Double.min(mult10 * c10.getBlue(), 255);
+				double b01 = Double.min(mult01 * c01.getBlue(), 255);
+				double b11 = Double.min(mult11 * c11.getBlue(), 255);
+				
+				double g00 = Double.min(mult00 * c00.getGreen(), 255);
+				double g10 = Double.min(mult10 * c10.getGreen(), 255);
+				double g01 = Double.min(mult01 * c01.getGreen(), 255);
+				double g11 = Double.min(mult11 * c11.getGreen(), 255);
+				
+				Color new_c00 = new Color((int) r00, (int) g00, (int) b00);
+				Color new_c10 = new Color((int) r10, (int) g10, (int) b10);
+				Color new_c01 = new Color((int) r01, (int) g01, (int) b01);
+				Color new_c11 = new Color((int) r11, (int) g11, (int) b11);
+				
+				final double BLEND_FACTOR = 0.5;
+				if(img[i][j] != null && r00 >= 32) ret[i][j] = rgbBlend(c00, new_c00, BLEND_FACTOR);
+				if(img[i + 1][j] != null && r10 >= 32) ret[i + 1][j] = rgbBlend(c10, new_c10, BLEND_FACTOR);
+				if(img[i][j + 1] != null && r01 >= 32) ret[i][j + 1] = rgbBlend(c01, new_c01, BLEND_FACTOR);
+				if(img[i + 1][j + 1] != null && r11 >= 32) ret[i + 1][j + 1] = rgbBlend(c11, new_c11, BLEND_FACTOR);
+			}
+		}
+		
+		return ret;
+	}
+	
+	private static Color rgbAvg(Color... colors) {
+		int rSum = 0;
+		int gSum = 0;
+		int bSum = 0;
+		int count = 0;
+		
+		for(int i = 0; i < colors.length; i++) {
+			Color c = colors[i];
+			
+			if(c != null) {
+				rSum += c.getRed();
+				gSum += c.getGreen();
+				bSum += c.getBlue();
+				count++;
+			}
+		}
+		
+		Color avg = new Color(rSum/count, gSum/count, bSum/count);
+		
+		return avg;
+	}
+	
+	private static Color rgbBlend(Color c1, Color c2, double blendFactor) {
+		int r1 = c1.getRed();
+		int g1 = c1.getGreen();
+		int b1 = c1.getBlue();
+		
+		int r2 = c2.getRed();
+		int g2 = c2.getGreen();
+		int b2 = c2.getBlue();
+		
+		int r3 = (int) ((1 - blendFactor) * r1 + blendFactor * r2);
+		int g3 = (int) ((1 - blendFactor) * g1 + blendFactor * g2);
+		int b3 = (int) ((1 - blendFactor) * b1 + blendFactor * b2);
+		
+		Color c3 = new Color(r3, g3, b3);
+		return c3;
 	}
 
 	private static float[][] createSolarAltitudeMatrix(GeoCoord[][] latLonMatrix, DateTime dt, boolean[][] renderChunks,
