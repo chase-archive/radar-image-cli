@@ -131,7 +131,11 @@ public class SatelliteImageCli {
 				BufferedImage image = images.get(imgName);
 				
 				if(image != null) {
-					ImageIO.write(image, "PNG", outputFile);
+					String imageType = imgName.contains("jpg") ? "jpg" : "PNG";
+					
+					ImageIO.write(image, imageType, outputFile);
+					System.out.println(imageType);
+					System.out.println("Output file to: " + outputFile.getAbsolutePath());
 					logger.println("Output file to: " + outputFile.getAbsolutePath(), DebugLoggerLevel.BRIEF);
 				}
 			}

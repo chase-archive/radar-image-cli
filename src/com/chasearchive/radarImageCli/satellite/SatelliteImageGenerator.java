@@ -270,7 +270,7 @@ public class SatelliteImageGenerator {
 				imagesToExport.put("cities.png", citiesPlot);
 			}
 			imagesToExport.put("availability.png", availabilityNoticeLayer);
-			imagesToExport.put("satellite.png", satPlot);
+			imagesToExport.put("satellite.jpg", satPlot);
 			
 			if(settings.isDrawTimestamp()) {
 				imagesToExport.put("timestamp.png", timestampLayer);
@@ -816,7 +816,7 @@ public class SatelliteImageGenerator {
 		}
 		
 		BufferedImage satPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
-				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
+				(int) settings.getResolution(), BufferedImage.TYPE_3BYTE_BGR);
 		Graphics2D g = satPlot.createGraphics();
 
 		PointD latLonProjectedUL = new PointD(-(settings.getSize() * settings.getAspectRatioFloat()),

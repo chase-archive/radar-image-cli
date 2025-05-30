@@ -9,10 +9,10 @@ import com.chasearchive.radarImageCli.satellite.SatelliteImageCli;
 public class FullSuiteTest {
 	public static void main(String[] args) {
 		// Case info
-		DateTime time = new DateTime(2025, 4, 27, 21, 30, 0, DateTimeZone.UTC);
-		double lat = 41.99;
-		double lon = -102.16;
-		String caseName = "goes-bug-from-jim";
+		DateTime time = new DateTime(2025, 5, 25, 21, 50, 0, DateTimeZone.UTC);
+		double lat = 33.75;
+		double lon = -100.7;
+		String caseName = "afton-tx-2025-hail";
 
 		// Run full suite
 		runSuite(time, lat, lon, caseName);
@@ -29,7 +29,7 @@ public class FullSuiteTest {
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
 				"-a", "16:9", "-s", "2.5", "-c", "MRMS", "-r", "14000", "-debug", "SILENT", "-lyr", "SEPARATE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatVis = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "4:3", "-s", "15.0", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
+				"-a", "4:3", "-s", "3.0", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatLir = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
