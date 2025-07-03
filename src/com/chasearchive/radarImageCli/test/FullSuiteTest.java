@@ -3,7 +3,7 @@ package com.chasearchive.radarImageCli.test;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
-import com.chasearchive.radarImageCli.RadarImageCli;
+import com.chasearchive.radarImageCli.radar.RadarImageCli;
 import com.chasearchive.radarImageCli.satellite.SatelliteImageCli;
 
 public class FullSuiteTest {
@@ -37,7 +37,7 @@ public class FullSuiteTest {
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
 //		RadarImageCli.main(argsRadLoc);
-//		RadarImageCli.main(argsRadReg);
+		RadarImageCli.main(argsRadReg);
 		SatelliteImageCli.main(argsSatVis);
 //		SatelliteImageCli.main(argsSatLir);
 	}

@@ -6,8 +6,7 @@ import java.io.PrintWriter;
 import java.util.*;
 
 import com.chasearchive.radarImageCli.City;
-import com.chasearchive.radarImageCli.LambertConformalProjection;
-import com.chasearchive.radarImageCli.RadarImageGenerator;
+import com.chasearchive.radarImageCli.radar.LambertConformalProjection;
 import com.chasearchive.radarImageCli.ResourceLoader;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;

@@ -1,4 +1,9 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.radar;
+
+import com.chasearchive.radarImageCli.AspectRatio;
+import com.chasearchive.radarImageCli.Layering;
+import com.chasearchive.radarImageCli.Moment;
+import com.chasearchive.radarImageCli.Source;
 
 public class RadarGeneratorSettings {
 	private AspectRatio aspectRatio = AspectRatio.FOUR_THREE;

@@ -1,14 +1,13 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.radar;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
 
 import ucar.ma2.Array;
 import ucar.nc2.NetcdfFile;
 import ucar.nc2.Variable;
 
-public class GridradV4Scan {
+public class GridradV3Scan {
 	float[] lat;
 	float[] lon;
 	float[][][] refl;
@@ -17,10 +16,13 @@ public class GridradV4Scan {
 	float dLat;
 	float dLon;
 
-	public GridradV4Scan(File file) throws IOException {
+	public static void main(String[] args) throws IOException {
+		GridradV3Scan gridrad = new GridradV3Scan(new File(
+				"/home/a-urq/Downloads/2024010100/CONUS/SeamlessHSR/MRMS_SeamlessHSR_00.00_20240101-005800.grib2.gz"));
+	}
+
+	public GridradV3Scan(File file) throws IOException {
 		NetcdfFile ncfile = NetcdfFile.open(file.getAbsolutePath());
-//		System.out.println(ncfile);
-//		System.exit(44);
 
 		Variable latVar = ncfile.findVariable("Latitude");
 		Variable lonVar = ncfile.findVariable("Longitude");
@@ -36,74 +38,29 @@ public class GridradV4Scan {
 
 		float[] reflRaw = readVariable1Dim(ralaVar);
 		float[] index = readVariable1Dim(indexVar);
-		float[] reflUnpacked = new float[28 * lat.length * lon.length];
-		refl = new float[28][lat.length][lon.length];
-		refl1km = new float[lat.length][lon.length];
+		float[] reflUnpacked = new float[24 * 1201 * 2301];
+		refl = new float[24][1201][2301];
+		refl1km = new float[1201][2301];
 
 		dLat = lat[1] - lat[0];
 		dLon = lon[1] - lon[0];
-		
-		for (int i = 0; i < reflUnpacked.length; i++) {
-			reflUnpacked[i] = -1023;
-		}
 
 		for (int i = 0; i < reflRaw.length; i++) {
 			reflUnpacked[(int) index[i]] = reflRaw[i];
 		}
 		
 		for (int i = 0; i < reflUnpacked.length; i++) {
-			int i2 = i / lat.length / lon.length;
-			int j = (i / lon.length) % lat.length;
-			int k = i % lon.length;
+			int i2 = i / 1201 / 2301;
+			int j = (i / 2301) % 1201;
+			int k = i % 2301;
 
 			refl[i2][lat.length - 1 - j][k] = reflUnpacked[i];
 		}
 
-		for (int i = 0; i < 28; i++) {
-//			System.out.println(i + ":\t" + max(refl[i]));
+		for (int i = 0; i < 24; i++) {
+			System.out.println(i + ":\t" + max(refl[i]));
 		}
-		
-		for(int j = 0; j < refl[0].length; j++) {
-			for(int k = 0; k < refl[0][j].length; k++) {
-				if(refl[0][j][k] != -1023) {
-					refl1km[j][k] = refl[0][j][k];
-				}
-			}
-		}
-		
 		refl1km = refl[0];
-		
-		// reflectivity at lowest altitude construction 
-		for(int i = 0; i < refl.length; i++) {
-			for(int j = 0; j < refl[i].length; j++) {
-				for(int k = 0; k < refl[i][j].length; k++) {
-					if(refl1km[j][k] == -1023) {
-						refl1km[j][k] = refl[i][j][k];
-					}
-				}
-			}
-		}
-
-		for(int j = 0; j < refl[0].length; j++) {
-			for(int k = 1; k < refl[0][j].length - 1; k++) {
-				if(refl[0][j][k] == -1023
-						&& refl[0][j][k - 1] != -1023
-						&& refl[0][j][k + 1] != -1023) {
-					refl1km[j][k] = refl1km[j][k - 1];
-				}
-			}
-		}
-
-		// artifact removal
-		for(int j = 0; j < refl[0].length; j++) {
-			for(int k = 1; k < refl[0][j].length - 1; k++) {
-				if(refl[0][j][k] != -1023
-						&& refl[0][j][k - 1] == -1023
-						&& refl[0][j][k + 1] == -1023) {
-					refl1km[j][k] = -1023;
-				}
-			}
-		}
 	}
 
 	private static float[] readVariable1Dim(Variable rawData) {

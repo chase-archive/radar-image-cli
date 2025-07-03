@@ -1,6 +1,6 @@
 package com.chasearchive.radarImageCli.satellite;
 
-import static com.chasearchive.radarImageCli.RadarImageCli.logger;
+import static com.chasearchive.radarImageCli.radar.RadarImageCli.logger;
 
 import java.awt.BasicStroke;
 import java.awt.Color;

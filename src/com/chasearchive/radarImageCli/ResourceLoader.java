@@ -1,18 +1,16 @@
 package com.chasearchive.radarImageCli;
 
+import com.chasearchive.radarImageCli.radar.RadarImageGenerator;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.net.URL;
 
-import static com.chasearchive.radarImageCli.RadarImageCli.logger;
-
 public class ResourceLoader {
     public static final String DATA_FOLDER = "radar-image-cli-temp/";
 
     public static File loadResourceAsFile(String urlStr) {
-        logger.println("loading " + urlStr, DebugLoggerLevel.VERBOSE);
-        URL tilesObj = RadarImageGenerator.class.getResource(urlStr);
+        URL tilesObj = ResourceLoader.class.getResource(urlStr);
 
         // System.out.println("Temp-file created.");
 

@@ -1,6 +1,6 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.radar;
 
-import static com.chasearchive.radarImageCli.RadarImageCli.logger;
+import static com.chasearchive.radarImageCli.radar.RadarImageCli.logger;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -33,6 +33,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
+import com.chasearchive.radarImageCli.*;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -108,8 +109,8 @@ public class RadarImageGenerator {
 		}
 
 		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
-		BufferedImage citiesPlot = generateCityPlot(lat, lon, settings, plotProj);
-		BufferedImage availabilityNoticeLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);;
+		BufferedImage citiesPlot = generateCityPlot(settings, plotProj);
+		BufferedImage availabilityNoticeLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);
 
 //		BufferedImage logo = ImageIO.read(ResourceLoader.loadResourceAsFile("res/chase-archive-logo-128pix.png"));
 
@@ -203,7 +204,7 @@ public class RadarImageGenerator {
 			0.1f, 10, "mph");
 
 	private static BufferedImage[] generateBasemap(double lat, double lon, RadarGeneratorSettings settings,
-			RotateLatLonProjection plotProj) throws IOException {
+			RotateLatLonProjection plotProj) {
 		ArrayList<ArrayList<PointD>> countyBorders;
 		ArrayList<ArrayList<PointD>> stateBorders;
 		ArrayList<ArrayList<PointD>> interstates;
@@ -628,7 +629,7 @@ public class RadarImageGenerator {
 		return ret;
 	}
 
-	private static BufferedImage generateCityPlot(double lat, double lon, RadarGeneratorSettings settings,
+	private static BufferedImage generateCityPlot(RadarGeneratorSettings settings,
 			RotateLatLonProjection plotProj) {
 		BufferedImage citiesImg = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
@@ -699,10 +700,10 @@ public class RadarImageGenerator {
 //			System.out.println(name + "\t" + cLon + "\t" + cLat + "\t" + cityP + "\t" + cityX + "\t" + cityY);
 
 			g2d.setColor(Color.BLACK);
-			drawCenteredString(name, g2d, cityX + 0, cityY - 1);
-			drawCenteredString(name, g2d, cityX - 1, cityY + 0);
-			drawCenteredString(name, g2d, cityX + 1, cityY + 0);
-			drawCenteredString(name, g2d, cityX + 0, cityY + 1);
+			drawCenteredString(name, g2d, cityX, cityY - 1);
+			drawCenteredString(name, g2d, cityX - 1, cityY);
+			drawCenteredString(name, g2d, cityX + 1, cityY);
+			drawCenteredString(name, g2d, cityX, cityY + 1);
 			g2d.setColor(Color.WHITE);
 			drawCenteredString(name, g2d, cityX, cityY);
 		}

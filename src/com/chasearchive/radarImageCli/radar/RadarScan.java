@@ -1,17 +1,17 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.radar;
 
-import static com.chasearchive.radarImageCli.RadarImageCli.logger;
+import static com.chasearchive.radarImageCli.radar.RadarImageCli.logger;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 
+import com.chasearchive.radarImageCli.DebugLoggerLevel;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
 import ucar.ma2.Array;
-import ucar.nc2.Attribute;
 import ucar.nc2.NetcdfFile;
 import ucar.nc2.Variable;
 

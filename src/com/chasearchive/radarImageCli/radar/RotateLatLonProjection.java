@@ -1,4 +1,6 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.radar;
+
+import com.chasearchive.radarImageCli.PointD;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -7,8 +9,6 @@ import java.io.File;
 import java.io.IOException;
 
 import javax.imageio.ImageIO;
-
-import com.ameliaWx.wxArchives.PointF;
 
 public class RotateLatLonProjection implements MapProjection {
 	private double latitudeRotation;

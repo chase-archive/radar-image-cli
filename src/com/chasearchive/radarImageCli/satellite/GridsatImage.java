@@ -9,7 +9,6 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 
 import com.chasearchive.radarImageCli.ColorTable;
-import com.chasearchive.radarImageCli.RadarImageGenerator;
 
 import com.chasearchive.radarImageCli.ResourceLoader;
 import ucar.nc2.NetcdfFile;

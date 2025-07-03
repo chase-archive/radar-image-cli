@@ -3,7 +3,7 @@ package com.chasearchive.radarImageCli.test;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
-import com.chasearchive.radarImageCli.RadarImageCli;
+import com.chasearchive.radarImageCli.radar.RadarImageCli;
 
 public class CliTest {
 	public static void main(String[] args) {

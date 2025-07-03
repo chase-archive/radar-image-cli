@@ -1,4 +1,6 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.radar;
+
+import com.chasearchive.radarImageCli.PointD;
 
 public interface MapProjection {
 	public PointD projectLatLonToIJ(double longitude, double latitude);

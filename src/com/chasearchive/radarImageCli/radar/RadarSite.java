@@ -1,4 +1,6 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.radar;
+
+import com.chasearchive.radarImageCli.PointD;
 
 public class RadarSite {
 	private String siteCode;

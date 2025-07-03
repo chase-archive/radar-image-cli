@@ -1,4 +1,6 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.radar;
+
+import com.chasearchive.radarImageCli.PointD;
 
 public class LambertConformalProjection implements MapProjection {
 	// ALL ANGLES IN DEGREES; -180 = 180W, 180 = 180E

@@ -1,4 +1,4 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.radar;
 
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -8,6 +8,7 @@ import java.util.HashMap;
 
 import javax.imageio.ImageIO;
 
+import com.chasearchive.radarImageCli.*;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;

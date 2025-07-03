@@ -1,4 +1,4 @@
-package com.chasearchive.radarImageCli;
+package com.chasearchive.radarImageCli.radar;
 
 import java.io.File;
 import java.io.IOException;
