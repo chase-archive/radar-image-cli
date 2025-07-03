@@ -3,16 +3,16 @@ package com.chasearchive.radarImageCli.satellite.utilities;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 import com.chasearchive.radarImageCli.City;
 import com.chasearchive.radarImageCli.LambertConformalProjection;
 import com.chasearchive.radarImageCli.RadarImageGenerator;
+import com.chasearchive.radarImageCli.ResourceLoader;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
+
+import javax.annotation.Resource;
 
 public class AssignCityProminences {
 	public static void main(String[] args) throws FileNotFoundException {
@@ -25,12 +25,12 @@ public class AssignCityProminences {
 		CsvParser parser = new CsvParser(settings);
 
 		// parses all rows in one go.
-		List<String[]> allRows = parser.parseAll(RadarImageGenerator.loadResourceAsFile("res/usCities.csv"));
+		List<String[]> allRows = parser.parseAll(Objects.requireNonNull(ResourceLoader.loadResourceAsFile("res/usCities.csv")));
 
 		for (int i = 0; i < allRows.size(); i++) {
 			String[] row = allRows.get(i);
 
-			City city = new City(row[0], Double.valueOf(row[1]), Double.valueOf(row[2]), Integer.valueOf(row[3]));
+			City city = new City(row[0], Double.parseDouble(row[1]), Double.parseDouble(row[2]), Integer.parseInt(row[3]));
 			
 			cities.add(city);
 		}

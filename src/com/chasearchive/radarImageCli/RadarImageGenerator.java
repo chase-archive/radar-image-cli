@@ -11,7 +11,6 @@ import java.awt.image.BufferedImage;
 import java.awt.image.RescaleOp;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -19,6 +18,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URL;
 import java.net.UnknownHostException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,8 +32,6 @@ import java.util.TreeSet;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
-
-import javax.imageio.ImageIO;
 
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
@@ -112,7 +111,7 @@ public class RadarImageGenerator {
 		BufferedImage citiesPlot = generateCityPlot(lat, lon, settings, plotProj);
 		BufferedImage availabilityNoticeLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);;
 
-//		BufferedImage logo = ImageIO.read(loadResourceAsFile("res/chase-archive-logo-128pix.png"));
+//		BufferedImage logo = ImageIO.read(ResourceLoader.loadResourceAsFile("res/chase-archive-logo-128pix.png"));
 
 		BufferedImage timestampLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = timestampLayer.createGraphics();
@@ -176,7 +175,7 @@ public class RadarImageGenerator {
 			imagesToExport.put("composite.png", compositePlot);
 		}
 
-		FileUtils.deleteDirectory(new File("radar-image-generator-temp/"));
+		FileUtils.deleteDirectory(new File(ResourceLoader.DATA_FOLDER));
 
 		return imagesToExport;
 	}
@@ -199,8 +198,8 @@ public class RadarImageGenerator {
 	}
 
 	private static final ColorTable reflectivityColorTable = new ColorTable(
-			loadResourceAsFile("res/awips-ii-official-mod-low-filter-2.pal"), 0.1f, 10, "dBZ");
-	private static final ColorTable velocityColorTable = new ColorTable(loadResourceAsFile("res/SRRadarLoopsVlcy.pal"),
+			ResourceLoader.loadResourceAsFile("res/awips-ii-official-mod-low-filter-2.pal"), 0.1f, 10, "dBZ");
+	private static final ColorTable velocityColorTable = new ColorTable(ResourceLoader.loadResourceAsFile("res/SRRadarLoopsVlcy.pal"),
 			0.1f, 10, "mph");
 
 	private static BufferedImage[] generateBasemap(double lat, double lon, RadarGeneratorSettings settings,
@@ -215,26 +214,26 @@ public class RadarImageGenerator {
 		ArrayList<ArrayList<PointD>> geoboundariesADM0;
 		ArrayList<ArrayList<PointD>> geoboundariesADM1;
 
-		File countyBordersKML = RadarImageGenerator.loadResourceAsFile("res/usCounties.kml");
-		File stateBordersKML = RadarImageGenerator.loadResourceAsFile("res/usStates.kml");
-		File interstatesPoly = RadarImageGenerator.loadResourceAsFile("res/primary-roads.poly");
-		File interstatesPolyMeta = RadarImageGenerator.loadResourceAsFile("res/primary-roads.poly.meta");
-		File majorRoadsPoly = RadarImageGenerator.loadResourceAsFile("res/prisec-roads.poly");
-		File majorRoadsPolyMeta = RadarImageGenerator.loadResourceAsFile("res/prisec-roads.poly.meta");
+		File countyBordersKML = ResourceLoader.loadResourceAsFile("res/usCounties.kml");
+		File stateBordersKML = ResourceLoader.loadResourceAsFile("res/usStates.kml");
+		File interstatesPoly = ResourceLoader.loadResourceAsFile("res/primary-roads.poly");
+		File interstatesPolyMeta = ResourceLoader.loadResourceAsFile("res/primary-roads.poly.meta");
+		File majorRoadsPoly = ResourceLoader.loadResourceAsFile("res/prisec-roads.poly");
+		File majorRoadsPolyMeta = ResourceLoader.loadResourceAsFile("res/prisec-roads.poly.meta");
 //		File majorRoadsPoly = new File("/media/nvme1/Oklahoma All-Roads Map/KMLs/Poly-Metas/ok-county-roads.poly");
 //		File majorRoadsPolyMeta = new File("/media/nvme1/Oklahoma All-Roads Map/KMLs/Poly-Metas/ok-county-roads.poly.meta");
 		
-		File mxEstadosPoly = RadarImageGenerator.loadResourceAsFile("res/mxEstados.poly");
-		File mxEstadosPolyMeta = RadarImageGenerator.loadResourceAsFile("res/mxEstados.poly.meta");
-		File caProvincesPoly = RadarImageGenerator.loadResourceAsFile("res/caProvinces.poly");
-		File caProvincesPolyMeta = RadarImageGenerator.loadResourceAsFile("res/caProvinces.poly.meta");
-		File caAdminSubdPoly = RadarImageGenerator.loadResourceAsFile("res/caAdminSubd.poly");
-		File caAdminSubdPolyMeta = RadarImageGenerator.loadResourceAsFile("res/caAdminSubd.poly.meta");
+		File mxEstadosPoly = ResourceLoader.loadResourceAsFile("res/mxEstados.poly");
+		File mxEstadosPolyMeta = ResourceLoader.loadResourceAsFile("res/mxEstados.poly.meta");
+		File caProvincesPoly = ResourceLoader.loadResourceAsFile("res/caProvinces.poly");
+		File caProvincesPolyMeta = ResourceLoader.loadResourceAsFile("res/caProvinces.poly.meta");
+		File caAdminSubdPoly = ResourceLoader.loadResourceAsFile("res/caAdminSubd.poly");
+		File caAdminSubdPolyMeta = ResourceLoader.loadResourceAsFile("res/caAdminSubd.poly.meta");
 
-		File geoboundariesADM0Poly = RadarImageGenerator.loadResourceAsFile("res/geoboundaries-ADM0.poly");
-		File geoboundariesADM0PolyMeta = RadarImageGenerator.loadResourceAsFile("res/geoboundaries-ADM0.poly.meta");
-		File geoboundariesADM1Poly = RadarImageGenerator.loadResourceAsFile("res/geoboundaries-ADM1.poly");
-		File geoboundariesADM1PolyMeta = RadarImageGenerator.loadResourceAsFile("res/geoboundaries-ADM1.poly.meta");
+		File geoboundariesADM0Poly = ResourceLoader.loadResourceAsFile("res/geoboundaries-ADM0.poly");
+		File geoboundariesADM0PolyMeta = ResourceLoader.loadResourceAsFile("res/geoboundaries-ADM0.poly.meta");
+		File geoboundariesADM1Poly = ResourceLoader.loadResourceAsFile("res/geoboundaries-ADM1.poly");
+		File geoboundariesADM1PolyMeta = ResourceLoader.loadResourceAsFile("res/geoboundaries-ADM1.poly.meta");
 
 		countyBorders = getPolygons(countyBordersKML);
 		stateBorders = getPolygons(stateBordersKML);
@@ -1209,7 +1208,7 @@ public class RadarImageGenerator {
 
 		ArrayList<WarningPolygon> warnings = null;
 		try {
-			WarningArchive wa = new WarningArchive("radar-image-generator-temp/");
+			WarningArchive wa = new WarningArchive(ResourceLoader.DATA_FOLDER);
 			warnings = wa.getWarnings(time.minusHours(2), time.plusHours(2));
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
@@ -1590,7 +1589,7 @@ public class RadarImageGenerator {
 		TsvParser parser = new TsvParser(settings);
 
 		// parses all rows in one go.
-		List<String[]> allRows = parser.parseAll(loadResourceAsFile("res/radarSites.tsv"));
+		List<String[]> allRows = parser.parseAll(ResourceLoader.loadResourceAsFile("res/radarSites.tsv"));
 
 		for (int i = 0; i < allRows.size(); i++) {
 			String[] row = allRows.get(i);
@@ -1785,46 +1784,17 @@ public class RadarImageGenerator {
 		return slope * (value - preMin) + postMin;
 	}
 
-	public static File loadResourceAsFile(String urlStr) {
-		logger.println("loading " + urlStr, DebugLoggerLevel.VERBOSE);
-		URL url = RadarImageGenerator.class.getResource(urlStr);
-		URL tilesObj = url;
-
-		// System.out.println("Temp-file created.");
-
-		File file = new File("radar-image-generator-temp/" + urlStr + "");
-
-		if (tilesObj == null) {
-			System.out.println("Loading failed to start.");
-			return null;
-		}
-
-		// System.out.println("Loading successfully started.");
-
-		try {
-			FileUtils.copyURLToFile(tilesObj, file);
-		} catch (Exception e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-			return null;
-		}
-
-		return file;
-	}
-
-	private static final String dataFolder = "radar-image-generator-temp/";
-
 	private static File downloadFile(String url, String fileName) throws IOException {
 //		System.out.println("Downloading from: " + url);
 		URL dataURL = new URL(url);
 
-		File dataDir = new File(dataFolder);
+		File dataDir = new File(ResourceLoader.DATA_FOLDER);
 //		System.out.println("Creating Directory: " + dataFolder);
 		dataDir.mkdirs();
 		InputStream is = dataURL.openStream();
 
 //		System.out.println("Output File: " + dataFolder + fileName);
-		OutputStream os = new FileOutputStream(dataFolder + fileName);
+		OutputStream os = new FileOutputStream(ResourceLoader.DATA_FOLDER + fileName);
 		byte[] buffer = new byte[16 * 1024];
 		int transferredBytes = is.read(buffer);
 		while (transferredBytes > -1) {
@@ -1835,7 +1805,7 @@ public class RadarImageGenerator {
 		is.close();
 		os.close();
 
-		return new File(dataFolder + fileName);
+		return new File(ResourceLoader.DATA_FOLDER + fileName);
 	}
 
 	public static File unzipGz(File gz) {
@@ -1844,7 +1814,7 @@ public class RadarImageGenerator {
 		String fullFilename = gz.getAbsolutePath();
 
 		try {
-			GZIPInputStream gzip = new GZIPInputStream(new FileInputStream(fullFilename));
+			GZIPInputStream gzip = new GZIPInputStream(Files.newInputStream(Paths.get(fullFilename)));
 			FileOutputStream out = new FileOutputStream(fullFilename.substring(0, fullFilename.length() - 3));
 
 			int len;
@@ -1869,7 +1839,7 @@ public class RadarImageGenerator {
 		CsvParser parser = new CsvParser(settings);
 
 		// parses all rows in one go.
-		List<String[]> allRows = parser.parseAll(RadarImageGenerator.loadResourceAsFile("res/worldCities.csv"));
+		List<String[]> allRows = parser.parseAll(ResourceLoader.loadResourceAsFile("res/worldCities.csv"));
 
 		for (int i = 0; i < allRows.size(); i++) {
 			String[] row = allRows.get(i);

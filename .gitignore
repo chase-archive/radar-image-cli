@@ -2,6 +2,7 @@
 caseTests/
 radar-image-generator-temp/
 satellite-image-generator-temp/
+radar-image-cli-temp/
 
 ### IntelliJ IDEA ###
 out/

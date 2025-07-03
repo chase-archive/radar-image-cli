@@ -11,11 +11,12 @@ import javax.imageio.ImageIO;
 import com.chasearchive.radarImageCli.ColorTable;
 import com.chasearchive.radarImageCli.RadarImageGenerator;
 
+import com.chasearchive.radarImageCli.ResourceLoader;
 import ucar.nc2.NetcdfFile;
 
 public class GridsatImage extends CdmFile implements SatelliteImage {
 	private static final ColorTable brightnessTemperatureColorTable = new ColorTable(
-			RadarImageGenerator.loadResourceAsFile("res/aru-br-temp.pal"), 0.1f, 10, "dBZ");
+			ResourceLoader.loadResourceAsFile("res/aru-br-temp.pal"), 0.1f, 10, "dBZ");
 	
 	public static void main(String[] args) throws IOException {
 		File datafile = new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/gridsat/GridSat-CONUS.goes13.2016.04.11.2330.v01.nc");
