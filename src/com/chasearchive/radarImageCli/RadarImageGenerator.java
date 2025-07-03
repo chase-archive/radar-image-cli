@@ -176,6 +176,8 @@ public class RadarImageGenerator {
 			imagesToExport.put("composite.png", compositePlot);
 		}
 
+		FileUtils.deleteDirectory(new File("radar-image-generator-temp/"));
+
 		return imagesToExport;
 	}
 

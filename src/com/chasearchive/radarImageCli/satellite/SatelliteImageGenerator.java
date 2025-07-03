@@ -32,6 +32,7 @@ import java.util.zip.GZIPInputStream;
 
 import javax.imageio.ImageIO;
 
+import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
@@ -279,6 +280,8 @@ public class SatelliteImageGenerator {
 		if (settings.getLayering() != Layering.SEPARATE_ONLY && settings.getLayering() != Layering.SEPARATE_ONLY_NO_BASEMAP) {
 			imagesToExport.put("composite.png", compositePlot);
 		}
+
+		FileUtils.deleteDirectory(new File("satellite-image-generator-temp/"));
 
 		return imagesToExport;
 	}
