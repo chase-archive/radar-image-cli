@@ -129,6 +129,7 @@ public class SatelliteImageGenerator {
 
 		if (settings.getSource() == SatelliteSource.GOES_EAST || settings.getSource() == SatelliteSource.GOES_WEST) {
 			if (settings.getSector() == SatelliteSector.GOES_CONUS || settings.getSector() == SatelliteSector.GOES_PACUS) {
+				System.out.println("downloading files...");
 				long downloadStartTime = System.currentTimeMillis();
 				File[] satFiles = null;
 				try {
@@ -138,7 +139,8 @@ public class SatelliteImageGenerator {
 				}
 				long downloadEndTime = System.currentTimeMillis();
 				System.out.println("download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
-	
+
+				System.out.println("loading files...");
 				long fileLoadStartTime = System.currentTimeMillis();
 				GoesImage band1 = GoesImage.loadFromFile(satFiles[0]);
 				GoesImage band2 = GoesImage.loadFromFile(satFiles[1]);
@@ -149,11 +151,13 @@ public class SatelliteImageGenerator {
 				GoesImage[] goesImages = { band1, band2, band3, band7, band13 };
 				long fileLoadEndTime = System.currentTimeMillis();
 				System.out.println("file load time: " + (fileLoadEndTime - fileLoadStartTime)/1000.0 + " s");
-	
+
+				System.out.println("plotting data...");
 				long plotStartTime = System.currentTimeMillis();
 				satPlot = generateSatellitePlot(goesImages, time, lat, lon, settings, satProj, plotProj);
 				long plotEndTime = System.currentTimeMillis();
 				System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
+				System.out.println("**overall run time: " + (plotEndTime - downloadStartTime)/1000.0 + " s**");
 			} else if (settings.getSector() == SatelliteSector.GOES_FULL_DISK) {
 				long downloadStartTime = System.currentTimeMillis();
 				File satMultibandFile = null;
@@ -175,6 +179,7 @@ public class SatelliteImageGenerator {
 				satPlot = generateSatellitePlot(goesImage, time, lat, lon, settings, satProj, plotProj);
 				long plotEndTime = System.currentTimeMillis();
 				System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
+				System.out.println("**overall run time: " + (plotEndTime - downloadStartTime)/1000.0 + " s**");
 			}
 		} else if (settings.getSource() == SatelliteSource.GRIDSAT) {
 			long downloadStartTime = System.currentTimeMillis();
@@ -732,7 +737,7 @@ public class SatelliteImageGenerator {
 		Graphics2D g2d = citiesImg.createGraphics();
 
 		double pixelsPerDegree = settings.getResolution() / settings.getSize();
-		System.out.println("pixelsPerDegree: " + pixelsPerDegree);
+//		System.out.println("pixelsPerDegree: " + pixelsPerDegree);
 
 		for (City c : cities) {
 			String name = c.getName();
@@ -940,7 +945,7 @@ public class SatelliteImageGenerator {
 //			endI = band13Shape[1]/2 - 1;
 //		}
 
-		System.out.println("image type: " + settings.getImageType());
+//		System.out.println("image type: " + settings.getImageType());
 
 		long colorProcessingStartTime = System.currentTimeMillis();
 		int chunkSizeInBand = 0;
@@ -1849,10 +1854,10 @@ public class SatelliteImageGenerator {
 		satFiles.addAll(satFilesPrev);
 		satFiles.addAll(satFilesCurr);
 
-		System.out.println("satFiles.size(): " + satFiles.size());
+//		System.out.println("satFiles.size(): " + satFiles.size());
 
 		for (String str : satFiles) {
-			System.out.println("satFile: " + str);
+//			System.out.println("satFile: " + str);
 		}
 
 		ArrayList<String> band1FilesWithinTolerance = new ArrayList<>();
@@ -2061,6 +2066,8 @@ public class SatelliteImageGenerator {
 			logger.println("try returning file: " + mostRecentBand1File, DebugLoggerLevel.BRIEF);
 
 			if(imageType == SatelliteImageType.GEOCOLOR) {
+				System.out.println("file selection finished, downloading actual files...");
+				long downloadStartTime = System.currentTimeMillis();
 				File band1File = downloadFile(mostRecentBand1File, "sat_band1.nc");
 				File band2File = downloadFile(mostRecentBand2File, "sat_band2.nc");
 				File band3File = downloadFile(mostRecentBand3File, "sat_band3.nc");
@@ -2068,6 +2075,19 @@ public class SatelliteImageGenerator {
 				File band13File = downloadFile(mostRecentBand13File, "sat_band13.nc");
 		
 				logger.println("returning file: " + mostRecentBand1File, DebugLoggerLevel.BRIEF);
+				long downloadEndTime = System.currentTimeMillis();
+				System.out.println("actual download time: " + ((downloadEndTime - downloadStartTime)/1000.0) + "s");
+
+				long totalFileSizeBits = band1File.length();
+				totalFileSizeBits += band2File.length();
+				totalFileSizeBits += band3File.length();
+				totalFileSizeBits += band7File.length();
+				totalFileSizeBits += band13File.length();
+				totalFileSizeBits *= 8;
+
+				double downloadRateMbps = totalFileSizeBits / 1024.0 / 1024.0 / ((downloadEndTime - downloadStartTime)/1000.0);
+
+				System.out.printf("average download rate: %.2f Mbps\n", downloadRateMbps);
 		
 				return new File[] { band1File, band2File, band3File, band7File, band13File };
 			} else {

@@ -38,7 +38,7 @@ public class FullSuiteTest {
 
 //		RadarImageCli.main(argsRadLoc);
 		RadarImageCli.main(argsRadReg);
-		SatelliteImageCli.main(argsSatVis);
+//		SatelliteImageCli.main(argsSatVis);
 //		SatelliteImageCli.main(argsSatLir);
 	}
 

@@ -134,7 +134,7 @@ public class RadarImageCli {
 			new File(exportDirectory).mkdirs();
 			
 			for(String imgName : images.keySet()) {
-				System.out.println("imgName: " + imgName);
+//				System.out.println("imgName: " + imgName);
 				File outputFile = new File(exportDirectory + imgName);
 				BufferedImage image = images.get(imgName);
 				

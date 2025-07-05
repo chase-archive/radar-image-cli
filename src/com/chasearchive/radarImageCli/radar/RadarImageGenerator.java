@@ -1108,14 +1108,22 @@ public class RadarImageGenerator {
 				-(settings.getSize()));
 
 		if (!time.isBefore(MRMS_OP_START)) {
+			long downloadStartTime = System.currentTimeMillis();
 			String mrmsUrl = String.format(
 					"https://noaa-mrms-pds.s3.amazonaws.com/CONUS/SeamlessHSR_00.00/%04d%02d%02d/MRMS_SeamlessHSR_00.00_%04d%02d%02d-%02d%02d%02d.grib2.gz",
 					time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(), time.getYear(), time.getMonthOfYear(),
 					time.getDayOfMonth(), time.getHourOfDay(), time.getMinuteOfHour() - (time.getMinuteOfHour() % 2),
 					0);
 			File mrmsGz = downloadFile(mrmsUrl, "mrms.composite");
+			long downloadEndTime = System.currentTimeMillis();
+			System.out.println("download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
+
+			System.out.println("loading files...");
+			long loadStartTime = System.currentTimeMillis();
 			File mrmsFile = unzipGz(mrmsGz);
 			MrmsComposite mrms = new MrmsComposite(mrmsFile);
+			long loadEndTime = System.currentTimeMillis();
+			System.out.println("file load time: " + (loadEndTime - loadStartTime)/1000.0 + " s");
 
 			float[][] data = null;
 			ColorTable colorTable = null;
@@ -1129,20 +1137,43 @@ public class RadarImageGenerator {
 				return radarPlot;
 			}
 
-			for (int i = 0; i < data.length; i++) {
-				for (int j = 0; j < data[i].length; j++) {
-					float qLat = mrms.lat[mrms.lat.length - 1 - i];
-					float qLon = mrms.lon[j];
+			// chunk optimization
+			long chunkStartTime = System.currentTimeMillis();
+			final int CHUNK_SIZE = 25;
+			boolean[][] renderChunk = new boolean[(int) Math.ceil((double) data.length/CHUNK_SIZE)]
+					[(int) Math.ceil((double) data[0].length/CHUNK_SIZE)];
 
-					float lat1 = qLat - mrms.dLat / 2.0f;
-					float lat2 = qLat + mrms.dLat / 2.0f;
-					float lon1 = qLon - mrms.dLat / 2.0f;
-					float lon2 = qLon + mrms.dLat / 2.0f;
+			for (int i = 0; i < renderChunk.length; i++) {
+				for (int j = 0; j < renderChunk[i].length; j++) {
+					int i1Low = i * CHUNK_SIZE;
+					int j1Low = j * CHUNK_SIZE;
+					int i1High = (i + 1) * CHUNK_SIZE;
+					int j1High = (j + 1) * CHUNK_SIZE;
+
+					if(i1High >= mrms.lat.length) {
+						i1High = mrms.lat.length - 1;
+					}
+
+					if(j1High >= mrms.lon.length) {
+						j1High = mrms.lon.length - 1;
+					}
+
+					int i1Mid = (i1Low + i1High)/2;
+					int j1Mid = (j1Low + j1High)/2;
+
+					float lat1 = mrms.lat[mrms.lat.length - 1 - i1Low];
+					float lat2 = mrms.lat[mrms.lat.length - 1 - i1High];
+					float lon1 = mrms.lon[j1Low];
+					float lon2 = mrms.lon[j1High];
+
+					float latM = mrms.lat[mrms.lat.length - 1 - i1Mid];
+					float lonM = mrms.lon[j1Mid];
 
 					PointD p1P = plotProj.rotateLatLon(lon1, lat1);
 					PointD p2P = plotProj.rotateLatLon(lon1, lat2);
 					PointD p3P = plotProj.rotateLatLon(lon2, lat2);
 					PointD p4P = plotProj.rotateLatLon(lon2, lat1);
+					PointD p5P = plotProj.rotateLatLon(lonM, latM);
 
 					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
 							p1P.getY());
@@ -1160,14 +1191,15 @@ public class RadarImageGenerator {
 							p4P.getY());
 					double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
 							p4P.getX());
-
-					double value = data[i][j];
-					Color color = colorTable.getColor(value);
+					double x5 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+							p5P.getY());
+					double y5 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+							p5P.getX());
 
 					int[] xPoints = { (int) Math.round(x1), (int) Math.round(x2), (int) Math.round(x3),
-							(int) Math.round(x4) };
+							(int) Math.round(x4), (int) Math.round(x5) };
 					int[] yPoints = { (int) Math.round(y1), (int) Math.round(y2), (int) Math.round(y3),
-							(int) Math.round(y4) };
+							(int) Math.round(y4), (int) Math.round(y5) };
 
 					boolean anyInsideImage = false;
 					for (int k = 0; k < 4; k++) {
@@ -1180,12 +1212,75 @@ public class RadarImageGenerator {
 						}
 					}
 
-					if (anyInsideImage) {
-						g.setColor(color);
-						g.fillPolygon(xPoints, yPoints, 4);
+					renderChunk[i][j] = anyInsideImage;
+				}
+			}
+			long chunkEndTime = System.currentTimeMillis();
+			System.out.println("chunk decision time: " + (chunkEndTime - chunkStartTime)/1000.0 + " s");
+
+			System.out.println("plotting MRMS data...");
+			long plotStartTime = System.currentTimeMillis();
+			for (int i = 0; i < data.length; i++) {
+				for (int j = 0; j < data[i].length; j++) {
+					if(renderChunk[i/CHUNK_SIZE][j/CHUNK_SIZE]) {
+						float qLat = mrms.lat[mrms.lat.length - 1 - i];
+						float qLon = mrms.lon[j];
+
+						float lat1 = qLat - mrms.dLat / 2.0f;
+						float lat2 = qLat + mrms.dLat / 2.0f;
+						float lon1 = qLon - mrms.dLat / 2.0f;
+						float lon2 = qLon + mrms.dLat / 2.0f;
+
+						PointD p1P = plotProj.rotateLatLon(lon1, lat1);
+						PointD p2P = plotProj.rotateLatLon(lon1, lat2);
+						PointD p3P = plotProj.rotateLatLon(lon2, lat2);
+						PointD p4P = plotProj.rotateLatLon(lon2, lat1);
+
+						double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+								p1P.getY());
+						double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+								p1P.getX());
+						double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+								p2P.getY());
+						double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+								p2P.getX());
+						double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+								p3P.getY());
+						double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+								p3P.getX());
+						double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+								p4P.getY());
+						double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+								p4P.getX());
+
+						double value = data[i][j];
+						Color color = colorTable.getColor(value);
+
+						int[] xPoints = {(int) Math.round(x1), (int) Math.round(x2), (int) Math.round(x3),
+								(int) Math.round(x4)};
+						int[] yPoints = {(int) Math.round(y1), (int) Math.round(y2), (int) Math.round(y3),
+								(int) Math.round(y4)};
+
+						boolean anyInsideImage = false;
+						for (int k = 0; k < 4; k++) {
+							int x = xPoints[k];
+							int y = yPoints[k];
+
+							if (x >= 0 && x < radarPlot.getWidth() && y >= 0 && y < radarPlot.getHeight()) {
+								anyInsideImage = true;
+								break;
+							}
+						}
+
+						if (anyInsideImage) {
+							g.setColor(color);
+							g.fillPolygon(xPoints, yPoints, 4);
+						}
 					}
 				}
 			}
+			long plotEndTime = System.currentTimeMillis();
+			System.out.println("plot render time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
 
 			return radarPlot;
 		} else {
@@ -1795,7 +1890,7 @@ public class RadarImageGenerator {
 		InputStream is = dataURL.openStream();
 
 //		System.out.println("Output File: " + dataFolder + fileName);
-		OutputStream os = new FileOutputStream(ResourceLoader.DATA_FOLDER + fileName);
+		OutputStream os = Files.newOutputStream(Paths.get(ResourceLoader.DATA_FOLDER + fileName));
 		byte[] buffer = new byte[16 * 1024];
 		int transferredBytes = is.read(buffer);
 		while (transferredBytes > -1) {

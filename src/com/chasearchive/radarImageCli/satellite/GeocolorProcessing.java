@@ -411,9 +411,9 @@ public class GeocolorProcessing {
 			}
 		}
 
-		System.out.println(max2(band1Rad));
-		System.out.println(max2(band2Rad));
-		System.out.println(max2(band3Rad));
+//		System.out.println(max2(band1Rad));
+//		System.out.println(max2(band2Rad));
+//		System.out.println(max2(band3Rad));
 
 //		band1Clip = normalize(band1Rad, 0, 1);
 //		band2Clip = normalize(band2Rad, 0, 1);
@@ -501,8 +501,8 @@ public class GeocolorProcessing {
 		float band7wavelength = band7.dataFromField("wavelength");
 		float band13wavelength = band13.dataFromField("wavelength");
 
-		System.out.println("band 7: " + band7wavelength + " um");
-		System.out.println("band 13: " + band13wavelength + " um");
+//		System.out.println("band 7: " + band7wavelength + " um");
+//		System.out.println("band 13: " + band13wavelength + " um");
 
 		// VERY IMPORTANT!! figure out radiance -> brightness temperature conversion
 		for (int i = 0; i < band13Rad.length; i++) {

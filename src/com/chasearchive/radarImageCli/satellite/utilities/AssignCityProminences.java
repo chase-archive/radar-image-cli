@@ -11,8 +11,6 @@ import com.chasearchive.radarImageCli.ResourceLoader;
 import com.univocity.parsers.csv.CsvParser;
 import com.univocity.parsers.csv.CsvParserSettings;
 
-import javax.annotation.Resource;
-
 public class AssignCityProminences {
 	public static void main(String[] args) throws FileNotFoundException {
 		List<City> cities = new ArrayList<>();

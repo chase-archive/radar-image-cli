@@ -21,7 +21,7 @@ public class MrmsComposite {
 	
 	public MrmsComposite(File file) throws IOException {
 		NetcdfFile ncfile = NetcdfFile.open(file.getAbsolutePath());
-		System.out.println(ncfile);
+//		System.out.println(ncfile);
 		
 		Variable latVar = ncfile.findVariable("lat");
 		Variable lonVar = ncfile.findVariable("lon");
@@ -34,8 +34,8 @@ public class MrmsComposite {
 		dLat = lat[1] - lat[0];
 		dLon = lon[1] - lon[0];
 		
-		System.out.println(dLat);
-		System.out.println(dLon);
+//		System.out.println(dLat);
+//		System.out.println(dLon);
 	}
 
 	private static float[] readVariable1Dim(Variable rawData) {

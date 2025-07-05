@@ -126,7 +126,7 @@ public class SatelliteImageCli {
 			new File(exportDirectory).mkdirs();
 			
 			for(String imgName : images.keySet()) {
-				System.out.println("imgName: " + imgName);
+//				System.out.println("imgName: " + imgName);
 				File outputFile = new File(exportDirectory + imgName);
 				BufferedImage image = images.get(imgName);
 				
@@ -134,8 +134,8 @@ public class SatelliteImageCli {
 					String imageType = imgName.contains("jpg") ? "jpg" : "PNG";
 					
 					ImageIO.write(image, imageType, outputFile);
-					System.out.println(imageType);
-					System.out.println("Output file to: " + outputFile.getAbsolutePath());
+//					System.out.println(imageType);
+//					System.out.println("Output file to: " + outputFile.getAbsolutePath());
 					logger.println("Output file to: " + outputFile.getAbsolutePath(), DebugLoggerLevel.BRIEF);
 				}
 			}
