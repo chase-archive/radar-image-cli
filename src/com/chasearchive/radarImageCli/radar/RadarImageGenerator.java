@@ -108,6 +108,8 @@ public class RadarImageGenerator {
 			radarPlot = generateRadarMosaicPlot(time, lat, lon, settings, plotProj);
 		}
 
+//		PrintWriter pw = new Pri
+		ResourceLoader.wwaFolder = "wwa-" + settings.getCaseName() + "/";
 		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
 		BufferedImage citiesPlot = generateCityPlot(settings, plotProj);
 		BufferedImage availabilityNoticeLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);
@@ -1302,15 +1304,21 @@ public class RadarImageGenerator {
 		BasicStroke ts = new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
 		BasicStroke ets = new BasicStroke(6, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
 
+		System.out.println("downloading IEM WWA file...");
+		long downloadStartTime = System.currentTimeMillis();
+
 		ArrayList<WarningPolygon> warnings = null;
 		try {
-			WarningArchive wa = new WarningArchive(ResourceLoader.DATA_FOLDER);
+			WarningArchive wa = new WarningArchive(ResourceLoader.wwaFolder);
 			warnings = wa.getWarnings(time.minusHours(2), time.plusHours(2));
 		} catch (UnknownHostException e) {
 			e.printStackTrace();
 			System.err.println("returning blank for warning plot!");
 			return warningPlot;
 		}
+
+		long downloadEndTime = System.currentTimeMillis();
+		System.out.println("IEM WWA download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
 
 		PointD latLonProjectedUL = new PointD(-(settings.getSize() * settings.getAspectRatioFloat()),
 				(settings.getSize()));

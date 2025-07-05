@@ -13,6 +13,7 @@ public class RadarGeneratorSettings {
 	private double resolution = 1080; // height in pixels
 	private Layering layering = Layering.COMPOSITE_ONLY;
 	private boolean drawTimestamp = true;
+	private String caseName = "";
 	
 	public AspectRatio getAspectRatio() {
 		return aspectRatio;
@@ -83,5 +84,13 @@ public class RadarGeneratorSettings {
 
 	public void setDrawTimestamp(boolean drawTimestamp) {
 		this.drawTimestamp = drawTimestamp;
+	}
+
+	public String getCaseName() {
+		return caseName;
+	}
+
+	public void setCaseName(String caseName) {
+		this.caseName = caseName;
 	}
 }

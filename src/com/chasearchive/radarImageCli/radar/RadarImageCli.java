@@ -125,6 +125,8 @@ public class RadarImageCli {
 		logger.println(dt, DebugLoggerLevel.BRIEF);
 		logger.println(lat, DebugLoggerLevel.BRIEF);
 		logger.println(lon, DebugLoggerLevel.BRIEF);
+
+		settings.setCaseName(outputFolderString.replace('/', '_'));
 		
 		try {
 			HashMap<String, BufferedImage> images = RadarImageGenerator.generateRadar(dt, lat, lon, settings);
