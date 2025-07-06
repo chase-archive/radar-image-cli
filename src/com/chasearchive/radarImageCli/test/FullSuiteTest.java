@@ -9,10 +9,10 @@ import com.chasearchive.radarImageCli.satellite.SatelliteImageCli;
 public class FullSuiteTest {
 	public static void main(String[] args) {
 		// Case info
-		DateTime time = new DateTime(2025, 5, 25, 21, 50, 0, DateTimeZone.UTC);
-		double lat = 33.75;
-		double lon = -100.7;
-		String caseName = "afton-tx-2025-hail";
+		DateTime time = new DateTime(2021, 3, 13, 23, 30, 0, DateTimeZone.UTC);
+		double lat = 34.89;
+		double lon = -100.93;
+		String caseName = "clarendon-tx-2021-crash-test";
 
 		long maxMemory = Runtime.getRuntime().maxMemory();
 		long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();

@@ -3,6 +3,7 @@ caseTests/
 radar-image-generator-temp/
 satellite-image-generator-temp/
 radar-image-cli-temp/
+radar-image-cli-persistent/
 wwa-**/
 
 ### IntelliJ IDEA ###
