@@ -1,6 +1,5 @@
 package com.chasearchive.radarImageCli.test;
 
-import com.chasearchive.radarImageCli.RadarImageCli;
 import com.chasearchive.radarImageCli.satellite.SatelliteImageCli;
 
 public class GoesTest {
