@@ -129,6 +129,7 @@ public class RadarImageCli {
 		settings.setCaseName(outputFolderString.replace('/', '_'));
 		
 		try {
+			System.out.println("starting radar generator...");
 			HashMap<String, BufferedImage> images = RadarImageGenerator.generateRadar(dt, lat, lon, settings);
 			String caseType = caseTypeStr(settings);
 			

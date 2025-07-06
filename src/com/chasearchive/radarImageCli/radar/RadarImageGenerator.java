@@ -9,13 +9,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.awt.image.RescaleOp;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
@@ -66,10 +60,14 @@ public class RadarImageGenerator {
 		
 		BufferedImage[] basemapLayers = null;
 		BufferedImage basemap = null;
-		
+
 		if(settings.getLayering() != Layering.SEPARATE_ONLY_NO_BASEMAP) {
+			System.out.println("making basemap...");
+			long basemapStartTime = System.currentTimeMillis();
 			basemapLayers = generateBasemap(lat, lon, settings, plotProj);
 			basemap = basemapLayers[0];
+			long basemapEndTime = System.currentTimeMillis();
+			System.out.println("basemap time: " + (basemapEndTime - basemapStartTime)/1000.0 + " s");
 		}
 
 		BufferedImage radarPlot = null;
@@ -105,12 +103,13 @@ public class RadarImageGenerator {
 				radarPlot = null;
 			}
 		} else if (settings.getSource() == Source.MRMS) {
+			System.out.println("plotting radar mosaic...");
 			radarPlot = generateRadarMosaicPlot(time, lat, lon, settings, plotProj);
+			System.out.println("radar mosaic done");
 		}
 
-//		PrintWriter pw = new Pri
-		ResourceLoader.wwaFolder = "wwa-" + settings.getCaseName() + "/";
 		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
+
 		BufferedImage citiesPlot = generateCityPlot(settings, plotProj);
 		BufferedImage availabilityNoticeLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);
 
@@ -1304,21 +1303,43 @@ public class RadarImageGenerator {
 		BasicStroke ts = new BasicStroke(4, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
 		BasicStroke ets = new BasicStroke(6, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND);
 
-		System.out.println("downloading IEM WWA file...");
-		long downloadStartTime = System.currentTimeMillis();
-
-		ArrayList<WarningPolygon> warnings = null;
-		try {
-			WarningArchive wa = new WarningArchive(ResourceLoader.wwaFolder);
-			warnings = wa.getWarnings(time.minusHours(2), time.plusHours(2));
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-			System.err.println("returning blank for warning plot!");
-			return warningPlot;
+		File mostRecentCaseNameFile = new File(ResourceLoader.PERSISTENT_DATA_FOLDER + "most-recent-case-name.txt");
+		String mostRecentCaseName = "";
+		if(mostRecentCaseNameFile.exists()) {
+			Scanner sc = new Scanner(mostRecentCaseNameFile);
+			mostRecentCaseName = sc.nextLine();
 		}
 
-		long downloadEndTime = System.currentTimeMillis();
-		System.out.println("IEM WWA download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
+		ResourceLoader.wwaFolder = "wwa-" + settings.getCaseName() + "/";
+		ArrayList<WarningPolygon> warnings;
+		if(mostRecentCaseName.equals(settings.getCaseName())) {
+			File wwaFile = new File("wwa-" + settings.getCaseName() + "/wwa.kml");
+			warnings = WarningArchive.getWarnings(wwaFile);
+		} else {
+			if(new File("wwa-" + mostRecentCaseName + "/wwa.kml").exists()) {
+				FileUtils.deleteDirectory(new File("wwa-" + mostRecentCaseName + "/"));
+			}
+
+			new File(ResourceLoader.PERSISTENT_DATA_FOLDER).mkdirs();
+            try (PrintWriter pw = new PrintWriter(mostRecentCaseNameFile.getAbsolutePath())) {
+                pw.println(settings.getCaseName());
+            }
+
+            System.out.println("downloading IEM WWA file...");
+			long downloadStartTime = System.currentTimeMillis();
+
+			try {
+				WarningArchive wa = new WarningArchive(ResourceLoader.wwaFolder);
+				warnings = wa.getWarnings(time.minusHours(1), time.plusHours(7));
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
+				System.err.println("returning blank for warning plot!");
+				return warningPlot;
+			}
+
+			long downloadEndTime = System.currentTimeMillis();
+			System.out.println("IEM WWA download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
+		}
 
 		PointD latLonProjectedUL = new PointD(-(settings.getSize() * settings.getAspectRatioFloat()),
 				(settings.getSize()));

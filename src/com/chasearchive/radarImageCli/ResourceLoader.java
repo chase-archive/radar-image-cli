@@ -9,6 +9,7 @@ import java.net.URL;
 public class ResourceLoader {
     public static final String DATA_FOLDER = "radar-image-cli-temp/";
     public static String wwaFolder = "";
+    public static final String PERSISTENT_DATA_FOLDER = "radar-image-cli-persistent/";
 
     public static File loadResourceAsFile(String urlStr) {
         URL tilesObj = ResourceLoader.class.getResource(urlStr);
