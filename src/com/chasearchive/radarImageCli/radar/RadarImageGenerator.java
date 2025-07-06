@@ -1330,7 +1330,7 @@ public class RadarImageGenerator {
 
 			try {
 				WarningArchive wa = new WarningArchive(ResourceLoader.wwaFolder);
-				warnings = wa.getWarnings(time.minusHours(1), time.plusHours(7));
+				warnings = wa.getWarnings(time.minusHours(2), time.plusHours(8));
 			} catch (UnknownHostException e) {
 				e.printStackTrace();
 				System.err.println("returning blank for warning plot!");
@@ -1350,180 +1350,182 @@ public class RadarImageGenerator {
 			if (warning.isActive(time)) {
 				// extra thick outlines
 				g.setStroke(ts);
-				switch (warning.getWarningType()) {
-				case DUST_STORM_WARNING:
-					g.setColor(new Color(0, 0, 0, 0));
-					break;
-				case FLASH_FLOOD:
-					if (warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
-						g.setColor(new Color(0, 0, 0));
-					} else {
-						g.setColor(new Color(0, 0, 0, 0));
+				if (warning.getWarningType() != null) {
+					switch (warning.getWarningType()) {
+						case DUST_STORM_WARNING:
+							g.setColor(new Color(0, 0, 0, 0));
+							break;
+						case FLASH_FLOOD:
+							if (warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
+								g.setColor(new Color(0, 0, 0));
+							} else {
+								g.setColor(new Color(0, 0, 0, 0));
+							}
+							break;
+						case SEVERE_THUNDERSTORM:
+							if (warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
+								g.setColor(new Color(0, 0, 0));
+							} else if (warning.getTornadoTag() == TornadoTag.POSSIBLE) {
+								g.setColor(new Color(0, 0, 0));
+							} else {
+								g.setColor(new Color(0, 0, 0, 0));
+							}
+							break;
+						case SNOW_SQUALL_WARNING:
+							g.setColor(new Color(0, 0, 0, 0));
+							break;
+						case SPECIAL_MARINE:
+							g.setColor(new Color(0, 0, 0, 0));
+							break;
+						case TORNADO:
+							if (warning.getDamageTag() == DamageTag.CONSIDERABLE) {
+								g.setColor(new Color(0, 0, 0));
+							} else {
+								g.setColor(new Color(0, 0, 0, 0));
+							}
+							break;
+						default:
+							g.setColor(new Color(0, 0, 0, 0));
+							break;
 					}
-					break;
-				case SEVERE_THUNDERSTORM:
-					if (warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
-						g.setColor(new Color(0, 0, 0));
-					} else if (warning.getTornadoTag() == TornadoTag.POSSIBLE) {
-						g.setColor(new Color(0, 0, 0));
-					} else {
-						g.setColor(new Color(0, 0, 0, 0));
-					}
-					break;
-				case SNOW_SQUALL_WARNING:
-					g.setColor(new Color(0, 0, 0, 0));
-					break;
-				case SPECIAL_MARINE:
-					g.setColor(new Color(0, 0, 0, 0));
-					break;
-				case TORNADO:
-					if (warning.getDamageTag() == DamageTag.CONSIDERABLE) {
-						g.setColor(new Color(0, 0, 0));
-					} else {
-						g.setColor(new Color(0, 0, 0, 0));
-					}
-					break;
-				default:
-					g.setColor(new Color(0, 0, 0, 0));
-					break;
-				}
-				g.setStroke(ets);
+					g.setStroke(ets);
 
-				ArrayList<PointF> polygonF = warning.getPoints();
-				ArrayList<PointD> polygon = new ArrayList<>();
+					ArrayList<PointF> polygonF = warning.getPoints();
+					ArrayList<PointD> polygon = new ArrayList<>();
 
-				for (int i = 0; i < polygonF.size(); i++) {
-					polygon.add(new PointD((double) polygonF.get(i).getX(), (double) polygonF.get(i).getY()));
+					for (int i = 0; i < polygonF.size(); i++) {
+						polygon.add(new PointD((double) polygonF.get(i).getX(), (double) polygonF.get(i).getY()));
 //					logger.println("polygonF conversion: " + polygon.get(polygon.size() - 1), DebugLoggerLevel.BRIEF);
-				}
-
-				for (int i = 0; i < polygon.size(); i++) {
-					int j = i + 1;
-					if (j == polygon.size())
-						j = 0;
-
-					PointD p1 = plotProj.rotateLatLon(polygon.get(i));
-					PointD p2 = plotProj.rotateLatLon(polygon.get(j));
-
-					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p1.getY());
-					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p1.getX());
-					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p2.getY());
-					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p2.getX());
-
-					g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
-				}
-				// outlines
-				g.setStroke(ts);
-				switch (warning.getWarningType()) {
-				case DUST_STORM_WARNING:
-					g.setColor(new Color(0, 0, 0));
-					break;
-				case FLASH_FLOOD:
-					if (warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
-						g.setColor(new Color(255, 0, 255));
-					} else {
-						g.setColor(new Color(0, 0, 0));
 					}
-					break;
-				case SEVERE_THUNDERSTORM:
-					if (warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
-						g.setColor(new Color(128, 0, 128));
-					} else if (warning.getTornadoTag() == TornadoTag.POSSIBLE) {
-						g.setColor(new Color(255, 0, 64));
-					} else {
-						g.setColor(new Color(0, 0, 0));
+
+					for (int i = 0; i < polygon.size(); i++) {
+						int j = i + 1;
+						if (j == polygon.size())
+							j = 0;
+
+						PointD p1 = plotProj.rotateLatLon(polygon.get(i));
+						PointD p2 = plotProj.rotateLatLon(polygon.get(j));
+
+						double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+								p1.getY());
+						double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+								p1.getX());
+						double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+								p2.getY());
+						double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+								p2.getX());
+
+						g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 					}
-					break;
-				case SNOW_SQUALL_WARNING:
-					g.setColor(new Color(0, 0, 0));
-					break;
-				case SPECIAL_MARINE:
-					g.setColor(new Color(0, 0, 0));
-					break;
-				case TORNADO:
-					if (warning.getDamageTag() == DamageTag.CONSIDERABLE) {
-						g.setColor(new Color(128, 0, 0));
-					} else {
-						g.setColor(new Color(0, 0, 0));
+					// outlines
+					g.setStroke(ts);
+					switch (warning.getWarningType()) {
+						case DUST_STORM_WARNING:
+							g.setColor(new Color(0, 0, 0));
+							break;
+						case FLASH_FLOOD:
+							if (warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
+								g.setColor(new Color(255, 0, 255));
+							} else {
+								g.setColor(new Color(0, 0, 0));
+							}
+							break;
+						case SEVERE_THUNDERSTORM:
+							if (warning.getDamageTag() == DamageTag.DESTRUCTIVE) {
+								g.setColor(new Color(128, 0, 128));
+							} else if (warning.getTornadoTag() == TornadoTag.POSSIBLE) {
+								g.setColor(new Color(255, 0, 64));
+							} else {
+								g.setColor(new Color(0, 0, 0));
+							}
+							break;
+						case SNOW_SQUALL_WARNING:
+							g.setColor(new Color(0, 0, 0));
+							break;
+						case SPECIAL_MARINE:
+							g.setColor(new Color(0, 0, 0));
+							break;
+						case TORNADO:
+							if (warning.getDamageTag() == DamageTag.CONSIDERABLE) {
+								g.setColor(new Color(128, 0, 0));
+							} else {
+								g.setColor(new Color(0, 0, 0));
+							}
+							break;
+						default:
+							g.setColor(new Color(0, 0, 0, 0));
+							break;
 					}
-					break;
-				default:
-					g.setColor(new Color(0, 0, 0, 0));
-					break;
-				}
-				g.setStroke(ts);
+					g.setStroke(ts);
 
-				for (int i = 0; i < polygon.size(); i++) {
-					int j = i + 1;
-					if (j == polygon.size())
-						j = 0;
+					for (int i = 0; i < polygon.size(); i++) {
+						int j = i + 1;
+						if (j == polygon.size())
+							j = 0;
 
-					PointD p1 = plotProj.rotateLatLon(polygon.get(i));
-					PointD p2 = plotProj.rotateLatLon(polygon.get(j));
+						PointD p1 = plotProj.rotateLatLon(polygon.get(i));
+						PointD p2 = plotProj.rotateLatLon(polygon.get(j));
 
-					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p1.getY());
-					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p1.getX());
-					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p2.getY());
-					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p2.getX());
+						double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+								p1.getY());
+						double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+								p1.getX());
+						double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+								p2.getY());
+						double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+								p2.getX());
 
-					g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
-				}
-
-				switch (warning.getWarningType()) {
-				case DUST_STORM_WARNING:
-					g.setColor(new Color(239, 192, 144));
-					break;
-				case FLASH_FLOOD:
-					g.setColor(new Color(0, 255, 0));
-					break;
-				case SEVERE_THUNDERSTORM:
-					g.setColor(new Color(255, 255, 0));
-					break;
-				case SNOW_SQUALL_WARNING:
-					g.setColor(new Color(0, 255, 255));
-					break;
-				case SPECIAL_MARINE:
-					g.setColor(new Color(255, 128, 0));
-					break;
-				case TORNADO:
-					if (warning.getDamageTag() == DamageTag.CATASTROPHIC) {
-						g.setColor(new Color(255, 0, 255));
-					} else {
-						g.setColor(new Color(255, 0, 0));
+						g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
 					}
-					break;
-				default:
-					g.setColor(new Color(0, 0, 0, 0));
-					break;
-				}
-				g.setStroke(bs);
 
-				for (int i = 0; i < polygon.size(); i++) {
-					int j = i + 1;
-					if (j == polygon.size())
-						j = 0;
+					switch (warning.getWarningType()) {
+						case DUST_STORM_WARNING:
+							g.setColor(new Color(239, 192, 144));
+							break;
+						case FLASH_FLOOD:
+							g.setColor(new Color(0, 255, 0));
+							break;
+						case SEVERE_THUNDERSTORM:
+							g.setColor(new Color(255, 255, 0));
+							break;
+						case SNOW_SQUALL_WARNING:
+							g.setColor(new Color(0, 255, 255));
+							break;
+						case SPECIAL_MARINE:
+							g.setColor(new Color(255, 128, 0));
+							break;
+						case TORNADO:
+							if (warning.getDamageTag() == DamageTag.CATASTROPHIC) {
+								g.setColor(new Color(255, 0, 255));
+							} else {
+								g.setColor(new Color(255, 0, 0));
+							}
+							break;
+						default:
+							g.setColor(new Color(0, 0, 0, 0));
+							break;
+					}
+					g.setStroke(bs);
 
-					PointD p1 = plotProj.rotateLatLon(polygon.get(i));
-					PointD p2 = plotProj.rotateLatLon(polygon.get(j));
+					for (int i = 0; i < polygon.size(); i++) {
+						int j = i + 1;
+						if (j == polygon.size())
+							j = 0;
 
-					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p1.getY());
-					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p1.getX());
-					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
-							p2.getY());
-					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
-							p2.getX());
+						PointD p1 = plotProj.rotateLatLon(polygon.get(i));
+						PointD p2 = plotProj.rotateLatLon(polygon.get(j));
 
-					g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+						double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+								p1.getY());
+						double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+								p1.getX());
+						double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, warningPlot.getWidth(),
+								p2.getY());
+						double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, warningPlot.getHeight(),
+								p2.getX());
+
+						g.drawLine((int) x1, (int) y1, (int) x2, (int) y2);
+					}
 				}
 			}
 		}
