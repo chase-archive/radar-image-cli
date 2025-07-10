@@ -74,7 +74,7 @@ public class SatelliteImageGenerator {
 		if (lon > -106 && lon <= 74) {
 			source = SatelliteSource.GOES_EAST;
 
-			if(time.isBefore(GRIDSAT_GOES_16_OPERATIONAL_CUTOFF)) {
+			if(time.isBefore(GRIDSAT_GOES_16_CUTOFF)) {
 				source = SatelliteSource.GRIDSAT;
 			}
 			
@@ -107,7 +107,11 @@ public class SatelliteImageGenerator {
 		GeostationaryProjection satProj = null;
 
 		if (settings.getSource() == SatelliteSource.GOES_EAST) {
-			satProj = GeostationaryProjection.GOES_EAST;
+			if(time.isBefore(GOES_16_TELEPORTATION_DATE)) {
+				satProj = GeostationaryProjection.GOES_EAST_PREOP;
+			} else {
+				satProj = GeostationaryProjection.GOES_EAST;
+			}
 		} else if (settings.getSource() == SatelliteSource.GOES_WEST) {
 			satProj = GeostationaryProjection.GOES_WEST;
 		} else if (settings.getSource() == SatelliteSource.GRIDSAT) {
@@ -1784,7 +1788,8 @@ public class SatelliteImageGenerator {
 	}
 
 	private static final int TIME_TOLERANCE = 20; // minutes
-	private static final DateTime GRIDSAT_GOES_16_OPERATIONAL_CUTOFF = new DateTime(2017, 3, 1, 0, 0, DateTimeZone.UTC);
+	private static final DateTime GRIDSAT_GOES_16_CUTOFF = new DateTime(2017, 3, 1, 0, 0, DateTimeZone.UTC);
+	private static final DateTime GOES_16_TELEPORTATION_DATE = new DateTime(2017, 12, 8, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GRIDSAT_END = new DateTime(2018, 1, 1, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GOES_17_OPERATIONAL_START = new DateTime(2018, 8, 28, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GOES_17_18_OPERATIONAL_CUTOFF = new DateTime(2023, 1, 3, 0, 0, DateTimeZone.UTC);

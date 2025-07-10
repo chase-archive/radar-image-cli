@@ -7,11 +7,12 @@ public class GeostationaryProjection implements MapProjection {
 	private double longitudeOrigin;
 	
 	public static final GeostationaryProjection GOES_EAST = new GeostationaryProjection(3.5786023E7 + 6378137.0, 6378137.0, 6356752.31414, -75.0);
+	public static final GeostationaryProjection GOES_EAST_PREOP = new GeostationaryProjection(3.5786023E7 + 6378137.0, 6378137.0, 6356752.31414, -89.5);
 	public static final GeostationaryProjection GOES_WEST = new GeostationaryProjection(3.5786023E7 + 6378137.0, 6378137.0, 6356752.31414, -136.9);
 
 	public static void main(String[] args) {
 		VirtualCoord test1 = new VirtualCoord(-0.054124, -0.055748);
-		
+
 		System.out.println(GOES_EAST.projectXYToLatLon(test1));
 	}
 	
