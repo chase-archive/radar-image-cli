@@ -830,9 +830,7 @@ public class RadarImageGenerator {
 
 	private static DateTime GRIDRAD_V3_OP_START = new DateTime(1995, 1, 1, 0, 0, 0, DateTimeZone.UTC);
 	private static DateTime GRIDRAD_v3_OP_END = new DateTime(2017, 12, 31, 23, 0, 1, DateTimeZone.UTC);
-	private static DateTime MRMS_OP_START = new DateTime(2020, 10, 14, 21, 14, 0, DateTimeZone.UTC);
-	private static DateTime MRMS_GAP1_START = new DateTime(2021, 5, 14, 22, 49, 0, DateTimeZone.UTC);
-	private static DateTime MRMS_GAP1_END = new DateTime(2021, 7, 28, 14, 29, 0, DateTimeZone.UTC);
+	private static DateTime MRMS_OP_START = new DateTime(2014, 11, 19, 21, 57, 0, DateTimeZone.UTC);
 
 	private static BufferedImage generateRadarMosaicPlot(DateTime time, double lat, double lon,
 			RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
@@ -845,11 +843,7 @@ public class RadarImageGenerator {
 				return null;
 			}
 		} else if (!time.isBefore(MRMS_OP_START)) {
-			if(time.isAfter(MRMS_GAP1_START) && time.isBefore(MRMS_GAP1_END)) {
-				return generateGridradV4Plot(time, lat, lon, settings, plotProj);
-			} else {
-				return generateMrmsPlot(time, lat, lon, settings, plotProj);
-			}
+			return generateMrmsPlot(time, lat, lon, settings, plotProj);
 		} else {
 			return null;
 		}
@@ -1111,7 +1105,7 @@ public class RadarImageGenerator {
 		if (!time.isBefore(MRMS_OP_START)) {
 			long downloadStartTime = System.currentTimeMillis();
 			String mrmsUrl = String.format(
-					"https://noaa-mrms-pds.s3.amazonaws.com/CONUS/SeamlessHSR_00.00/%04d%02d%02d/MRMS_SeamlessHSR_00.00_%04d%02d%02d-%02d%02d%02d.grib2.gz",
+					"https://mtarchive.geol.iastate.edu/%04d/%02d/%02d/mrms/ncep/SeamlessHSR/SeamlessHSR_00.00_%04d%02d%02d-%02d%02d%02d.grib2.gz",
 					time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(), time.getYear(), time.getMonthOfYear(),
 					time.getDayOfMonth(), time.getHourOfDay(), time.getMinuteOfHour() - (time.getMinuteOfHour() % 2),
 					0);
