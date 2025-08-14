@@ -1320,7 +1320,7 @@ public class SatelliteImageGenerator {
 		}
 		
 		BufferedImage satPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
-				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
+				(int) settings.getResolution(), BufferedImage.TYPE_3BYTE_BGR);
 		Graphics2D g = satPlot.createGraphics();
 
 		PointD latLonProjectedUL = new PointD(-(settings.getSize() * settings.getAspectRatioFloat()),
