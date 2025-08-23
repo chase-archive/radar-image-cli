@@ -12,7 +12,7 @@ import java.io.IOException;
 
 public class PokeAtCDMFile {
     public static void main(String[] args) throws IOException {
-        NetcdfFile ncfile = NetcdfFile.open("test-files/goes13_4_2016_102_2245.nc");
+        NetcdfFile ncfile = NetcdfFile.open("test-files/goes13_1_2016_102_2245.nc");
         System.out.println(ncfile);
 
         Variable gvarDataVar = ncfile.findVariable("data");

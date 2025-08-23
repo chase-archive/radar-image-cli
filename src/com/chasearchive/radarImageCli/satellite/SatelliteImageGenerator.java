@@ -1168,11 +1168,6 @@ public class SatelliteImageGenerator {
 
 		Color[][] satColors = new Color[lirShape[1]][lirShape[0]];
 
-		float[] x = new float[0];
-		float[] y = new float[0];
-		float dx = 0;
-		float dy = 0;
-
 //		int startI = 0;
 //		int endI = band13Shape[1] - 1;
 //		int startJ = 0;
@@ -1184,6 +1179,9 @@ public class SatelliteImageGenerator {
 
 //		System.out.println("image type: " + settings.getImageType());
 
+		float[][] latitude;
+		float[][] longitude;
+
 		long colorProcessingStartTime = System.currentTimeMillis();
 		int chunkSizeInBand = 0;
 		switch (settings.getImageType()) {
@@ -1192,10 +1190,8 @@ public class SatelliteImageGenerator {
 
 				satColors = GeocolorProcessing.createComposite(goes[0], goes[1], goes[2], satProj, time, renderChunk, chunkSizeInBand);
 
-				x = goes[1].field("x").array1D();
-				y = goes[1].field("y").array1D();
-				dx = goes[1].dataFromField("dx");
-				dy = goes[1].dataFromField("dy");
+				latitude = goes[0].field("lat").array2D();
+				longitude = goes[0].field("lon").array2D();
 
 				break;
 			case LONGWAVE_IR:
@@ -1212,10 +1208,8 @@ public class SatelliteImageGenerator {
 					}
 				}
 
-				x = goes[4].field("x").array1D();
-				y = goes[4].field("y").array1D();
-				dx = goes[4].dataFromField("dx");
-				dy = goes[4].dataFromField("dy");
+				latitude = goes[0].field("lat").array2D();
+				longitude = goes[0].field("lon").array2D();
 
 				break;
 		}
@@ -2650,6 +2644,27 @@ public class SatelliteImageGenerator {
 		double yRotate = yPrimeRotated + y0;
 
 		return new PointD(xRotate, yRotate);
+	}
+
+	// just finish this you'll see where you need it definitely probably maybe
+	private static float bilinearInterpolation(float[][] array, float x, float y) {
+		if(x < 0 && y < 0) {
+			return array[0][0];
+		} else if(x > array.length - 1 && y < 0) {
+			return array[array.length - 1][0];
+		} else if(x < 0 && y > array[0].length) {
+			return array[0][array[0].length - 1];
+		} else if(x > array.length - 1 && y > array[0].length) {
+			return array[array.length - 1][array[0].length - 1];
+		} else if(y < 0) {
+			int xFloor = (int) Math.floor(x);
+			float xMod1 = x % 1.0f;
+
+			float array[
+		}
+
+		float xMod1 = x % 1.0f;
+		float yMod1 = y % 1.0f;
 	}
 
 	public static void drawCenteredString(String s, Graphics2D g, int x, int y) {
