@@ -52,6 +52,7 @@ public class SatelliteImageGenerator {
 	// Possibly METEOSAT data for Europe and Africa, depends on availability
 
 	public static ArrayList<City> cities;
+
 	static {
 		cities = new ArrayList<>();
 		loadCities();
@@ -1058,7 +1059,6 @@ public class SatelliteImageGenerator {
 		return satPlot;
 	}
 
-	// Needs SERIOUS work. If you see this comment in a release, please address it immediately
 	private static BufferedImage generateSatellitePlot(GoesImageMcfetch[] goes, DateTime time, double lat, double lon,
 													   SatelliteGeneratorSettings settings, GeostationaryProjection satProj, RotateLatLonProjection plotProj) {
 
@@ -1102,9 +1102,6 @@ public class SatelliteImageGenerator {
 				if(j1High >= lirLon[0].length) {
 					j1High = lirLon[0].length - 1;
 				}
-
-				int i1Mid = (i1Low + i1High)/2;
-				int j1Mid = (j1Low + j1High)/2;
 
 				GeoCoord latLon1 = new GeoCoord(lirLat[i1Low][j1Low], lirLon[i1Low][j1Low]);
 				GeoCoord latLon2 = new GeoCoord(lirLat[i1Low][j1High], lirLon[i1Low][j1High]);
@@ -1179,8 +1176,8 @@ public class SatelliteImageGenerator {
 
 //		System.out.println("image type: " + settings.getImageType());
 
-		float[][] latitude;
-		float[][] longitude;
+		float[][] latitude = new float[0][];
+		float[][] longitude = new float[0][];
 
 		long colorProcessingStartTime = System.currentTimeMillis();
 		int chunkSizeInBand = 0;
@@ -1198,11 +1195,15 @@ public class SatelliteImageGenerator {
 				ColorTable brTempColors = brightnessTemperatureColorTable;
 				chunkSizeInBand = 25;
 
+				DataField band4 = goes[2].field("data");
+				String satellite = goes[2].field("satellite").getAnnotation().trim();
+
 				for (int i = 0; i < satColors.length; i++) {
 					for (int j = 0; j < satColors[i].length; j++) {
 						if(renderChunk[i/chunkSizeInBand][j/chunkSizeInBand]) {
-							double brTemp = WeatherUtils.brightnessTemperatureFromWavenumber(band13.getData(j, i) / 100000.0,
-									WeatherUtils.wavelengthToWavenumber(goes[4].dataFromField("wavelength") / 1000000.0));
+							float spectralRadiance = GvarProcessing.spectralRadiance(band4.getData(j, i), 4, satellite);
+							double brTemp = WeatherUtils.brightnessTemperatureFromWavenumber(spectralRadiance / 100000.0,
+									WeatherUtils.wavelengthToWavenumber(10.7 / 1000000.0));
 							satColors[i][j] = brTempColors.getColor(brTemp);
 						}
 					}
@@ -1229,13 +1230,20 @@ public class SatelliteImageGenerator {
 		for (int i = 0; i < satColors.length; i++) {
 			for (int j = 0; j < satColors[0].length; j++) {
 				if(renderChunk[i/chunkSizeInBand][j/chunkSizeInBand]) {
-					float x0 = -x[i];
-					float y0 = y[j];
+					float lat1 = bilinearInterpolation(latitude, i - 0.5f, j - 0.5f);
+					float lat2 = bilinearInterpolation(latitude, i + 0.5f, j - 0.5f);
+					float lat3 = bilinearInterpolation(latitude, i + 0.5f, j + 0.5f);
+					float lat4 = bilinearInterpolation(latitude, i - 0.5f, j + 0.5f);
 
-					GeoCoord latLon1 = satProj.projectXYToLatLon(x0 - dx / 2.0f, y0 - dy / 2.0f);
-					GeoCoord latLon2 = satProj.projectXYToLatLon(x0 + dx / 2.0f, y0 - dy / 2.0f);
-					GeoCoord latLon3 = satProj.projectXYToLatLon(x0 + dx / 2.0f, y0 + dy / 2.0f);
-					GeoCoord latLon4 = satProj.projectXYToLatLon(x0 - dx / 2.0f, y0 + dy / 2.0f);
+					float lon1 = bilinearInterpolation(longitude, i - 0.5f, j - 0.5f);
+					float lon2 = bilinearInterpolation(longitude, i + 0.5f, j - 0.5f);
+					float lon3 = bilinearInterpolation(longitude, i + 0.5f, j + 0.5f);
+					float lon4 = bilinearInterpolation(longitude, i - 0.5f, j + 0.5f);
+
+					GeoCoord latLon1 = new GeoCoord(lat1, lon1);
+					GeoCoord latLon2 = new GeoCoord(lat2, lon2);
+					GeoCoord latLon3 = new GeoCoord(lat3, lon3);
+					GeoCoord latLon4 = new GeoCoord(lat4, lon4);
 
 					GeoCoord p1 = plotProj.rotateLatLon(latLon1);
 					GeoCoord p2 = plotProj.rotateLatLon(latLon2);
@@ -2647,24 +2655,74 @@ public class SatelliteImageGenerator {
 	}
 
 	// just finish this you'll see where you need it definitely probably maybe
+	// (its in the color composite rendering code, it's bilinearly interpolating lat-lon coords for the polygon mesh)
 	private static float bilinearInterpolation(float[][] array, float x, float y) {
 		if(x < 0 && y < 0) {
 			return array[0][0];
 		} else if(x > array.length - 1 && y < 0) {
 			return array[array.length - 1][0];
-		} else if(x < 0 && y > array[0].length) {
+		} else if(x < 0 && y > array[0].length - 1) {
 			return array[0][array[0].length - 1];
-		} else if(x > array.length - 1 && y > array[0].length) {
+		} else if(x > array.length - 1 && y > array[0].length - 1) {
 			return array[array.length - 1][array[0].length - 1];
 		} else if(y < 0) {
 			int xFloor = (int) Math.floor(x);
+			int xCeil = (xFloor + 1);
 			float xMod1 = x % 1.0f;
 
-			float array[
-		}
+			float arr00 = array[xFloor][0];
+			float arr10 = array[xCeil][0];
 
-		float xMod1 = x % 1.0f;
-		float yMod1 = y % 1.0f;
+            return (1 - xMod1) * arr00 + xMod1 * arr10;
+		} else if(y > array[0].length - 1) {
+			int xFloor = (int) Math.floor(x);
+			int xCeil = (xFloor + 1);
+			float xMod1 = x % 1.0f;
+
+			float arr00 = array[xFloor][array[0].length - 1];
+			float arr10 = array[xCeil][array[0].length - 1];
+
+            return (1 - xMod1) * arr00 + xMod1 * arr10;
+		} else if(x < 0) {
+			int yFloor = (int) Math.floor(y);
+			int yCeil = (yFloor + 1);
+			float yMod1 = y % 1.0f;
+
+			float arr00 = array[0][yFloor];
+			float arr01 = array[0][yCeil];
+
+			return (1 - yMod1) * arr00 + yMod1 * arr01;
+		} else if(x > array.length - 1) {
+			int yFloor = (int) Math.floor(y);
+			int yCeil = (yFloor + 1);
+			float yMod1 = y % 1.0f;
+
+			float arr00 = array[array.length - 1][yFloor];
+			float arr01 = array[array.length - 1][yCeil];
+
+			return (1 - yMod1) * arr00 + yMod1 * arr01;
+		} else {
+			int xFloor = (int) Math.floor(x);
+			int xCeil = (xFloor + 1);
+			float xMod1 = x % 1.0f;
+
+			int yFloor = (int) Math.floor(y);
+			int yCeil = (yFloor + 1);
+			float yMod1 = y % 1.0f;
+
+			float invXMod1 = 1.0f - xMod1;
+			float invYMod1 = 1.0f - yMod1;
+
+			float arr00 = array[xFloor][yFloor];
+			float arr01 = array[xFloor][yCeil];
+			float arr10 = array[xCeil][yFloor];
+			float arr11 = array[xCeil][yCeil];
+
+			return invXMod1 * invYMod1 * arr00
+					+ invXMod1 * yMod1 * arr01
+					+ xMod1 * invYMod1 * arr10
+					+ xMod1 * yMod1 * arr11;
+		}
 	}
 
 	public static void drawCenteredString(String s, Graphics2D g, int x, int y) {

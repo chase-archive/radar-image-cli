@@ -577,7 +577,7 @@ public class GeocolorProcessing {
 
 	public static Color[][] createComposite(GoesImageMcfetch band1, GoesImageMcfetch band2, GoesImageMcfetch band4,
 											GeostationaryProjection satProj, DateTime dt, boolean[][] renderChunks, int chunkSize) {
-		GeoCoord[][] latLon = createLatLonMatrix(band2, satProj, renderChunks, chunkSize);
+		GeoCoord[][] latLon = createLatLonMatrix(band1, satProj, renderChunks, chunkSize);
 		float[][] solarAlt = createSolarAltitudeMatrix(latLon, dt, renderChunks, chunkSize);
 
 		Color[][] trueColor = createTrueColorGoes(band1, latLon, dt, renderChunks, chunkSize);

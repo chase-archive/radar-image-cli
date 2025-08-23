@@ -40,13 +40,13 @@ public class GvarProcessing {
     // This basically just makes it easier to clamp the minimum values to zero.
     // I'll admit it's lazy but it'll work perfectly anyway.
     // Maybe I wrote that last line with too much hubris.
-    public float spectralRadiance(float gvar, int band, String satelliteId) {
+    public static float spectralRadiance(float gvar, int band, String satelliteId) {
         float R = spectralRadianceRaw(gvar, band, satelliteId);
 
         return (R < 0) ? 0 : R;
     }
 
-    private float spectralRadianceRaw(float gvar, int band, String satelliteId) {
+    private static float spectralRadianceRaw(float gvar, int band, String satelliteId) {
         // Only two possible values, 8 or 12
         int series = -1;
 
