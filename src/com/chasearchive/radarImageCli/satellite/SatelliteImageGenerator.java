@@ -1057,6 +1057,239 @@ public class SatelliteImageGenerator {
 
 		return satPlot;
 	}
+
+	// Needs SERIOUS work. If you see this comment in a release, please address it immediately
+	private static BufferedImage generateSatellitePlot(GoesImageMcfetch[] goes, DateTime time, double lat, double lon,
+													   SatelliteGeneratorSettings settings, GeostationaryProjection satProj, RotateLatLonProjection plotProj) {
+
+		if(lat < -82 || lat > 82 || (lon > -1 && lon < 142)) {
+			return null;
+		}
+
+		BufferedImage satPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
+				(int) settings.getResolution(), BufferedImage.TYPE_3BYTE_BGR);
+		Graphics2D g = satPlot.createGraphics();
+
+		PointD latLonProjectedUL = new PointD(-(settings.getSize() * settings.getAspectRatioFloat()),
+				(settings.getSize()));
+		PointD latLonProjectedDR = new PointD((settings.getSize() * settings.getAspectRatioFloat()),
+				-(settings.getSize()));
+
+		int[] lirShape = goes[1].field("lat").getShape();
+		float[][] lirLat = goes[1].field("lat").array2D();
+		float[][] lirLon = goes[1].field("lon").array2D();
+
+		// chunk optimization
+		long chunkStartTime = System.currentTimeMillis();
+		final int CHUNK_SIZE = 25;
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) lirLon.length/CHUNK_SIZE)]
+				[(int) Math.ceil((double) lirLon[0].length/CHUNK_SIZE)];
+
+		int plotWidth = satPlot.getWidth();
+		int plotHeight = satPlot.getHeight();
+
+		for(int i = 0; i < renderChunk.length; i++) {
+			for(int j = 0; j < renderChunk[i].length; j++) {
+				int i1Low = i * CHUNK_SIZE;
+				int j1Low = j * CHUNK_SIZE;
+				int i1High = (i + 1) * CHUNK_SIZE;
+				int j1High = (j + 1) * CHUNK_SIZE;
+
+				if(i1High >= lirLon.length) {
+					i1High = lirLon.length - 1;
+				}
+
+				if(j1High >= lirLon[0].length) {
+					j1High = lirLon[0].length - 1;
+				}
+
+				int i1Mid = (i1Low + i1High)/2;
+				int j1Mid = (j1Low + j1High)/2;
+
+				GeoCoord latLon1 = new GeoCoord(lirLat[i1Low][j1Low], lirLon[i1Low][j1Low]);
+				GeoCoord latLon2 = new GeoCoord(lirLat[i1Low][j1High], lirLon[i1Low][j1High]);
+				GeoCoord latLon3 = new GeoCoord(lirLat[i1High][j1Low], lirLon[i1High][j1Low]);
+				GeoCoord latLon4 = new GeoCoord(lirLat[i1High][j1High], lirLon[i1High][j1High]);
+				GeoCoord latLon5 = new GeoCoord((latLon1.getLat() + latLon4.getLat())/2.0, (latLon1.getLon() + latLon4.getLon())/2.0);
+
+				boolean anyValid = !Float.isNaN(latLon1.getLat()) || !Float.isNaN(latLon2.getLat())
+						|| !Float.isNaN(latLon3.getLat()) || !Float.isNaN(latLon4.getLat()) || !Float.isNaN(latLon5.getLat())
+						|| !Float.isNaN(latLon1.getLon()) || !Float.isNaN(latLon2.getLon())
+						|| !Float.isNaN(latLon3.getLon()) || !Float.isNaN(latLon4.getLon()) || !Float.isNaN(latLon5.getLon());
+
+				if(anyValid) {
+					GeoCoord p1 = plotProj.rotateLatLon(latLon1);
+					GeoCoord p2 = plotProj.rotateLatLon(latLon2);
+					GeoCoord p3 = plotProj.rotateLatLon(latLon3);
+					GeoCoord p4 = plotProj.rotateLatLon(latLon4);
+					GeoCoord p5 = plotProj.rotateLatLon(latLon5);
+
+					double _x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p1.getLon());
+					double _y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p1.getLat());
+					double _x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p2.getLon());
+					double _y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p2.getLat());
+					double _x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p3.getLon());
+					double _y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p3.getLat());
+					double _x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p4.getLon());
+					double _y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p4.getLat());
+					double _x5 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p5.getLon());
+					double _y5 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p5.getLat());
+
+					if(_x1 > 0 && _x1 < plotWidth && _y1 > 0 && _y1 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x2 > 0 && _x2 < plotWidth && _y2 > 0 && _y2 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x3 > 0 && _x2 < plotWidth && _y3 > 0 && _y3 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x4 > 0 && _x4 < plotWidth && _y4 > 0 && _y4 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else if(_x5 > 0 && _x5 < plotWidth && _y5 > 0 && _y5 < plotHeight) {
+						renderChunk[i][j] = true;
+					} else {
+						renderChunk[i][j] = false;
+					}
+				} else {
+					renderChunk[i][j] = false;
+				}
+			}
+		}
+		long chunkEndTime = System.currentTimeMillis();
+		System.out.println("chunk decision time: " + (chunkEndTime - chunkStartTime)/1000.0 + " s");
+
+		Color[][] satColors = new Color[lirShape[1]][lirShape[0]];
+
+		float[] x = new float[0];
+		float[] y = new float[0];
+		float dx = 0;
+		float dy = 0;
+
+//		int startI = 0;
+//		int endI = band13Shape[1] - 1;
+//		int startJ = 0;
+//		int endJ = band13Shape[0] - 1;
+//
+//		if(band13Shape[1] > 10000) {
+//			endI = band13Shape[1]/2 - 1;
+//		}
+
+//		System.out.println("image type: " + settings.getImageType());
+
+		long colorProcessingStartTime = System.currentTimeMillis();
+		int chunkSizeInBand = 0;
+		switch (settings.getImageType()) {
+			case GEOCOLOR:
+				chunkSizeInBand = 100;
+
+				satColors = GeocolorProcessing.createComposite(goes[0], goes[1], goes[2], satProj, time, renderChunk, chunkSizeInBand);
+
+				x = goes[1].field("x").array1D();
+				y = goes[1].field("y").array1D();
+				dx = goes[1].dataFromField("dx");
+				dy = goes[1].dataFromField("dy");
+
+				break;
+			case LONGWAVE_IR:
+				ColorTable brTempColors = brightnessTemperatureColorTable;
+				chunkSizeInBand = 25;
+
+				for (int i = 0; i < satColors.length; i++) {
+					for (int j = 0; j < satColors[i].length; j++) {
+						if(renderChunk[i/chunkSizeInBand][j/chunkSizeInBand]) {
+							double brTemp = WeatherUtils.brightnessTemperatureFromWavenumber(band13.getData(j, i) / 100000.0,
+									WeatherUtils.wavelengthToWavenumber(goes[4].dataFromField("wavelength") / 1000000.0));
+							satColors[i][j] = brTempColors.getColor(brTemp);
+						}
+					}
+				}
+
+				x = goes[4].field("x").array1D();
+				y = goes[4].field("y").array1D();
+				dx = goes[4].dataFromField("dx");
+				dy = goes[4].dataFromField("dy");
+
+				break;
+		}
+		long colorProcessingEndTime = System.currentTimeMillis();
+		System.out.println("color processing time: " + (colorProcessingEndTime - colorProcessingStartTime)/1000.0 + " s");
+
+//		System.out.println("x[0]: " + x[0]);
+//		System.out.println("y[0]: " + y[0]);
+//		System.out.println("x[1400]: " + x[1400]);
+//		System.out.println("y[1400]: " + y[1400]);
+
+//		GeoCoord testLL = satProj.projectXYToLatLon(-x[200] - dx / 2.0f, y[200] - dy / 2.0f);
+
+//		System.out.println("testLL: " + testLL);
+
+		long plottingStartTime = System.currentTimeMillis();
+		for (int i = 0; i < satColors.length; i++) {
+			for (int j = 0; j < satColors[0].length; j++) {
+				if(renderChunk[i/chunkSizeInBand][j/chunkSizeInBand]) {
+					float x0 = -x[i];
+					float y0 = y[j];
+
+					GeoCoord latLon1 = satProj.projectXYToLatLon(x0 - dx / 2.0f, y0 - dy / 2.0f);
+					GeoCoord latLon2 = satProj.projectXYToLatLon(x0 + dx / 2.0f, y0 - dy / 2.0f);
+					GeoCoord latLon3 = satProj.projectXYToLatLon(x0 + dx / 2.0f, y0 + dy / 2.0f);
+					GeoCoord latLon4 = satProj.projectXYToLatLon(x0 - dx / 2.0f, y0 + dy / 2.0f);
+
+					GeoCoord p1 = plotProj.rotateLatLon(latLon1);
+					GeoCoord p2 = plotProj.rotateLatLon(latLon2);
+					GeoCoord p3 = plotProj.rotateLatLon(latLon3);
+					GeoCoord p4 = plotProj.rotateLatLon(latLon4);
+
+					double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p1.getLon());
+					double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p1.getLat());
+					double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p2.getLon());
+					double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p2.getLat());
+					double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p3.getLon());
+					double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p3.getLat());
+					double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, satPlot.getWidth(),
+							p4.getLon());
+					double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, satPlot.getHeight(),
+							p4.getLat());
+
+					//				if()
+					//				System.out.println("satellite polygon ll1: " + latLon1);
+					//				System.out.println("satellite polygon p1: " + p1);
+
+					int[] xPoints = new int[] { (int) x1, (int) x2, (int) x3, (int) x4 };
+					int[] yPoints = new int[] { (int) y1, (int) y2, (int) y3, (int) y4 };
+
+					boolean allValid = !Float.isNaN(latLon1.getLat()) && !Float.isNaN(latLon2.getLat())
+							&& !Float.isNaN(latLon3.getLat()) && !Float.isNaN(latLon4.getLat())
+							&& !Float.isNaN(latLon1.getLon()) && !Float.isNaN(latLon2.getLon())
+							&& !Float.isNaN(latLon3.getLon()) && !Float.isNaN(latLon4.getLon()) && x1 != 0 && x2 != 0
+							&& x3 != 0 && x4 != 0 && y1 != 0 && y2 != 0 && y3 != 0 && y4 != 0;
+
+					if (allValid) {
+						g.setColor(satColors[i][j]);
+						g.fillPolygon(xPoints, yPoints, 4);
+					}
+				}
+			}
+		}
+		long plottingEndTime = System.currentTimeMillis();
+		System.out.println("plotting time: " + (plottingEndTime - plottingStartTime)/1000.0 + " s");
+
+		return satPlot;
+	}
 	
 	private static BufferedImage generateSatellitePlot(GoesMultibandImage goes, DateTime time, double lat, double lon,
 			SatelliteGeneratorSettings settings, GeostationaryProjection satProj, RotateLatLonProjection plotProj) {System.out.println(lat < -82);

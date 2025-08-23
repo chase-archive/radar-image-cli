@@ -24,14 +24,14 @@ public class CliTest {
 //		RadarImageCli.main(args1);
 //		long endTime = System.currentTimeMillis();
 		
-		DateTime start = new DateTime(1996, 4, 19, 23, 16, 0,DateTimeZone.UTC);
-		DateTime end = new DateTime(1996, 4, 20, 1, 30, 30, DateTimeZone.UTC);
+		DateTime start = new DateTime(2007, 8, 19, 12, 38, 0,DateTimeZone.UTC);
+		DateTime end = new DateTime(2007, 8, 20, 00, 30, 0, DateTimeZone.UTC);
 		
 		while(start.isBefore(end)) {
 			String dtArg = String.format("%04d%02d%02d-%02d%02d", start.getYear(), start.getMonthOfYear(), start.getDayOfMonth(), start.getHourOfDay(), start.getMinuteOfHour());
 			String oArg = String.format("%04d%02d%02d%02d%02d", start.getYear(), start.getMonthOfYear(), start.getDayOfMonth(), start.getHourOfDay(), start.getMinuteOfHour());
 			
-			String[] args1 = {"-dt", dtArg, "-lat", "39.89", "-lon", "-88.95", "-a", "16:9", "-s", "1.0", "-debug", "SILENT", "-o", "metresearch-decatur/" + oArg};
+			String[] args1 = {"-dt", dtArg, "-lat", "35.33", "-lon", "-98.00", "-a", "16:9", "-s", "1.5", "-debug", "SILENT", "-o", "ts-erin/" + oArg};
 
 			RadarImageCli.main(args1);
 			

@@ -25,8 +25,33 @@ public class GeostationaryProjection implements MapProjection {
 
 	@Override
 	public VirtualCoord projectLatLonToXY(double latitude, double longitude) {
-		// TODO Auto-generated method stub
-		return null;
+		// Set useful constants
+		double lambda0 = Math.toRadians(longitudeOrigin);
+		final double H = perspectiveHeight;
+		final double r_eq = semiMajorAxis;
+		final double r_pol = semiMinorAxis;
+
+		// Convert LL to radians
+		double phi = Math.toRadians(latitude);
+		double lambda = Math.toRadians(longitude);
+
+		// Find radius of cross-section of Earth at a given latitude
+		double e2 = (r_eq * r_eq - r_pol * r_pol) / (r_eq * r_eq);
+		double r_phi = r_eq / Math.sqrt(1 - e2*Math.pow(Math.sin(phi), 2));
+
+		// Calculate ECEF coordinates of surface point (assuming WGS84 with no topography)
+		double x = r_phi * Math.cos(phi) * Math.cos(lambda - lambda0);
+		double y = r_phi * Math.cos(phi) * Math.sin(lambda - lambda0);
+		double z = (r_pol * r_pol)/(r_eq * r_eq) * r_phi * Math.sin(phi);
+
+		// I think this is basically just x relative to the satellite
+		double d = H - x;
+
+		// This is the dubious part. Not sure if it'll work but I'm sure gonna give it its shot
+		double x_angle = Math.atan(-y/d);
+		double y_angle = Math.atan(z/Math.sqrt(d*d+y*y));
+
+		return new VirtualCoord(x_angle, y_angle);
 	}
 
 	@Override

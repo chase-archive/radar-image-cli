@@ -9,10 +9,10 @@ import com.chasearchive.radarImageCli.satellite.SatelliteImageCli;
 public class FullSuiteTest {
 	public static void main(String[] args) {
 		// Case info
-		DateTime time = new DateTime(2015, 3, 25, 23, 43, 0, DateTimeZone.UTC);
+		DateTime time = new DateTime(2025, 3, 25, 23, 43, 0, DateTimeZone.UTC);
 		double lat = 35.35;
 		double lon = -97.44;
-		String caseName = "moore-ok-2015";
+		String caseName = "moore-ok-2025-fairWeatherTest";
 
 		long maxMemory = Runtime.getRuntime().maxMemory();
 		long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
@@ -37,7 +37,7 @@ public class FullSuiteTest {
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
 //		RadarImageCli.main(argsRadLoc);
-		RadarImageCli.main(argsRadReg);
+//		RadarImageCli.main(argsRadReg);
 		SatelliteImageCli.main(argsSatVis);
 //		SatelliteImageCli.main(argsSatLir);
 	}
