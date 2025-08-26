@@ -1,5 +1,7 @@
 package com.chasearchive.radarImageCli.satellite;
 
+import com.chasearchive.radarImageCli.ResourceLoader;
+
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -19,7 +21,9 @@ public class ModisBlueMarble {
 	static {
 		try {
 			// using the may one, but interchangeable as long as it's 5400x2700
-			blueMarble = ImageIO.read(new File("/home/a-urq/eclipse-workspace/Chase Archive Radar Image CLI/src/com/chasearchive/radarImageCli/res/modis.bluemarble.world.topo.bathy.200405.3x5400x2700.png"));
+			File blueMarbleFile = ResourceLoader.loadResourceAsFile("res/modis.bluemarble.world.topo.bathy.200405.3x5400x2700.png");
+            assert blueMarbleFile != null;
+            blueMarble = ImageIO.read(blueMarbleFile);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
