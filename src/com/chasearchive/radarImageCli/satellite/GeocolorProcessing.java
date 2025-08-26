@@ -577,7 +577,7 @@ public class GeocolorProcessing {
 
 	public static Color[][] createComposite(GoesImageMcfetch band1, GoesImageMcfetch band2, GoesImageMcfetch band4,
 											GeostationaryProjection satProj, DateTime dt, boolean[][] renderChunks, int chunkSize) {
-		GeoCoord[][] latLon = createLatLonMatrix(band1, satProj, renderChunks, chunkSize);
+		GeoCoord[][] latLon = createLatLonMatrix(band1);
 		float[][] solarAlt = createSolarAltitudeMatrix(latLon, dt, renderChunks, chunkSize);
 
 		Color[][] trueColor = createTrueColorGoes(band1, latLon, dt, renderChunks, chunkSize);
@@ -963,6 +963,20 @@ public class GeocolorProcessing {
 
 					matrix[i][j] = secantSolarZenith;
 				}
+			}
+		}
+
+		return matrix;
+	}
+
+	private static GeoCoord[][] createLatLonMatrix(GoesImageMcfetch goes) {
+		float[][] lat = goes.field("lat").array2D();
+		float[][] lon = goes.field("lon").array2D();
+
+		GeoCoord[][] matrix = new GeoCoord[lat.length][lat[0].length];
+		for (int i = 0; i < matrix.length; i++) {
+			for (int j = 0; j < matrix[0].length; j++) {
+				matrix[i][j] = new GeoCoord(lat[i][j], lon[i][j]);
 			}
 		}
 
