@@ -729,11 +729,11 @@ public class GeocolorProcessing {
 	}
 
 	public static Color[][] createIRGoes(GoesImageMcfetch band2, GoesImageMcfetch band4) {
-		int[] band2Shape = band7.field("rad").getShape();
+		int[] band2Shape = band2.field("data").getShape();
 
 		final int CHUNK_SIZE = 100;
-		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[0] / CHUNK_SIZE)][(int) Math
-				.ceil((double) band2Shape[1] / CHUNK_SIZE)];
+		boolean[][] renderChunk = new boolean[(int) Math.ceil((double) band2Shape[1] / CHUNK_SIZE)][(int) Math
+				.ceil((double) band2Shape[2] / CHUNK_SIZE)];
 
 		for (int i = 0; i < renderChunk.length; i++) {
 			for (int j = 0; j < renderChunk[i].length; j++) {
@@ -745,32 +745,37 @@ public class GeocolorProcessing {
 	}
 
 	public static Color[][] createIRGoes(GoesImageMcfetch band2, GoesImageMcfetch band4, boolean[][] renderChunks, int chunkSize) {
-		float[][] band7Rad = band7.field("rad").array2D();
-		float[][] band13Rad = band13.field("rad").array2D();
+		float[][] band2Gvar = band2.field("data").array3D()[0];
+		float[][] band4Gvar = band4.field("data").array3D()[0];
 
-		float[][] band7Temp = new float[band7Rad.length][band7Rad[0].length];
-		float[][] band13Temp = new float[band13Rad.length][band13Rad[0].length];
-		float band7wavelength = band7.dataFromField("wavelength");
-		float band13wavelength = band13.dataFromField("wavelength");
+		float[][] band2Temp = new float[band2Gvar.length][band2Gvar[0].length];
+		float[][] band4Temp = new float[band4Gvar.length][band4Gvar[0].length];
+		float band2wavelength = 3.90f; // micrometers
+		float band4wavelength = 10.70f; // micrometers
 
 //		System.out.println("band 7: " + band7wavelength + " um");
 //		System.out.println("band 13: " + band13wavelength + " um");
 
 		// VERY IMPORTANT!! figure out radiance -> brightness temperature conversion
-		for (int i = 0; i < band13Rad.length; i++) {
-			for (int j = 0; j < band13Rad[i].length; j++) {
-				if (band13Rad[i][j] == -1024) {
-					band7Temp[i][j] = -1024;
-					band13Temp[i][j] = -1024;
+		for (int i = 0; i < band2Gvar.length; i++) {
+			for (int j = 0; j < band2Gvar[i].length; j++) {
+				if (band4Gvar[i][j] == -1024) {
+					band2Temp[i][j] = -1024;
+					band4Temp[i][j] = -1024;
 				} else {
 //					band7Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavelength(band7Rad[i][j] * 100000, band7wavelength / 1000000);
 //					band13Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavelength(band13Rad[i][j] * 100000, band13wavelength / 1000000);
-					band7Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(
-							band7Rad[i][j] / 100000.0,
-							WeatherUtils.wavelengthToWavenumber(band7wavelength / 1000000.0));
-					band13Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(
-							band13Rad[i][j] / 100000.0,
-							WeatherUtils.wavelengthToWavenumber(band13wavelength / 1000000.0));
+
+					String satellite = band2.field("satellite").getAnnotation();
+					float band2Radiance = GvarProcessing.spectralRadiance(band2Gvar[i][j], 2, satellite);
+					float band4Radiance = GvarProcessing.spectralRadiance(band4Gvar[i][j], 4, satellite);
+
+					band2Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(
+							band2Radiance / 100000.0,
+							WeatherUtils.wavelengthToWavenumber(band2wavelength / 1000000.0));
+					band4Temp[i][j] = (float) WeatherUtils.brightnessTemperatureFromWavenumber(
+							band4Radiance / 100000.0,
+							WeatherUtils.wavelengthToWavenumber(band4wavelength / 1000000.0));
 				}
 			}
 		}
@@ -779,14 +784,14 @@ public class GeocolorProcessing {
 //		System.out.println("band 7: " + band7Rad[400][1500] + " mW m^-2 sr^-1 (cm^-1)^-1");
 //		System.out.println("band 7: " + band7Temp[400][1500] + " K");
 
-		float[][] band13Clip = clip(band13Temp, 90, 273);
-		float[][] band13Norm = clip(invNormalize(band13Clip, 0, 500), 0, 255);
+		float[][] band4Clip = clip(band4Temp, 90, 273);
+		float[][] band4Norm = clip(invNormalize(band4Clip, 0, 500), 0, 255);
 
-		Color[][] goesComposite = new Color[band13Temp[0].length][band13Temp.length];
+		Color[][] goesComposite = new Color[band4Temp[0].length][band4Temp.length];
 
 		for (int i = 0; i < goesComposite[0].length; i++) {
 			for (int j = 0; j < goesComposite.length; j++) {
-				float fog = band13Temp[i][j] - band7Temp[i][j];
+				float fog = band4Temp[i][j] - band2Temp[i][j];
 
 				float fogBlue = clip(linScale(0, 5, 0, 150, fog), 0, 150);
 
@@ -796,12 +801,12 @@ public class GeocolorProcessing {
 //
 //				goesComposite[j][i] = maxTristims(fogColor, band13Color);
 
-				Color band13Color = new Color((int) band13Norm[i][j], (int) band13Norm[i][j],
-						(int) Double.max(band13Norm[i][j], fogBlue));
+				Color band13Color = new Color((int) band4Norm[i][j], (int) band4Norm[i][j],
+						(int) Double.max(band4Norm[i][j], fogBlue));
 
 				goesComposite[j][i] = maxTristims(band13Color, fogColor);
 
-				if (band13Temp[i][j] == -1024) {
+				if (band4Temp[i][j] == -1024) {
 					goesComposite[j][i] = Color.BLACK;
 				}
 			}

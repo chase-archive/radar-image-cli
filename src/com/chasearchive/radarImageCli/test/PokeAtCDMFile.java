@@ -1,5 +1,7 @@
 package com.chasearchive.radarImageCli.test;
 
+import com.ameliaWx.weatherUtils.WeatherUtils;
+import com.chasearchive.radarImageCli.satellite.GvarProcessing;
 import ucar.ma2.Array;
 import ucar.nc2.NetcdfFile;
 import ucar.nc2.Variable;
@@ -12,6 +14,14 @@ import java.io.IOException;
 
 public class PokeAtCDMFile {
     public static void main(String[] args) throws IOException {
+        System.out.println(
+                (float) WeatherUtils.brightnessTemperatureFromWavenumber(
+                        GvarProcessing.spectralRadiance(604, 4, "GOES-13") / 100000.0,
+                        WeatherUtils.wavelengthToWavenumber(10.7 / 1000000.0))
+        );
+
+        System.exit(0);
+
         NetcdfFile ncfile = NetcdfFile.open("test-files/goes13_1_2016_102_2245.nc");
         System.out.println(ncfile);
 
