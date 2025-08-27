@@ -624,21 +624,31 @@ public class GeocolorProcessing {
 												DateTime dt, boolean[][] renderChunks, int chunkSize) {
 		float[][] solarMult = createSolarMultiplierMatrix(latLon, dt, renderChunks, chunkSize);
 
+		Color[][] surfaceColor = new Color[latLon.length][latLon[0].length];
+
+		for (int i = 0; i < surfaceColor.length; i++) {
+			for (int j = 0; j < surfaceColor[i].length; j++) {
+				surfaceColor[i][j] = ModisBlueMarble.getColor(latLon[i][j]); // need to modify this for evening/night!!!
+			}
+		}
+
+		String satellite = band1.field("satellite").getAnnotation();
 		float[][] band1Gvar = band1.field("data").array3D()[0];
+
+		float[][] band1Rad = new float[band1Gvar.length][band1Gvar[0].length];
+		for (int i = 0; i < band1Gvar.length; i++) {
+			for (int j = 0; j < band1Gvar[i].length; j++) {
+				band1Rad[i][j] = GvarProcessing.spectralRadiance(band1Gvar[i][j], 1, satellite);
+			}
+		}
 
 		for (int i = 0; i < band1Gvar.length; i++) {
 			for (int j = 0; j < band1Gvar[i].length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
-					if (renderChunks[j / chunkSize][i / chunkSize]) {
-						float mult = solarMult[i][j];
+					float mult = solarMult[i][j];
 
-						if (!Double.isNaN(mult)) {
-							if (i % 2 == 0 && j % 2 == 0) {
-								band1Rad[i / 2][j / 2] = band1Rad[i / 2][j / 2] * mult;
-								band3Rad[i / 2][j / 2] = band3Rad[i / 2][j / 2] * mult;
-							}
-							band2Rad[i][j] = band2Rad[i][j] * mult;
-						}
+					if (!Double.isNaN(mult)) {
+						band1Rad[i][j] = band1Rad[i][j] * mult;
 					}
 				}
 			}
@@ -647,74 +657,49 @@ public class GeocolorProcessing {
 		// VERY IMPORTANT!! normalize and color-balance radiances to the correct
 		// specific ranges
 		float[][] band1Clip = new float[band1Rad.length][band1Rad[0].length];
-		float[][] band2Clip = new float[band2Rad.length][band2Rad[0].length];
-		float[][] band3Clip = new float[band3Rad.length][band3Rad[0].length];
-		for (int i = 0; i < band2Clip.length; i++) {
-			for (int j = 0; j < band2Clip[i].length; j++) {
+		for (int i = 0; i < band1Clip.length; i++) {
+			for (int j = 0; j < band1Clip[i].length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
-					if (i % 2 == 0 && j % 2 == 0) {
-						band1Clip[i / 2][j / 2] = clip(band1Rad[i / 2][j / 2] / (WHITE_POINT / WHITE_BALANCE_BLUE), 0,
-								1);
-						band3Clip[i / 2][j / 2] = clip(band3Rad[i / 2][j / 2] / (WHITE_POINT / WHITE_BALANCE_GREEN), 0,
-								1);
-					}
-					band2Clip[i][j] = clip(band2Rad[i][j] / (WHITE_POINT / WHITE_BALANCE_RED), 0, 1);
+					band1Clip[i][j] = clip(band1Clip[i][j] / (WHITE_POINT), 0, 1);
 				}
 			}
 		}
 
 //		System.out.println(max2(band1Rad));
-//		System.out.println(max2(band2Rad));
-//		System.out.println(max2(band3Rad));
 
 //		band1Clip = normalize(band1Rad, 0, 1);
-//		band2Clip = normalize(band2Rad, 0, 1);
-//		band3Clip = normalize(band3Rad, 0, 1);
 
 		final float GAMMA = 2.2f;
 
 		float[][] band1NormG = new float[band1Clip.length][band1Clip[0].length];
-		float[][] band2NormG = new float[band2Clip.length][band2Clip[0].length];
-		float[][] band3NormG = new float[band3Clip.length][band3Clip[0].length];
-		for (int i = 0; i < band2Clip.length; i++) {
-			for (int j = 0; j < band2Clip[i].length; j++) {
+		for (int i = 0; i < band1NormG.length; i++) {
+			for (int j = 0; j < band1NormG[i].length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
-					if (i % 2 == 0 && j % 2 == 0) {
-						band1NormG[i / 2][j / 2] = gammaCorrect(band1Clip[i / 2][j / 2], GAMMA);
-						band3NormG[i / 2][j / 2] = gammaCorrect(band3Clip[i / 2][j / 2], GAMMA);
-					}
-					band2NormG[i][j] = gammaCorrect(band2Clip[i][j], GAMMA);
+					band1NormG[i][j] = gammaCorrect(band1Clip[i][j], GAMMA);
 				}
 			}
 		}
 
-		float[][] syntheticGreen = new float[band2Rad.length][band2Rad[0].length];
+		Color cloudColor = new Color(255, 255, 255);
 
-		for (int i = 0; i < syntheticGreen.length; i++) {
-			for (int j = 0; j < syntheticGreen[i].length; j++) {
-				if (renderChunks[j / chunkSize][i / chunkSize]) {
-					// calculate the "true" green
-					syntheticGreen[i][j] = clip(0.375f * band2NormG[i][j] + 0.25f * band3NormG[i / 2][j / 2]
-							+ 0.375f * band1NormG[i / 2][j / 2], 0, 1);
-				}
-			}
-		}
-
-		float[][] red = band2NormG;
-		float[][] green = syntheticGreen;
-		float[][] blue = band1NormG;
-
-		Color[][] goesComposite = new Color[red[0].length][red.length];
+		Color[][] goesComposite = new Color[band1NormG[0].length][band1NormG.length];
 
 		for (int i = 0; i < goesComposite[0].length; i++) {
 //			if(i % 500 == 0) System.out.println("Goes True-Color Composite " + (100 * (float) i/goesComposite[0].length) + "% complete");
 
 			for (int j = 0; j < goesComposite.length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
-					int r = (int) (255 * red[i][j]);
+					float cloudColorAlpha = band1NormG[i][j];
 
-					int gr = (int) (255 * green[i][j]);
-					int b = (int) (255 * blue[i / 2][j / 2]);
+					Color sfcClr = surfaceColor[i][j];
+
+					int r = (int) ((1 - cloudColorAlpha) * sfcClr.getRed()
+									+ (cloudColorAlpha) * cloudColor.getRed());
+
+					int gr = (int) ((1 - cloudColorAlpha) * sfcClr.getGreen()
+							+ (cloudColorAlpha) * cloudColor.getGreen());
+					int b = (int) ((1 - cloudColorAlpha) * sfcClr.getBlue()
+							+ (cloudColorAlpha) * cloudColor.getBlue());
 
 					Color c = new Color(r, gr, b);
 
