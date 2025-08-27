@@ -76,7 +76,7 @@ public class SatelliteImageGenerator {
 			source = SatelliteSource.GOES_EAST;
 
 			if(time.isBefore(GRIDSAT_GOES_16_CUTOFF)) {
-				source = SatelliteSource.GRIDSAT;
+				source = SatelliteSource.GOES_EAST_MCFETCH;
 			}
 			
 			if (lat > 22 && lat <= 51 && lon > -106 && lon <= -59) {
@@ -88,7 +88,7 @@ public class SatelliteImageGenerator {
 			source = SatelliteSource.GOES_WEST;
 
 			if(time.isBefore(GRIDSAT_END)) {
-				source = SatelliteSource.GRIDSAT;
+				source = SatelliteSource.GOES_WEST_MCFETCH;
 			}
 
 			if (lat > 22 && lat <= 51 && lon > -162 && lon <= -106) {

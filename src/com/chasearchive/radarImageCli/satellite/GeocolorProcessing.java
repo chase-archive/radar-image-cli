@@ -680,7 +680,7 @@ public class GeocolorProcessing {
 			}
 		}
 
-		Color cloudColor = new Color(255, 255, 255);
+		final Color cloudColor = new Color(255, 255, 255);
 
 		Color[][] goesComposite = new Color[band1NormG[0].length][band1NormG.length];
 

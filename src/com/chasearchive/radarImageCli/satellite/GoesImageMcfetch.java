@@ -11,6 +11,8 @@ public class GoesImageMcfetch extends CdmFile implements SatelliteImage{
     // band 2: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=GOES13&band=2&output=JPG&date=2016-04-11&time=22:45&lat=33.01+96.5&mag=-1&size=375+625
     // band 4: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=GOES13&band=4&output=JPG&date=2016-04-11&time=22:45&lat=33.01+96.5&mag=-1&size=375+625
     // These three will pull the VIS, SIR, and LIR for the same exact geographical area and they should (should) be ready for compositing by the right code
+    // https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=GOES3&band=1&output=JPG&date=1981-01-01&time=18:45&lat=33.01+96.5&mag=-1&size=1500+2500
+    // found one single working goes-3 image lol
 
     public static void main(String[] args) throws IOException {
         GoesImageMcfetch image = GoesImageMcfetch.loadFromFile(new File("test-files/goes13_1_2016_102_2245.nc"));
