@@ -21,7 +21,7 @@ public class ModisBlueMarble {
 	static {
 		try {
 			// using the may one, but interchangeable as long as it's 5400x2700
-			File blueMarbleFile = ResourceLoader.loadResourceAsFile("res/modis.bluemarble.world.topo.bathy.200405.3x5400x2700.png");
+			File blueMarbleFile = ResourceLoader.loadResourceAsFile("res/modis.bluemarble.world.topo.200405.3x21600x10800.jpg");
             assert blueMarbleFile != null;
             blueMarble = ImageIO.read(blueMarbleFile);
 		} catch (IOException e) {

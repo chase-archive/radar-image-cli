@@ -32,9 +32,9 @@ public class GvarProcessing {
     // Where are the band 1 values? Good question.
     // Our robotic overlord says this should be roughly correct so I'll try it
     // I might try to avoid actually using these values though
-    private static float GOES_8_CH_1_M = 1.5f;
+    private static float GOES_8_CH_1_M = 0.3f;
     private static float GOES_8_CH_1_B = 70.0f;
-    private static float GOES_12_CH_1_M = 1.5f;
+    private static float GOES_12_CH_1_M = 0.3f;
     private static float GOES_12_CH_1_B = 70.0f;
 
     // This basically just makes it easier to clamp the minimum values to zero.

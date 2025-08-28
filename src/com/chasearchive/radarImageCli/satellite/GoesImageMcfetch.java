@@ -28,7 +28,7 @@ public class GoesImageMcfetch extends CdmFile implements SatelliteImage{
         image.locationOnDisk = f.getAbsolutePath();
 
         NetcdfFile ncfile = NetcdfFile.open(image.locationOnDisk);
-        System.out.println(ncfile);
+//        System.out.println(ncfile);
 
         image.permaFields.put("data", DataField.fromCdmVar(ncfile.findVariable("data")));
         image.permaFields.get("data").bundleField("scale_factor", DataField.fromNumber(1.0/32.0));

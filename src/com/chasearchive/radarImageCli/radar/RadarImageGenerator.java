@@ -834,7 +834,7 @@ public class RadarImageGenerator {
 
 	private static BufferedImage generateRadarMosaicPlot(DateTime time, double lat, double lon,
 			RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
-		if (!time.isBefore(GRIDRAD_V3_OP_START) && !time.isAfter(GRIDRAD_v3_OP_END)) {
+		if (!time.isBefore(GRIDRAD_V3_OP_START) && !time.isAfter(MRMS_OP_START)) {
 			return generateGridradV3Plot(time, lat, lon, settings, plotProj);
 		} else if (time.isAfter(GRIDRAD_v3_OP_END) && !time.isAfter(MRMS_OP_START)) {
 			if(time.getMonthOfYear() >= 4 && time.getMonthOfYear() <= 8) {

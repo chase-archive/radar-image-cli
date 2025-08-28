@@ -187,7 +187,33 @@ public class SatelliteImageGenerator {
 				System.out.println("**overall run time: " + (plotEndTime - downloadStartTime)/1000.0 + " s**");
 			}
 		} else if (settings.getSource() == SatelliteSource.GOES_EAST_MCFETCH || settings.getSource() == SatelliteSource.GOES_WEST_MCFETCH) {
+			System.out.println("downloading files...");
+			long downloadStartTime = System.currentTimeMillis();
+			File[] satFiles = null;
+			try {
+				satFiles = McfetchData.downloadGoes(time, settings.getSource(), lat, lon);
+			} catch (NoMcfetchFileFoundException e) {
+				e.printStackTrace();
+			}
+			long downloadEndTime = System.currentTimeMillis();
+			System.out.println("download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
 
+			System.out.println("loading files...");
+			long fileLoadStartTime = System.currentTimeMillis();
+			GoesImageMcfetch band1 = GoesImageMcfetch.loadFromFile(satFiles[0]);
+			GoesImageMcfetch band2 = GoesImageMcfetch.loadFromFile(satFiles[1]);
+			GoesImageMcfetch band4 = GoesImageMcfetch.loadFromFile(satFiles[2]);
+
+			GoesImageMcfetch[] goesImages = { band1, band2, band4 };
+			long fileLoadEndTime = System.currentTimeMillis();
+			System.out.println("file load time: " + (fileLoadEndTime - fileLoadStartTime)/1000.0 + " s");
+
+			System.out.println("plotting data...");
+			long plotStartTime = System.currentTimeMillis();
+			satPlot = generateSatellitePlot(goesImages, time, lat, lon, settings, satProj, plotProj);
+			long plotEndTime = System.currentTimeMillis();
+			System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
+			System.out.println("**overall run time: " + (plotEndTime - downloadStartTime)/1000.0 + " s**");
 		} else if (settings.getSource() == SatelliteSource.GRIDSAT) {
 			long downloadStartTime = System.currentTimeMillis();
 			File gridsatFile = null;
@@ -1077,9 +1103,9 @@ public class SatelliteImageGenerator {
 		PointD latLonProjectedDR = new PointD((settings.getSize() * settings.getAspectRatioFloat()),
 				-(settings.getSize()));
 
-		int[] lirShape = goes[1].field("lat").getShape();
-		float[][] lirLat = goes[1].field("lat").array2D();
-		float[][] lirLon = goes[1].field("lon").array2D();
+		int[] lirShape = goes[0].field("lat").getShape();
+		float[][] lirLat = goes[0].field("lat").array2D();
+		float[][] lirLon = goes[0].field("lon").array2D();
 
 		// chunk optimization
 		long chunkStartTime = System.currentTimeMillis();
@@ -1155,7 +1181,7 @@ public class SatelliteImageGenerator {
 					} else if(_x5 > 0 && _x5 < plotWidth && _y5 > 0 && _y5 < plotHeight) {
 						renderChunk[i][j] = true;
 					} else {
-						renderChunk[i][j] = false;
+						renderChunk[i][j] = true;
 					}
 				} else {
 					renderChunk[i][j] = false;
@@ -1232,15 +1258,15 @@ public class SatelliteImageGenerator {
 		for (int i = 0; i < satColors.length; i++) {
 			for (int j = 0; j < satColors[0].length; j++) {
 				if(renderChunk[i/chunkSizeInBand][j/chunkSizeInBand]) {
-					float lat1 = bilinearInterpolation(latitude, i - 0.5f, j - 0.5f);
-					float lat2 = bilinearInterpolation(latitude, i + 0.5f, j - 0.5f);
-					float lat3 = bilinearInterpolation(latitude, i + 0.5f, j + 0.5f);
-					float lat4 = bilinearInterpolation(latitude, i - 0.5f, j + 0.5f);
+					float lat1 = bilinearInterpolation(latitude, j - 0.5f, i - 0.5f);
+					float lat2 = bilinearInterpolation(latitude, j + 0.5f, i - 0.5f);
+					float lat3 = bilinearInterpolation(latitude, j + 0.5f, i + 0.5f);
+					float lat4 = bilinearInterpolation(latitude, j - 0.5f, i + 0.5f);
 
-					float lon1 = bilinearInterpolation(longitude, i - 0.5f, j - 0.5f);
-					float lon2 = bilinearInterpolation(longitude, i + 0.5f, j - 0.5f);
-					float lon3 = bilinearInterpolation(longitude, i + 0.5f, j + 0.5f);
-					float lon4 = bilinearInterpolation(longitude, i - 0.5f, j + 0.5f);
+					float lon1 = bilinearInterpolation(longitude, j - 0.5f, i - 0.5f);
+					float lon2 = bilinearInterpolation(longitude, j + 0.5f, i - 0.5f);
+					float lon3 = bilinearInterpolation(longitude, j + 0.5f, i + 0.5f);
+					float lon4 = bilinearInterpolation(longitude, j - 0.5f, i + 0.5f);
 
 					GeoCoord latLon1 = new GeoCoord(lat1, lon1);
 					GeoCoord latLon2 = new GeoCoord(lat2, lon2);
@@ -1281,6 +1307,8 @@ public class SatelliteImageGenerator {
 							&& !Float.isNaN(latLon1.getLon()) && !Float.isNaN(latLon2.getLon())
 							&& !Float.isNaN(latLon3.getLon()) && !Float.isNaN(latLon4.getLon()) && x1 != 0 && x2 != 0
 							&& x3 != 0 && x4 != 0 && y1 != 0 && y2 != 0 && y3 != 0 && y4 != 0;
+
+//					System.out.printf("sat-mcfetch: %.4f\t%.4f\t%.4f\t%.4f\n", lat1, lon1, x1, y1);
 
 					if (allValid) {
 						g.setColor(satColors[i][j]);

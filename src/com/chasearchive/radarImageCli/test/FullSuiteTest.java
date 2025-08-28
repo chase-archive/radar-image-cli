@@ -1,5 +1,7 @@
 package com.chasearchive.radarImageCli.test;
 
+import com.chasearchive.radarImageCli.satellite.GvarProcessing;
+import com.chasearchive.radarImageCli.satellite.ModisBlueMarble;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 
@@ -8,11 +10,14 @@ import com.chasearchive.radarImageCli.satellite.SatelliteImageCli;
 
 public class FullSuiteTest {
 	public static void main(String[] args) {
+//		System.out.println(GvarProcessing.spectralRadiance(600, 1, "GOES-13"));
+//		System.exit(0);
+
 		// Case info
-		DateTime time = new DateTime(2025, 3, 25, 23, 43, 0, DateTimeZone.UTC);
-		double lat = 35.35;
-		double lon = -97.44;
-		String caseName = "moore-ok-2025-fairWeatherTest";
+		DateTime time = new DateTime(2016, 4, 12, 0, 30, 0, DateTimeZone.UTC);
+		double lat = 33.01;
+		double lon = -96.50;
+		String caseName = "wylie-tx-2016-sunset";
 
 		long maxMemory = Runtime.getRuntime().maxMemory();
 		long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
@@ -30,9 +35,9 @@ public class FullSuiteTest {
 		String[] argsRadLoc = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
 				"-a", "4:3", "-s", "0.5", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE", "-tms", "TRUE", "-o", "caseTests/" + caseName};
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon,
-				"-a", "16:9", "-s", "2.5", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "2.5", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatVis = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "16:9", "-s", "3.0", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "3.0", "-r", "720", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatLir = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
