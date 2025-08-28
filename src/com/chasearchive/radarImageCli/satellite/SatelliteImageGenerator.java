@@ -186,6 +186,8 @@ public class SatelliteImageGenerator {
 				System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
 				System.out.println("**overall run time: " + (plotEndTime - downloadStartTime)/1000.0 + " s**");
 			}
+		} else if (settings.getSource() == SatelliteSource.GOES_EAST_MCFETCH || settings.getSource() == SatelliteSource.GOES_WEST_MCFETCH) {
+
 		} else if (settings.getSource() == SatelliteSource.GRIDSAT) {
 			long downloadStartTime = System.currentTimeMillis();
 			File gridsatFile = null;
