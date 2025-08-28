@@ -5,6 +5,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 
 import javax.imageio.ImageIO;
 
@@ -620,6 +621,7 @@ public class GeocolorProcessing {
 		return createTrueColorGoes(band1, latLon, dt, renderChunk, CHUNK_SIZE);
 	}
 
+	private static final DateTime WHITE_POINT_CHANGE = new DateTime(1997, 1, 1, 0, 0, DateTimeZone.UTC);
 	public static Color[][] createTrueColorGoes(GoesImageMcfetch band1, GeoCoord[][] latLon,
 												DateTime dt, boolean[][] renderChunks, int chunkSize) {
 		float[][] solarMult = createSolarMultiplierMatrixMcfetch(latLon, dt, renderChunks, chunkSize);
@@ -660,7 +662,8 @@ public class GeocolorProcessing {
 		for (int i = 0; i < band1Clip.length; i++) {
 			for (int j = 0; j < band1Clip[i].length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
-					band1Clip[i][j] = clip(band1Rad[i][j] / (WHITE_POINT * 2.25f), 0, 1);
+					float whitePointMult = dt.isBefore(WHITE_POINT_CHANGE) ? 2.5f : 1.75f;
+					band1Clip[i][j] = clip(band1Rad[i][j] / (WHITE_POINT * whitePointMult), 0, 1);
 				}
 			}
 		}
