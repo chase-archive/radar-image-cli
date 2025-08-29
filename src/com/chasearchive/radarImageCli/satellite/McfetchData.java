@@ -154,13 +154,84 @@ public class McfetchData {
                 throw new NoMcfetchFileFoundException();
             }
         } else if (source == SatelliteSource.GOES_WEST_MCFETCH){
+            if(!dateTime.isBefore(GOES_11_15_CUTOFF)) {
+                // do goes 15
+                String sat = "GOES-15";
+                String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
+                String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
+                String latLon = String.format("%.2f+%.2f", lat, -lon);
+                String size1 = "1500+2500";
+                String size2 = "375+625";
 
+                String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
+                String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
+                String band4Url = String.format(URL_FORMAT, DKEY, sat, 4, date, time, latLon, size2);
+
+                File band1File = downloadFile(band1Url, "sat_band1.nc");
+                File band2File = downloadFile(band2Url, "sat_band2.nc");
+                File band4File = downloadFile(band4Url, "sat_band4.nc");
+
+                return new File[] { band1File, band2File, band4File };
+            } else if(!dateTime.isBefore(GOES_10_11_CUTOFF)) {
+                // do goes 11
+                String sat = "GOES-11";
+                String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
+                String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
+                String latLon = String.format("%.2f+%.2f", lat, -lon);
+                String size1 = "1500+2500";
+                String size2 = "375+625";
+
+                String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
+                String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
+                String band4Url = String.format(URL_FORMAT, DKEY, sat, 4, date, time, latLon, size2);
+
+                File band1File = downloadFile(band1Url, "sat_band1.nc");
+                File band2File = downloadFile(band2Url, "sat_band2.nc");
+                File band4File = downloadFile(band4Url, "sat_band4.nc");
+
+                return new File[] { band1File, band2File, band4File };
+            } else if(!dateTime.isBefore(GOES_9_10_CUTOFF)) {
+                // do goes 10
+                String sat = "GOES-10";
+                String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
+                String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
+                String latLon = String.format("%.2f+%.2f", lat, -lon);
+                String size1 = "1500+2500";
+                String size2 = "375+625";
+
+                String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
+                String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
+                String band4Url = String.format(URL_FORMAT, DKEY, sat, 4, date, time, latLon, size2);
+
+                File band1File = downloadFile(band1Url, "sat_band1.nc");
+                File band2File = downloadFile(band2Url, "sat_band2.nc");
+                File band4File = downloadFile(band4Url, "sat_band4.nc");
+
+                return new File[] { band1File, band2File, band4File };
+            } else if(!dateTime.isBefore(GOES_9_START)) {
+                // do goes 9
+                String sat = "GOES-9";
+                String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
+                String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
+                String latLon = String.format("%.2f+%.2f", lat, -lon);
+                String size1 = "1500+2500";
+                String size2 = "375+625";
+
+                String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
+                String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
+                String band4Url = String.format(URL_FORMAT, DKEY, sat, 4, date, time, latLon, size2);
+
+                File band1File = downloadFile(band1Url, "sat_band1.nc");
+                File band2File = downloadFile(band2Url, "sat_band2.nc");
+                File band4File = downloadFile(band4Url, "sat_band4.nc");
+
+                return new File[] { band1File, band2File, band4File };
+            } else {
+                throw new NoMcfetchFileFoundException();
+            }
         } else {
             throw new NoMcfetchFileFoundException();
         }
-
-        // if you reach this point, might as well
-        throw new NoMcfetchFileFoundException();
     }
 
     private static File downloadFile(String url, String fileName) throws IOException {
