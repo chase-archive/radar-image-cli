@@ -17,10 +17,11 @@ public class McfetchData {
     // band 1:
     // band 2: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=GOES13&band=2&output=JPG&date=2016-04-11&time=22:45&lat=33.01+96.5&mag=-1&size=375+625
     // band 4: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=GOES13&band=4&output=JPG&date=2016-04-11&time=22:45&lat=33.01+96.5&mag=-1&size=375+625
+    // himawari 9: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=HIMAWARI9&coverage=FD&band=1&output=JPG&date=2024-09-01&time=00:50:01&lat=42.01+-141.5&size=1500+2500&mag=-1
 
     private static final String DKEY = "fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn";
 
-    private static final String URL_FORMAT = "https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=%s&satellite=%s&band=%d&output=NETCDF&date=%s&time=%s&lat=%s&mag=-1&size=%s";
+    private static final String URL_FORMAT = "https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=%s&satellite=%s&coverage=CONUS&band=%d&output=NETCDF&date=%s&time=%s&lat=%s&mag=-1&size=%s";
     public static File[] downloadGoes(DateTime dateTime, SatelliteSource source, double lat, double lon) throws NoMcfetchFileFoundException, IOException {
         if(source == SatelliteSource.GOES_EAST_MCFETCH) {
             //datetime decision tree
