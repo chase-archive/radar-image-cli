@@ -14,10 +14,10 @@ public class FullSuiteTest {
 //		System.exit(0);
 
 		// Case info
-		DateTime time = new DateTime(1997, 7, 6, 23, 0, 0, DateTimeZone.UTC);
-		double lat = 38.5;
-		double lon = -122;
-		String caseName = "GOES-9_north-bay-1997";
+		DateTime time = new DateTime(2010, 2, 11, 23, 0, 0, DateTimeZone.UTC);
+		double lat = 33.01;
+		double lon = -97.25;
+		String caseName = "dallas-tx-record-snow-2010";
 
 		long maxMemory = Runtime.getRuntime().maxMemory();
 		long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();

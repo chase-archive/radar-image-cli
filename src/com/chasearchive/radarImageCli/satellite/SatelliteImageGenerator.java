@@ -1116,6 +1116,7 @@ public class SatelliteImageGenerator {
 		int plotWidth = satPlot.getWidth();
 		int plotHeight = satPlot.getHeight();
 
+//		int trueChunks = 0;
 		for(int i = 0; i < renderChunk.length; i++) {
 			for(int j = 0; j < renderChunk[i].length; j++) {
 				int i1Low = i * CHUNK_SIZE;
@@ -1172,16 +1173,21 @@ public class SatelliteImageGenerator {
 
 					if(_x1 > 0 && _x1 < plotWidth && _y1 > 0 && _y1 < plotHeight) {
 						renderChunk[i][j] = true;
+//						trueChunks++;
 					} else if(_x2 > 0 && _x2 < plotWidth && _y2 > 0 && _y2 < plotHeight) {
 						renderChunk[i][j] = true;
+//						trueChunks++;
 					} else if(_x3 > 0 && _x2 < plotWidth && _y3 > 0 && _y3 < plotHeight) {
 						renderChunk[i][j] = true;
+//						trueChunks++;
 					} else if(_x4 > 0 && _x4 < plotWidth && _y4 > 0 && _y4 < plotHeight) {
 						renderChunk[i][j] = true;
+//						trueChunks++;
 					} else if(_x5 > 0 && _x5 < plotWidth && _y5 > 0 && _y5 < plotHeight) {
 						renderChunk[i][j] = true;
+//						trueChunks++;
 					} else {
-						renderChunk[i][j] = true;
+						renderChunk[i][j] = false;
 					}
 				} else {
 					renderChunk[i][j] = false;
@@ -1190,6 +1196,18 @@ public class SatelliteImageGenerator {
 		}
 		long chunkEndTime = System.currentTimeMillis();
 		System.out.println("chunk decision time: " + (chunkEndTime - chunkStartTime)/1000.0 + " s");
+//		System.out.println("true chunks: " + trueChunks + ", all chunks:" + renderChunk.length * renderChunk[0].length);
+//		for(int i = 0; i < renderChunk.length; i++) {
+//			for (int j = 0; j < renderChunk[i].length; j++) {
+//				if(renderChunk[i][j]) {
+//					System.out.printf("%8.2f|%8.2f|O", lirLat[i * CHUNK_SIZE][j * CHUNK_SIZE], lirLon[i * CHUNK_SIZE][j * CHUNK_SIZE]);
+//				} else {
+//					System.out.printf("%8.2f|%8.2f|X", lirLat[i * CHUNK_SIZE][j * CHUNK_SIZE], lirLon[i * CHUNK_SIZE][j * CHUNK_SIZE]);
+//				}
+//			}
+//			System.out.println();
+//		}
+//		System.exit(44);
 
 		Color[][] satColors = new Color[lirShape[1]][lirShape[0]];
 
@@ -1211,7 +1229,7 @@ public class SatelliteImageGenerator {
 		int chunkSizeInBand = 0;
 		switch (settings.getImageType()) {
 			case GEOCOLOR:
-				chunkSizeInBand = 100;
+				chunkSizeInBand = 25;
 
 				satColors = GeocolorProcessing.createComposite(goes[0], goes[1], goes[2], satProj, time, renderChunk, chunkSizeInBand);
 
@@ -1257,7 +1275,7 @@ public class SatelliteImageGenerator {
 		long plottingStartTime = System.currentTimeMillis();
 		for (int i = 0; i < satColors.length; i++) {
 			for (int j = 0; j < satColors[0].length; j++) {
-				if(renderChunk[i/chunkSizeInBand][j/chunkSizeInBand]) {
+				if(renderChunk[j/chunkSizeInBand][i/chunkSizeInBand]) {
 					float lat1 = bilinearInterpolation(latitude, j - 0.5f, i - 0.5f);
 					float lat2 = bilinearInterpolation(latitude, j + 0.5f, i - 0.5f);
 					float lat3 = bilinearInterpolation(latitude, j + 0.5f, i + 0.5f);
@@ -1308,11 +1326,19 @@ public class SatelliteImageGenerator {
 							&& !Float.isNaN(latLon3.getLon()) && !Float.isNaN(latLon4.getLon()) && x1 != 0 && x2 != 0
 							&& x3 != 0 && x4 != 0 && y1 != 0 && y2 != 0 && y3 != 0 && y4 != 0;
 
+//					if(i % chunkSizeInBand == 0 && j % chunkSizeInBand == 0) {
+//						System.out.printf("chunk:%03d,%03d real:%s rotated:%s xy1:%04d,%04d xy4:%04d,%04d\n", i/chunkSizeInBand, j/chunkSizeInBand, latLon1.toString(), p1.toString(), (int) x1, (int) y1,  (int) x4, (int) y4);
+//						System.out.println("allValid: " + allValid);
+//					}
+
 //					System.out.printf("sat-mcfetch: %.4f\t%.4f\t%.4f\t%.4f\n", lat1, lon1, x1, y1);
 
 					if (allValid) {
 						g.setColor(satColors[i][j]);
 						g.fillPolygon(xPoints, yPoints, 4);
+//						if(i % chunkSizeInBand == 0 && j % chunkSizeInBand == 0) {
+//							System.out.println("drawing with color: " + g.getColor());
+//						}
 					}
 				}
 			}

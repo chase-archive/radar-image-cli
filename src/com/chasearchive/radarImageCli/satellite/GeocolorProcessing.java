@@ -586,9 +586,17 @@ public class GeocolorProcessing {
 
 		Color[][] goesComposite = new Color[trueColor.length][trueColor[0].length];
 
+
+//		System.out.println("chunkSize: " + chunkSize);
+//		System.out.println("renderChunks.shape: " + renderChunks.length + ", " +  + renderChunks[0].length);
+//		System.out.println("trueColor.shape (expected): " + renderChunks.length * chunkSize + ", " +  + renderChunks[0].length * chunkSize);
+//		System.out.println("trueColor.shape (actual)  : " + trueColor.length + ", " +  + trueColor[0].length);
+//		System.out.println("goesComposite.shape (expected): " + renderChunks.length * chunkSize + ", " +  + renderChunks[0].length * chunkSize);
+//		System.out.println("goesComposite.shape (actual)  : " + goesComposite.length + ", " +  + goesComposite[0].length);
+
 		for (int i = 0; i < goesComposite.length; i++) {
 			for (int j = 0; j < goesComposite[0].length; j++) {
-				if (renderChunks[i / chunkSize][j / chunkSize]) {
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					float blendFactor = (solarAlt[i][j]) / TERMINATOR_WIDTH_MCFETCH;
 					if (blendFactor < 0) {
 						blendFactor = 0;
@@ -596,7 +604,8 @@ public class GeocolorProcessing {
 						blendFactor = 1;
 					}
 
-					goesComposite[i][j] = blendTristims(trueColor[i][j], irColor[i / 4][j / 4], blendFactor);
+//					goesComposite[i][j] = blendTristims(trueColor[i][j], irColor[i / 4][j / 4], blendFactor);
+					goesComposite[i][j] = trueColor[i][j];
 				}
 			}
 		}
@@ -630,23 +639,29 @@ public class GeocolorProcessing {
 
 		for (int i = 0; i < surfaceColor.length; i++) {
 			for (int j = 0; j < surfaceColor[i].length; j++) {
-				surfaceColor[i][j] = ModisBlueMarble.getColor(latLon[i][j]); // need to modify this for evening/night!!!
+				if (renderChunks[i / chunkSize][j / chunkSize]) {
+					surfaceColor[i][j] = ModisBlueMarble.getColor(latLon[i][j]);
+				}
 			}
 		}
 
         String satellite = band1.field("satellite").getAnnotation();
 		float[][] band1Gvar = band1.field("data").array3D()[0];
+//		System.out.println("band1Gvar.shape (actual)  : " + band1Gvar.length + ", " +  + band1Gvar[0].length);
 
 		float[][] band1Rad = new float[band1Gvar.length][band1Gvar[0].length];
 		for (int i = 0; i < band1Gvar.length; i++) {
 			for (int j = 0; j < band1Gvar[i].length; j++) {
-				band1Rad[i][j] = GvarProcessing.spectralRadiance(band1Gvar[i][j], 1, satellite);
+				if (renderChunks[i / chunkSize][j / chunkSize]) {
+					band1Rad[i][j] = GvarProcessing.spectralRadiance(band1Gvar[i][j], 1, satellite);
+				}
 			}
 		}
 
+//		System.out.println("solarMult.shape: " + solarMult.length + ", " +  + solarMult[0].length);
 		for (int i = 0; i < band1Gvar.length; i++) {
 			for (int j = 0; j < band1Gvar[i].length; j++) {
-				if (renderChunks[j / chunkSize][i / chunkSize]) {
+				if (renderChunks[i / chunkSize][j / chunkSize]) {
 					float mult = solarMult[j][i];
 
 					if (!Double.isNaN(mult)) {
@@ -661,7 +676,7 @@ public class GeocolorProcessing {
 		float[][] band1Clip = new float[band1Rad.length][band1Rad[0].length];
 		for (int i = 0; i < band1Clip.length; i++) {
 			for (int j = 0; j < band1Clip[i].length; j++) {
-				if (renderChunks[j / chunkSize][i / chunkSize]) {
+				if (renderChunks[i / chunkSize][j / chunkSize]) {
 					float whitePointMult = dt.isBefore(WHITE_POINT_CHANGE) ? 2.5f : 1.75f;
 					band1Clip[i][j] = clip(band1Rad[i][j] / (WHITE_POINT * whitePointMult), 0, 1);
 				}
@@ -675,7 +690,7 @@ public class GeocolorProcessing {
 		float[][] band1NormG = new float[band1Clip.length][band1Clip[0].length];
 		for (int i = 0; i < band1NormG.length; i++) {
 			for (int j = 0; j < band1NormG[i].length; j++) {
-				if (renderChunks[j / chunkSize][i / chunkSize]) {
+				if (renderChunks[i / chunkSize][j / chunkSize]) {
 					band1NormG[i][j] = gammaCorrect(band1Clip[i][j], GAMMA);
 				}
 			}
@@ -689,7 +704,7 @@ public class GeocolorProcessing {
 //			if(i % 500 == 0) System.out.println("Goes True-Color Composite " + (100 * (float) i/goesComposite[0].length) + "% complete");
 
 			for (int j = 0; j < goesComposite.length; j++) {
-				if (renderChunks[j / chunkSize][i / chunkSize]) {
+				if (renderChunks[i / chunkSize][j / chunkSize]) {
 					float cloudColorAlpha = band1NormG[i][j];
 
 //					System.out.println("band1Gvar: " + band1Gvar[i][j]);
