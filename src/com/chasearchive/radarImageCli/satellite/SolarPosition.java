@@ -7,7 +7,7 @@ import org.joda.time.DateTimeZone;
 // lots of wikipedia as a source. very scientifically sound i know
 public class SolarPosition {
 	public static void main(String[] args) {
-		DateTime dt = new DateTime(2025, 7, 1, 18, 0, DateTimeZone.UTC);
+		DateTime dt = new DateTime(2025, 7, 1, 6, 0, DateTimeZone.UTC);
 		double lat = 35.18;
 		double lon = -97.44;
 		

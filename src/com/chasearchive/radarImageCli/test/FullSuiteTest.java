@@ -14,10 +14,18 @@ public class FullSuiteTest {
 //		System.exit(0);
 
 		// Case info
-		DateTime time = new DateTime(2010, 2, 11, 23, 0, 0, DateTimeZone.UTC);
-		double lat = 33.01;
+		// do adaptive white point thing
+//		DateTime time = new DateTime(2010, 2, 11, 23, 0, 0, DateTimeZone.UTC);
+//		double lat = 33.01;
+//		double lon = -97.25;
+//		String caseName = "dallas-tx-record-snow-2010";
+
+		// img alignment and green channel finetuning
+		// also really badly need to figure out how to make my sunsets not green
+		DateTime time = new DateTime(2021, 8, 16, 19, 0, 0, DateTimeZone.UTC);
+		double lat = 33.75;
 		double lon = -97.25;
-		String caseName = "dallas-tx-record-snow-2010";
+		String caseName = "dallas-tx-record-snow-2021";
 
 		long maxMemory = Runtime.getRuntime().maxMemory();
 		long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
@@ -37,7 +45,7 @@ public class FullSuiteTest {
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon,
 				"-a", "16:9", "-s", "2.5", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatVis = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "16:9", "-s", "3.0", "-r", "720", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "3.0", "-r", "1080", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatLir = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 

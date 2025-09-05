@@ -5,7 +5,8 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
-import java.util.Date;
+import java.util.ArrayList;
+import java.util.Collections;
 
 import javax.imageio.ImageIO;
 
@@ -178,6 +179,9 @@ public class GeocolorProcessing {
 
 //		System.out.println(goes.field("band_1").getBundledField("wavelength"));
 
+		final float R_POWER = (float) (Math.log(100) / Math.log(100));
+		final float G_POWER = (float) (Math.log(100) / Math.log(100));
+		final float B_POWER = (float) (Math.log(100) / Math.log(100));
 		for (int i = 0; i < band2Rad.length; i++) {
 			for (int j = 0; j < band2Rad[i].length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
@@ -185,9 +189,9 @@ public class GeocolorProcessing {
 						float mult = 0.9f * (float) Math.sqrt(solarMult[i][j]);
 
 						if (!Double.isNaN(mult)) {
-							band1Rad[i][j] = band1Rad[i][j] * mult;
-							band3Rad[i][j] = band3Rad[i][j] * mult;
-							band2Rad[i][j] = band2Rad[i][j] * mult;
+							band1Rad[i][j] = (float) (band1Rad[i][j] * Math.pow(mult, R_POWER));
+							band3Rad[i][j] = (float) (band3Rad[i][j] * Math.pow(mult, G_POWER));
+							band2Rad[i][j] = (float) (band2Rad[i][j] * Math.pow(mult, B_POWER));
 						}
 					}
 				}
@@ -362,10 +366,10 @@ public class GeocolorProcessing {
 	}
 
 	// found by trial and error
-	private static final float WHITE_POINT = 1000.0f;
+	private static final float WHITE_POINT = 1370.0f * 1.20f;
 	private static final float WHITE_BALANCE_RED = 0.932f;
 	private static final float WHITE_BALANCE_GREEN = 1.383f;
-	private static final float WHITE_BALANCE_BLUE = 0.785f;
+	private static final float WHITE_BALANCE_BLUE = 0.746f;
 
 	public static Color[][] createTrueColorGoes(GoesImage band1, GoesImage band2, GoesImage band3, GeoCoord[][] latLon,
 			DateTime dt, boolean[][] renderChunks, int chunkSize) {
@@ -375,6 +379,9 @@ public class GeocolorProcessing {
 		float[][] band2Rad = band2.field("rad").array2D();
 		float[][] band3Rad = band3.field("rad").array2D();
 
+		final float R_POWER = (float) (Math.log(100) / Math.log(100));
+		final float G_POWER = (float) (Math.log(85) / Math.log(100));
+		final float B_POWER = (float) (Math.log(77) / Math.log(100));
 		for (int i = 0; i < band2Rad.length; i++) {
 			for (int j = 0; j < band2Rad[i].length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
@@ -383,10 +390,13 @@ public class GeocolorProcessing {
 
 						if (!Double.isNaN(mult)) {
 							if (i % 2 == 0 && j % 2 == 0) {
-								band1Rad[i / 2][j / 2] = band1Rad[i / 2][j / 2] * mult;
-								band3Rad[i / 2][j / 2] = band3Rad[i / 2][j / 2] * mult;
+//								band1Rad[i / 2][j / 2] = (float) (band1Rad[i / 2][j / 2] * Math.pow(mult, B_POWER));
+//								band3Rad[i / 2][j / 2] = (float) (band3Rad[i / 2][j / 2] * Math.pow(mult, G_POWER));
+								band1Rad[i / 2][j / 2] = (float) (band1Rad[i / 2][j / 2] * mult);
+								band3Rad[i / 2][j / 2] = (float) (band3Rad[i / 2][j / 2] * mult);
 							}
-							band2Rad[i][j] = band2Rad[i][j] * mult;
+//							band2Rad[i][j] = (float) (band2Rad[i][j] * Math.pow(mult, R_POWER));
+							band2Rad[i][j] = (float) (band2Rad[i][j] * mult);
 						}
 					}
 				}
@@ -420,7 +430,7 @@ public class GeocolorProcessing {
 //		band2Clip = normalize(band2Rad, 0, 1);
 //		band3Clip = normalize(band3Rad, 0, 1);
 
-		final float GAMMA = 2.2f;
+		final float GAMMA = 3.2f;
 
 		float[][] band1NormG = new float[band1Clip.length][band1Clip[0].length];
 		float[][] band2NormG = new float[band2Clip.length][band2Clip[0].length];
@@ -439,12 +449,14 @@ public class GeocolorProcessing {
 
 		float[][] syntheticGreen = new float[band2Rad.length][band2Rad[0].length];
 
+		final float VEGGIE_PERCENTAGE = 0.10f;
+		final float BAND_1_2_PERCENTAGE = (1 - VEGGIE_PERCENTAGE) / 2.0f;
 		for (int i = 0; i < syntheticGreen.length; i++) {
 			for (int j = 0; j < syntheticGreen[i].length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					// calculate the "true" green
-					syntheticGreen[i][j] = clip(0.375f * band2NormG[i][j] + 0.25f * band3NormG[i / 2][j / 2]
-							+ 0.375f * band1NormG[i / 2][j / 2], 0, 1);
+					syntheticGreen[i][j] = clip(BAND_1_2_PERCENTAGE * band2NormG[i][j] + VEGGIE_PERCENTAGE * band3NormG[i / 2][j / 2]
+							+ BAND_1_2_PERCENTAGE * band1NormG[i / 2][j / 2], 0, 1);
 				}
 			}
 		}
@@ -467,7 +479,7 @@ public class GeocolorProcessing {
 
 					Color c = new Color(r, gr, b);
 
-					goesComposite[j][i] = contrast(c, 48);
+					goesComposite[j][i] = contrast(c, 96);
 				}
 			}
 		}
@@ -659,6 +671,7 @@ public class GeocolorProcessing {
 		}
 
 //		System.out.println("solarMult.shape: " + solarMult.length + ", " +  + solarMult[0].length);
+		ArrayList<Float> daytimeRadianceValues = new ArrayList<>();
 		for (int i = 0; i < band1Gvar.length; i++) {
 			for (int j = 0; j < band1Gvar[i].length; j++) {
 				if (renderChunks[i / chunkSize][j / chunkSize]) {
@@ -667,9 +680,16 @@ public class GeocolorProcessing {
 					if (!Double.isNaN(mult)) {
 						band1Rad[i][j] = band1Rad[i][j] * mult;
 					}
+
+					if(mult > 0 && mult < MAX_MULT_MCFETCH) {
+						daytimeRadianceValues.add(band1Rad[i][j]);
+					}
 				}
 			}
 		}
+
+		float daytimeRad90thPctl = valueAtPercentile(daytimeRadianceValues, 0.90f);
+		System.out.println("daytimeRad90thPctl: " + daytimeRad90thPctl);
 
 		// VERY IMPORTANT!! normalize and color-balance radiances to the correct
 		// specific ranges
@@ -677,8 +697,8 @@ public class GeocolorProcessing {
 		for (int i = 0; i < band1Clip.length; i++) {
 			for (int j = 0; j < band1Clip[i].length; j++) {
 				if (renderChunks[i / chunkSize][j / chunkSize]) {
-					float whitePointMult = dt.isBefore(WHITE_POINT_CHANGE) ? 2.5f : 1.75f;
-					band1Clip[i][j] = clip(band1Rad[i][j] / (WHITE_POINT * whitePointMult), 0, 1);
+//					float whitePointMult = dt.isBefore(WHITE_POINT_CHANGE) ? 2.5f : 1.75f;
+                    band1Clip[i][j] = clip(band1Rad[i][j] / Math.max(WHITE_POINT * 1.75f, daytimeRad90thPctl), 0, 1);
 				}
 			}
 		}
@@ -716,12 +736,12 @@ public class GeocolorProcessing {
 
 					Color sfcClr = surfaceColor[i][j];
 
-					int r = (int) (Math.pow(1 - cloudColorAlpha, 2) * sfcClr.getRed()
+					int r = (int) (Math.pow(1 - cloudColorAlpha, 2) * 0.75 * sfcClr.getRed()
 									+ (cloudColorAlpha) * cloudColor.getRed());
 
-					int gr = (int) (Math.pow(1 - cloudColorAlpha, 2) * sfcClr.getGreen()
+					int gr = (int) (Math.pow(1 - cloudColorAlpha, 2) * 0.75 * sfcClr.getGreen()
 							+ (cloudColorAlpha) * cloudColor.getGreen());
-					int b = (int) (Math.pow(1 - cloudColorAlpha, 2) * sfcClr.getBlue()
+					int b = (int) (Math.pow(1 - cloudColorAlpha, 2) * 0.75 * sfcClr.getBlue()
 							+ (cloudColorAlpha) * cloudColor.getBlue());
 
 					Color c = new Color(r, gr, b);
@@ -839,6 +859,11 @@ public class GeocolorProcessing {
 		}
 
 		return goesComposite;
+	}
+
+	private static float valueAtPercentile(ArrayList<Float> dataset, float pctl) {
+		Collections.sort(dataset);
+		return dataset.get((int) ((dataset.size() - 1) * pctl));
 	}
 	
 	private static void fillGaps(Color[][] img) {

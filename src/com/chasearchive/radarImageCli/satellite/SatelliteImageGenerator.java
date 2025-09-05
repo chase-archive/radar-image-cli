@@ -1034,10 +1034,18 @@ public class SatelliteImageGenerator {
 					float x0 = -x[i];
 					float y0 = y[j];
 	
-					GeoCoord latLon1 = satProj.projectXYToLatLon(x0 - dx / 2.0f, y0 - dy / 2.0f);
-					GeoCoord latLon2 = satProj.projectXYToLatLon(x0 + dx / 2.0f, y0 - dy / 2.0f);
-					GeoCoord latLon3 = satProj.projectXYToLatLon(x0 + dx / 2.0f, y0 + dy / 2.0f);
-					GeoCoord latLon4 = satProj.projectXYToLatLon(x0 - dx / 2.0f, y0 + dy / 2.0f);
+//					GeoCoord latLon1 = satProj.projectXYToLatLon(x0 - dx / 2.0f - 3.0f * dx, y0 - dy / 2.0f + 3.0f * dy);
+//					GeoCoord latLon2 = satProj.projectXYToLatLon(x0 + dx / 2.0f - 3.0f * dx, y0 - dy / 2.0f + 3.0f * dy);
+//					GeoCoord latLon3 = satProj.projectXYToLatLon(x0 + dx / 2.0f - 3.0f * dx, y0 + dy / 2.0f + 3.0f * dy);
+//					GeoCoord latLon4 = satProj.projectXYToLatLon(x0 - dx / 2.0f - 3.0f * dx, y0 + dy / 2.0f + 3.0f * dy);
+
+					final float X_MULT = 0.999207188f;
+					final float Y_MULT = 0.999207188f;
+//					final float Y_MULT = 0.99955713f;
+					GeoCoord latLon1 = satProj.projectXYToLatLon((x0 - dx / 2.0f) * X_MULT, (y0 - dy / 2.0f) * Y_MULT);
+					GeoCoord latLon2 = satProj.projectXYToLatLon((x0 + dx / 2.0f) * X_MULT, (y0 - dy / 2.0f) * Y_MULT);
+					GeoCoord latLon3 = satProj.projectXYToLatLon((x0 + dx / 2.0f) * X_MULT, (y0 + dy / 2.0f) * Y_MULT);
+					GeoCoord latLon4 = satProj.projectXYToLatLon((x0 - dx / 2.0f) * X_MULT, (y0 + dy / 2.0f) * Y_MULT);
 	
 					GeoCoord p1 = plotProj.rotateLatLon(latLon1);
 					GeoCoord p2 = plotProj.rotateLatLon(latLon2);
