@@ -200,20 +200,25 @@ public class SatelliteImageGenerator {
 
 			System.out.println("loading files...");
 			long fileLoadStartTime = System.currentTimeMillis();
-			GoesImageMcfetch band1 = GoesImageMcfetch.loadFromFile(satFiles[0]);
-			GoesImageMcfetch band2 = GoesImageMcfetch.loadFromFile(satFiles[1]);
-			GoesImageMcfetch band4 = GoesImageMcfetch.loadFromFile(satFiles[2]);
+			try {
+				GoesImageMcfetch band1 = GoesImageMcfetch.loadFromFile(satFiles[0]);
+				GoesImageMcfetch band2 = GoesImageMcfetch.loadFromFile(satFiles[1]);
+				GoesImageMcfetch band4 = GoesImageMcfetch.loadFromFile(satFiles[2]);
 
-			GoesImageMcfetch[] goesImages = { band1, band2, band4 };
-			long fileLoadEndTime = System.currentTimeMillis();
-			System.out.println("file load time: " + (fileLoadEndTime - fileLoadStartTime)/1000.0 + " s");
+				GoesImageMcfetch[] goesImages = { band1, band2, band4 };
+				long fileLoadEndTime = System.currentTimeMillis();
+				System.out.println("file load time: " + (fileLoadEndTime - fileLoadStartTime)/1000.0 + " s");
 
-			System.out.println("plotting data...");
-			long plotStartTime = System.currentTimeMillis();
-			satPlot = generateSatellitePlot(goesImages, time, lat, lon, settings, satProj, plotProj);
-			long plotEndTime = System.currentTimeMillis();
-			System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
-			System.out.println("**overall run time: " + (plotEndTime - downloadStartTime)/1000.0 + " s**");
+				System.out.println("plotting data...");
+				long plotStartTime = System.currentTimeMillis();
+				satPlot = generateSatellitePlot(goesImages, time, lat, lon, settings, satProj, plotProj);
+				long plotEndTime = System.currentTimeMillis();
+				System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
+				System.out.println("**overall run time: " + (plotEndTime - downloadStartTime)/1000.0 + " s**");
+			} catch (NotValidMcfetchFileException e) {
+				System.err.println("Valid file does not exist in McFETCH archive for this time! Returning blank black image to avoid crash.");
+				satPlot = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_3BYTE_BGR);
+			}
 		} else if (settings.getSource() == SatelliteSource.GRIDSAT) {
 			long downloadStartTime = System.currentTimeMillis();
 			File gridsatFile = null;
@@ -245,7 +250,7 @@ public class SatelliteImageGenerator {
 
 //		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
 		BufferedImage citiesPlot = generateCityPlot(lat, lon, settings, plotProj);
-		BufferedImage availabilityNoticeLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);;
+		BufferedImage availabilityNoticeLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);
 
 		BufferedImage logo = ImageIO.read(Objects.requireNonNull(ResourceLoader.loadResourceAsFile("res/chase-archive-logo-128pix.png")));
 

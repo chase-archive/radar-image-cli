@@ -366,10 +366,10 @@ public class GeocolorProcessing {
 	}
 
 	// found by trial and error
-	private static final float WHITE_POINT = 1370.0f * 1.20f;
+	private static final float WHITE_POINT = 1370.0f * 1.35f;
 	private static final float WHITE_BALANCE_RED = 0.932f;
 	private static final float WHITE_BALANCE_GREEN = 1.383f;
-	private static final float WHITE_BALANCE_BLUE = 0.746f;
+	private static final float WHITE_BALANCE_BLUE = 0.765f;
 
 	public static Color[][] createTrueColorGoes(GoesImage band1, GoesImage band2, GoesImage band3, GeoCoord[][] latLon,
 			DateTime dt, boolean[][] renderChunks, int chunkSize) {
@@ -616,8 +616,8 @@ public class GeocolorProcessing {
 						blendFactor = 1;
 					}
 
-//					goesComposite[i][j] = blendTristims(trueColor[i][j], irColor[i / 4][j / 4], blendFactor);
-					goesComposite[i][j] = trueColor[i][j];
+					goesComposite[i][j] = blendTristims(trueColor[i][j], irColor[i / 4][j / 4], blendFactor);
+//					goesComposite[i][j] = trueColor[i][j];
 				}
 			}
 		}
@@ -862,6 +862,10 @@ public class GeocolorProcessing {
 	}
 
 	private static float valueAtPercentile(ArrayList<Float> dataset, float pctl) {
+		if(dataset.isEmpty()) {
+			return 0;
+		}
+
 		Collections.sort(dataset);
 		return dataset.get((int) ((dataset.size() - 1) * pctl));
 	}

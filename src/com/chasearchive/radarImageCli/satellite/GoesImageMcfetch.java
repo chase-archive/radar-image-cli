@@ -18,7 +18,7 @@ public class GoesImageMcfetch extends CdmFile implements SatelliteImage{
         GoesImageMcfetch image = GoesImageMcfetch.loadFromFile(new File("test-files/goes13_1_2016_102_2245.nc"));
     }
 
-    public static GoesImageMcfetch loadFromFile(File f) throws IOException {
+    public static GoesImageMcfetch loadFromFile(File f) throws IOException, NotValidMcfetchFileException {
         if(f == null) {
             return null;
         }
@@ -27,7 +27,12 @@ public class GoesImageMcfetch extends CdmFile implements SatelliteImage{
 
         image.locationOnDisk = f.getAbsolutePath();
 
-        NetcdfFile ncfile = NetcdfFile.open(image.locationOnDisk);
+        NetcdfFile ncfile;
+        try {
+            ncfile = NetcdfFile.open(image.locationOnDisk);
+        } catch (IOException e) {
+            throw new NotValidMcfetchFileException();
+        }
 //        System.out.println(ncfile);
 
         image.permaFields.put("data", DataField.fromCdmVar(ncfile.findVariable("data")));

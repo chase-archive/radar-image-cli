@@ -109,6 +109,7 @@ public class McfetchData {
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
                 String band4Url = String.format(URL_FORMAT, DKEY, sat, 4, date, time, latLon, size2);
+                System.out.println("band1Url:" + band1Url);
 
                 File band1File = downloadFile(band1Url, "sat_band1.nc");
                 File band2File = downloadFile(band2Url, "sat_band2.nc");
