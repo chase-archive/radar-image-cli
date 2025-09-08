@@ -475,7 +475,7 @@ public class GeocolorProcessing {
 					int r = (int) (255 * red[i][j]);
 
 					int gr = (int) (255 * green[i][j]);
-					int b = (int) (255 * blue[i / 2][j / 2]);
+					int b = pseudoRayleighCorrectBlue((int) (255 * blue[i / 2][j / 2]));
 
 					Color c = new Color(r, gr, b);
 
@@ -487,6 +487,18 @@ public class GeocolorProcessing {
 		goesComposite = correctOrangeBlueSpeckle(goesComposite);
 
 		return goesComposite;
+	}
+
+	private static int pseudoRayleighCorrectBlue(int input) {
+		if(input < 0) {
+			return input;
+		} else if(input < 50) {
+			return (int) (35.0/50.0 * input);
+		} else if(input < 160) {
+			return (int) (125.0/110.0 * (input - 50.0) + 35.0);
+		} else {
+			return input;
+		}
 	}
 
 	public static Color[][] createIRGoes(GoesImage band7, GoesImage band13) {

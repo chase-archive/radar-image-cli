@@ -87,7 +87,7 @@ public class SatelliteImageGenerator {
 		} else if ((lon > -180 && lon <= -106) || (lon > 74 && lon <= 180)) {
 			source = SatelliteSource.GOES_WEST;
 
-			if(time.isBefore(GRIDSAT_END)) {
+			if(time.isBefore(GOES_17_OPERATIONAL_START)) {
 				source = SatelliteSource.GOES_WEST_MCFETCH;
 			}
 
@@ -247,6 +247,11 @@ public class SatelliteImageGenerator {
 				satPlot = null;
 			}
 		}
+
+//		BufferedImage satPlotSharpened = null;
+//		if(satPlot != null) {
+//			satPlotSharpened = sharpen(satPlot, 0.10f);
+//		}
 
 //		BufferedImage warningPlot = generateWarningPlot(time, lat, lon, settings, plotProj);
 		BufferedImage citiesPlot = generateCityPlot(lat, lon, settings, plotProj);
@@ -763,6 +768,76 @@ public class SatelliteImageGenerator {
 		BufferedImage[] ret = new BufferedImage[] {basemap, states, counties, highwaysComp, roadsComp};
 		
 		return ret;
+	}
+
+	private static BufferedImage sharpen(BufferedImage input, float amount) {
+		BufferedImage output = new BufferedImage(input.getWidth(), input.getHeight(), BufferedImage.TYPE_3BYTE_BGR);
+		Graphics2D g = output.createGraphics();
+
+		for(int i = 0; i < input.getWidth(); i++) {
+			for(int j = 0; j < input.getHeight(); j++) {
+				Color c = new Color(input.getRGB(i, j));
+
+				float sumR = (1 + 4 * amount) * c.getRed();
+				float sumG = (1 + 4 * amount) * c.getGreen();
+				float sumB = (1 + 4 * amount) * c.getBlue();
+
+				if(i > 0) {
+					c = new Color(input.getRGB(i - 1, j));
+
+					sumR += (-amount) * c.getRed();
+					sumG += (-amount) * c.getGreen();
+					sumB += (-amount) * c.getBlue();
+				}
+
+				if(i < input.getWidth() - 1) {
+					c = new Color(input.getRGB(i + 1, j));
+
+					sumR += (-amount) * c.getRed();
+					sumG += (-amount) * c.getGreen();
+					sumB += (-amount) * c.getBlue();
+				}
+
+				if(j > 0) {
+					c = new Color(input.getRGB(i, j - 1));
+
+					sumR += (-amount) * c.getRed();
+					sumG += (-amount) * c.getGreen();
+					sumB += (-amount) * c.getBlue();
+				}
+
+				if(j < input.getHeight() - 1) {
+					c = new Color(input.getRGB(i, j + 1));
+
+					sumR += (-amount) * c.getRed();
+					sumG += (-amount) * c.getGreen();
+					sumB += (-amount) * c.getBlue();
+				}
+
+				sumR = clip(sumR, 0, 255);
+				sumG = clip(sumG, 0, 255);
+				sumB = clip(sumB, 0, 255);
+
+				c = new Color(Math.round(sumR), Math.round(sumG), Math.round(sumB));
+
+				g.setColor(c);
+				g.fillRect(i, j, 1, 1);
+			}
+		}
+
+		return output;
+	}
+
+	private static float clip(float input, float min, float max) {
+		if (input < min) {
+			return min;
+		}
+
+		if (input > max) {
+			return max;
+		}
+
+		return input;
 	}
 
 	public static final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 16);
