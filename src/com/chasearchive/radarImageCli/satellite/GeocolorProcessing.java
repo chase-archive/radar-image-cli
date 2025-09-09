@@ -483,15 +483,15 @@ public class GeocolorProcessing {
 //					int gr = ((int) (255 * green[i][j]));
 //					int b = ((int) (255 * blue[i / 2][j / 2]));
 
-					int r = pseudoRayleighCorrectRed((int) (255 * red[i][j]), 1);
-
-					int gr = pseudoRayleighCorrectGreen((int) (255 * green[i][j]), 1);
-					int b = pseudoRayleighCorrectBlue((int) (255 * blue[i / 2][j / 2]), 1);
-
-//					int r = pseudoRayleighCorrectRed((int) (255 * red[i][j]), mult);
+//					int r = pseudoRayleighCorrectRed((int) (255 * red[i][j]), 1);
 //
-//					int gr = pseudoRayleighCorrectGreen((int) (255 * green[i][j]), mult);
-//					int b = pseudoRayleighCorrectBlue((int) (255 * blue[i / 2][j / 2]), mult);
+//					int gr = pseudoRayleighCorrectGreen((int) (255 * green[i][j]), 1);
+//					int b = pseudoRayleighCorrectBlue((int) (255 * blue[i / 2][j / 2]), 1);
+
+					int r = pseudoRayleighCorrectRed((int) (255 * red[i][j]), mult);
+
+					int gr = pseudoRayleighCorrectGreen((int) (255 * green[i][j]), mult);
+					int b = pseudoRayleighCorrectBlue((int) (255 * blue[i / 2][j / 2]), mult);
 
 					Color c = new Color(r, gr, b);
 
@@ -503,8 +503,8 @@ public class GeocolorProcessing {
 					}
 
 //					System.out.println(desaturationFactor);
-//					goesComposite[j][i] = desaturate(contrast(c, CONTRAST_FACTOR), desaturationFactor);
-					goesComposite[j][i] = desaturate(contrast(c, CONTRAST_FACTOR), 0);
+					goesComposite[j][i] = desaturate(contrast(c, CONTRAST_FACTOR), desaturationFactor);
+//					goesComposite[j][i] = desaturate(contrast(c, CONTRAST_FACTOR), 0);
 				}
 			}
 		}

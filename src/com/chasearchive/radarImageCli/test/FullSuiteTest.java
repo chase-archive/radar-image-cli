@@ -20,16 +20,10 @@ public class FullSuiteTest {
 //		double lon = -98.96;
 //		String caseName = String.format("electra-tx-2008-test", time.getHourOfDay(), time.getMinuteOfHour());
 
-		DateTime time = new DateTime(2025, 6, 5, 18, 0, 0, DateTimeZone.UTC);
-		for(int i = 0; i < 10; i++) {
-			double lat = 33.77;
-			double lon = -102.81;
-			String caseName = "morton-2025-test-sunset-" + time.getHourOfDay() + "z"; // also need midday
-
-			runSuite(time, lat, lon, caseName);
-
-			time = time.plusHours(1);
-		}
+		DateTime time = new DateTime(2025, 6, 6, 1, 0, 0, DateTimeZone.UTC);
+		double lat = 33.77;
+		double lon = -102.81;
+		String caseName = "morton-2025-test-sunset-" + time.getHourOfDay() + "z"; // also need midday
 
 //		DateTime time = new DateTime(2018, 6, 5, 18, 0, 0, DateTimeZone.UTC);
 //		double lat = 35.77;
@@ -40,6 +34,7 @@ public class FullSuiteTest {
 		long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
 		// Run full suite
+		runSuite(time, lat, lon, caseName);
 	}
 
 	private static void runSuite(DateTime time, double lat, double lon, String caseName) {
@@ -53,7 +48,7 @@ public class FullSuiteTest {
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon,
 				"-a", "16:9", "-s", "2.5", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatVis = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "16:9", "-s", "10.0", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "3.0", "-r", "1440", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatLir = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
