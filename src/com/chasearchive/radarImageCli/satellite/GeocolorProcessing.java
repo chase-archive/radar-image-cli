@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Date;
 
 import javax.imageio.ImageIO;
 
@@ -467,19 +468,43 @@ public class GeocolorProcessing {
 
 		Color[][] goesComposite = new Color[red[0].length][red.length];
 
+		final int CONTRAST_FACTOR = 96;
+		final float DESATURATE_THRESHOLD = 0.5f;
+		final float DESATURATE_AMOUNT = 1.0f;
 		for (int i = 0; i < goesComposite[0].length; i++) {
 //			if(i % 500 == 0) System.out.println("Goes True-Color Composite " + (100 * (float) i/goesComposite[0].length) + "% complete");
 
 			for (int j = 0; j < goesComposite.length; j++) {
-				if (renderChunks[j / chunkSize][i / chunkSize]) {
-					int r = (int) (255 * red[i][j]);
+				float mult = solarMult[i][j];
 
-					int gr = (int) (255 * green[i][j]);
-					int b = pseudoRayleighCorrectBlue((int) (255 * blue[i / 2][j / 2]));
+				if (renderChunks[j / chunkSize][i / chunkSize]) {
+//					int r = ((int) (255 * red[i][j]));
+//
+//					int gr = ((int) (255 * green[i][j]));
+//					int b = ((int) (255 * blue[i / 2][j / 2]));
+
+					int r = pseudoRayleighCorrectRed((int) (255 * red[i][j]), 1);
+
+					int gr = pseudoRayleighCorrectGreen((int) (255 * green[i][j]), 1);
+					int b = pseudoRayleighCorrectBlue((int) (255 * blue[i / 2][j / 2]), 1);
+
+//					int r = pseudoRayleighCorrectRed((int) (255 * red[i][j]), mult);
+//
+//					int gr = pseudoRayleighCorrectGreen((int) (255 * green[i][j]), mult);
+//					int b = pseudoRayleighCorrectBlue((int) (255 * blue[i / 2][j / 2]), mult);
 
 					Color c = new Color(r, gr, b);
 
-					goesComposite[j][i] = contrast(c, 96);
+					float desaturationFactor = 0;
+
+					if(mult > DESATURATE_THRESHOLD * MAX_MULT) {
+						desaturationFactor =
+								DESATURATE_AMOUNT * (mult - DESATURATE_THRESHOLD * MAX_MULT) / ((1 - DESATURATE_THRESHOLD) * MAX_MULT);
+					}
+
+//					System.out.println(desaturationFactor);
+//					goesComposite[j][i] = desaturate(contrast(c, CONTRAST_FACTOR), desaturationFactor);
+					goesComposite[j][i] = desaturate(contrast(c, CONTRAST_FACTOR), 0);
 				}
 			}
 		}
@@ -489,13 +514,89 @@ public class GeocolorProcessing {
 		return goesComposite;
 	}
 
-	private static int pseudoRayleighCorrectBlue(int input) {
+
+	// midday correction
+	// 0 -> 0 | 50 -> 35 | 160 -> 160 | 255 -> 255
+	// sunset correction
+	// 0 -> 0 | 100 -> 35 | 200 -> 200 | 255 -> 255
+	private static int pseudoRayleighCorrectBlue(int input, float solarMultiplier) {
+		// just to filter out any weird stuff like out-of-domain blank space
+		if(solarMultiplier < 0 || solarMultiplier > 2 * MAX_MULT) {
+			return input;
+		}
+
+		float solarMultiplierActivation = (solarMultiplier - 1.0f)/(MAX_MULT - 1.0f);
+
+		double lowerControlInput = 50 + (50 * solarMultiplierActivation);
+		double lowerControlOutput = 35;
+
+		double upperControlInput = 160 + (40 * solarMultiplierActivation);
+		double upperControlOutput = 160 + (40 * solarMultiplierActivation);
+
 		if(input < 0) {
 			return input;
-		} else if(input < 50) {
-			return (int) (35.0/50.0 * input);
-		} else if(input < 160) {
-			return (int) (125.0/110.0 * (input - 50.0) + 35.0);
+		} else if(input < lowerControlInput) {
+			return (int) (lowerControlOutput/lowerControlInput * input);
+		} else if(input < upperControlInput) {
+			return (int) ((upperControlOutput - lowerControlOutput)/(upperControlInput - lowerControlInput) * (input - lowerControlInput) + lowerControlOutput);
+		} else {
+			return input;
+		}
+	}
+
+	// midday correction
+	// 0 -> 0 | 255 -> 255
+	// sunset correction
+	// 0 -> 0 | 70 -> 40 | 160 -> 160 | 255 -> 255
+	private static int pseudoRayleighCorrectGreen(int input, float solarMultiplier) {
+		// just to filter out any weird stuff like out-of-domain blank space
+		if(solarMultiplier < 0 || solarMultiplier > 2 * MAX_MULT) {
+			return input;
+		}
+
+		float solarMultiplierActivation = (solarMultiplier - 1.0f)/(MAX_MULT - 1.0f);
+
+		double lowerControlInput = 70 + (25 * solarMultiplierActivation);
+		double lowerControlOutput = 70 - (25 * solarMultiplierActivation);
+
+		double upperControlInput = 160;
+		double upperControlOutput = 160;
+
+		if(input < 0) {
+			return input;
+		} else if(input < lowerControlInput) {
+			return (int) (lowerControlOutput/lowerControlInput * input);
+		} else if(input < upperControlInput) {
+			return (int) ((upperControlOutput - lowerControlOutput)/(upperControlInput - lowerControlInput) * (input - lowerControlInput) + lowerControlOutput);
+		} else {
+			return input;
+		}
+	}
+
+	// midday correction
+	// 0 -> 0 | 255 -> 255
+	// sunset correction
+	// 0 -> 0 | 70 -> 60 | 160 -> 160 | 255 -> 255
+	private static int pseudoRayleighCorrectRed(int input, float solarMultiplier) {
+		// just to filter out any weird stuff like out-of-domain blank space
+		if(solarMultiplier < 0 || solarMultiplier > 2 * MAX_MULT) {
+			return input;
+		}
+
+		float solarMultiplierActivation = (solarMultiplier - 1.0f)/(MAX_MULT - 1.0f);
+
+		double lowerControlInput = 75 + (15 * solarMultiplierActivation);
+		double lowerControlOutput = 75 - (15 * solarMultiplierActivation);
+
+		double upperControlInput = 160;
+		double upperControlOutput = 160;
+
+		if(input < 0) {
+			return input;
+		} else if(input < lowerControlInput) {
+			return (int) (lowerControlOutput/lowerControlInput * input);
+		} else if(input < upperControlInput) {
+			return (int) ((upperControlOutput - lowerControlOutput)/(upperControlInput - lowerControlInput) * (input - lowerControlInput) + lowerControlOutput);
 		} else {
 			return input;
 		}
@@ -602,6 +703,20 @@ public class GeocolorProcessing {
 
 	public static Color[][] createComposite(GoesImageMcfetch band1, GoesImageMcfetch band2, GoesImageMcfetch band4,
 											GeostationaryProjection satProj, DateTime dt, boolean[][] renderChunks, int chunkSize) {
+		int date = (int) band1.field("imageDate").getData();
+		int time = (int) band1.field("imageTime").getData();
+
+		int year = Math.floorDiv(date, 1000);
+		int dayOfYear = date - 1000 * year;
+
+		int hour = Math.floorDiv(time, 10000);
+		int minute = Math.floorDiv(time - 10000 * hour, 100);
+		int second = 10000 * hour - 100 * minute;
+
+		DateTime dt2 = new DateTime(year, 1, 1, hour, minute, second, DateTimeZone.UTC);
+
+        dt = dt2.plusDays(dayOfYear);
+
 		GeoCoord[][] latLon = createLatLonMatrix(band1);
 		float[][] solarAlt = createSolarAltitudeMatrix(latLon, dt, renderChunks, chunkSize);
 
@@ -896,6 +1011,12 @@ public class GeocolorProcessing {
 					
 					img[i][j] = avgColor;
 				}
+
+				if(cL != Color.BLACK && cR != Color.BLACK && cU != Color.BLACK && cD != Color.BLACK && cC == Color.BLACK) {
+					Color avgColor = rgbAvg(cL, cR, cU, cD);
+
+					img[i][j] = avgColor;
+				}
 			}
 		}
 	}
@@ -1164,6 +1285,21 @@ public class GeocolorProcessing {
 		r = clip(r, 0, 255);
 		g = clip(g, 0, 255);
 		b = clip(b, 0, 255);
+
+		return new Color(r, g, b);
+	}
+
+	private static Color desaturate(Color c, float factor) {
+		int r = c.getRed();
+		int g = c.getGreen();
+		int b = c.getBlue();
+
+		float average = (r + g + b) / 3.0f;
+
+//		System.out.println(r + "\t" + g + "\t" + b + "\t" + average + "\t" + factor);
+		r = (int) ((1 - factor) * r + factor * average);
+		g = (int) ((1 - factor) * g + factor * average);
+		b = (int) ((1 - factor) * b + factor * average);
 
 		return new Color(r, g, b);
 	}
