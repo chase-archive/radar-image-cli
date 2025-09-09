@@ -711,7 +711,7 @@ public class GeocolorProcessing {
 
 		int hour = Math.floorDiv(time, 10000);
 		int minute = Math.floorDiv(time - 10000 * hour, 100);
-		int second = 10000 * hour - 100 * minute;
+		int second = time - 10000 * hour - 100 * minute;
 
 		DateTime dt2 = new DateTime(year, 1, 1, hour, minute, second, DateTimeZone.UTC);
 
@@ -852,7 +852,11 @@ public class GeocolorProcessing {
 
 			for (int j = 0; j < goesComposite.length; j++) {
 				if (renderChunks[i / chunkSize][j / chunkSize]) {
-					float cloudColorAlpha = band1NormG[i][j];
+					float cloudColorAlpha = (float) (0.5 * Math.pow(2.0*band1NormG[i][j], 2.0));
+
+					if(cloudColorAlpha > 1) {
+						cloudColorAlpha = 1;
+					}
 
 //					System.out.println("band1Gvar: " + band1Gvar[i][j]);
 //					System.out.println("band1Rad-deriv: " + GvarProcessing.spectralRadiance(band1Gvar[i][j], 1, satellite));
@@ -861,14 +865,15 @@ public class GeocolorProcessing {
 //					System.out.println("band1NormG: " + band1NormG[i][j]);
 //					System.out.println("cloudColorAlpha: " + cloudColorAlpha);
 
+					final double SFC_CLR_DIMMING_FACTOR = 1.0;
 					Color sfcClr = surfaceColor[i][j];
 
-					int r = (int) (Math.pow(1 - cloudColorAlpha, 2) * 0.75 * sfcClr.getRed()
+					int r = (int) (Math.pow(1 - cloudColorAlpha, 2) * SFC_CLR_DIMMING_FACTOR * sfcClr.getRed()
 									+ (cloudColorAlpha) * cloudColor.getRed());
 
-					int gr = (int) (Math.pow(1 - cloudColorAlpha, 2) * 0.75 * sfcClr.getGreen()
+					int gr = (int) (Math.pow(1 - cloudColorAlpha, 2) * SFC_CLR_DIMMING_FACTOR * sfcClr.getGreen()
 							+ (cloudColorAlpha) * cloudColor.getGreen());
-					int b = (int) (Math.pow(1 - cloudColorAlpha, 2) * 0.75 * sfcClr.getBlue()
+					int b = (int) (Math.pow(1 - cloudColorAlpha, 2) * SFC_CLR_DIMMING_FACTOR * sfcClr.getBlue()
 							+ (cloudColorAlpha) * cloudColor.getBlue());
 
 					Color c = new Color(r, gr, b);

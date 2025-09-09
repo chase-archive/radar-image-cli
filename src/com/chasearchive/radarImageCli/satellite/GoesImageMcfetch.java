@@ -44,8 +44,8 @@ public class GoesImageMcfetch extends CdmFile implements SatelliteImage{
 
         image.permaFields.put("lon", DataField.fromCdmVar(ncfile.findVariable("lon")));
 
-        image.permaFields.put("imageDate", DataField.fromCdmVar(ncfile.findVariable("imageDate")));
-        image.permaFields.put("imageTime", DataField.fromCdmVar(ncfile.findVariable("imageTime")));
+        image.permaFields.put("imageDate", DataField.fromNumber(ncfile.findVariable("imageDate").read().getInt(0)));
+        image.permaFields.put("imageTime", DataField.fromNumber(ncfile.findVariable("imageTime").read().getInt(0)));
 
         image.permaFields.put("satellite", DataField.fromNexradAttrToStr(ncfile.findGlobalAttribute("Satellite_Sensor")));
 
