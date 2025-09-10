@@ -190,10 +190,17 @@ public class SatelliteImageGenerator {
 			System.out.println("downloading files...");
 			long downloadStartTime = System.currentTimeMillis();
 			File[] satFiles = null;
-			try {
-				satFiles = McfetchData.downloadGoes(time, settings.getSource(), lat, lon);
-			} catch (NoMcfetchFileFoundException e) {
-				e.printStackTrace();
+
+			DateTime queryTime = time;
+			final int MCFETCH_TRIES = 20;
+			for(int i = 0; i < MCFETCH_TRIES; i++) {
+				try {
+					satFiles = McfetchData.downloadGoes(queryTime, settings.getSource(), lat, lon);
+					break; // breaks if successful
+				} catch (NoMcfetchFileFoundException e) {
+					e.printStackTrace();
+					queryTime = queryTime.minusMinutes(15);
+				}
 			}
 			long downloadEndTime = System.currentTimeMillis();
 			System.out.println("download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
