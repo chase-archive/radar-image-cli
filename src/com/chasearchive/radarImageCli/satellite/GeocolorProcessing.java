@@ -334,7 +334,7 @@ public class GeocolorProcessing {
 		for (int i = 0; i < goesComposite.length; i++) {
 			for (int j = 0; j < goesComposite[0].length; j++) {
 				if (renderChunks[i / chunkSize][j / chunkSize]) {
-					float blendFactor = (solarAlt[j][i]) / TERMINATOR_WIDTH;
+					float blendFactor = (solarAlt[j][i]) / (3.0f * TERMINATOR_WIDTH);
 					if (blendFactor < 0) {
 						blendFactor = 0;
 					} else if (blendFactor > 1) {
@@ -367,7 +367,7 @@ public class GeocolorProcessing {
 	}
 
 	// found by trial and error
-	private static final float WHITE_POINT = 1370.0f * 1.35f;
+	private static final float WHITE_POINT = 1370.0f * 1.20f;
 	private static final float WHITE_BALANCE_RED = 0.932f;
 	private static final float WHITE_BALANCE_GREEN = 1.383f;
 	private static final float WHITE_BALANCE_BLUE = 0.765f;

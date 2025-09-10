@@ -35,7 +35,7 @@ public class GoesImage extends CdmFile implements SatelliteImage {
 		NetcdfFile ncfile = NetcdfFile.open(image.locationOnDisk);
 		
 //		System.out.println(ncfile);
-//		System.exit(-1);
+//		System.exit(44);
 
 		double scaleFactor = ncfile.findVariable("Rad").findAttributeDouble("scale_factor", -1024);
 		double addOffset = ncfile.findVariable("Rad").findAttributeDouble("add_offset", -1024);

@@ -20,15 +20,15 @@ public class FullSuiteTest {
 //		double lon = -98.96;
 //		String caseName = String.format("electra-tx-2008-test", time.getHourOfDay(), time.getMinuteOfHour());
 
-//		DateTime time = new DateTime(2025, 6, 6, 1, 0, 0, DateTimeZone.UTC);
-//		double lat = 33.77;
-//		double lon = -102.81;
-//		String caseName = "morton-2025-test-sunset"; // also need midday
+		DateTime time = new DateTime(2025, 6, 6, 1, 30, 0, DateTimeZone.UTC);
+		double lat = 33.77;
+		double lon = -102.81;
+		String caseName = "morton-2025-test-sunset"; // also need midday
 
-		DateTime time = new DateTime(2018, 7, 10, 21, 0, 0, DateTimeZone.UTC);
-		double lat = 34.77;
-		double lon = -114.81;
-		String caseName = "arizona-dateland-haboob"; // also need midday
+//		DateTime time = new DateTime(2025, 7, 10, 2, 0, 0, DateTimeZone.UTC);
+//		double lat = 32.77;
+//		double lon = -114.81;
+//		String caseName = "arizona-2025-alignment-test"; // also need midday
 
 		long maxMemory = Runtime.getRuntime().maxMemory();
 		long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
