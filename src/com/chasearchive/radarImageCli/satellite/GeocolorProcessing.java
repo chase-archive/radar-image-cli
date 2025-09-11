@@ -173,6 +173,7 @@ public class GeocolorProcessing {
 	public static Color[][] createTrueColorGoes(GoesMultibandImage goes, GeoCoord[][] latLon, DateTime dt,
 			boolean[][] renderChunks, int chunkSize) {
 		float[][] solarMult = createSolarMultiplierMatrix(latLon, dt, renderChunks, chunkSize);
+		float[][] solarElev = createSolarAltitudeMatrix(latLon, dt, renderChunks, chunkSize);
 
 		float[][] band1Rad = goes.field("band_1").array2D();
 		float[][] band2Rad = goes.field("band_2").array2D();
@@ -375,6 +376,7 @@ public class GeocolorProcessing {
 	public static Color[][] createTrueColorGoes(GoesImage band1, GoesImage band2, GoesImage band3, GeoCoord[][] latLon,
 			DateTime dt, boolean[][] renderChunks, int chunkSize) {
 		float[][] solarMult = createSolarMultiplierMatrix(latLon, dt, renderChunks, chunkSize);
+		float[][] solarElev = createSolarAltitudeMatrix(latLon, dt, renderChunks, chunkSize);
 
 		float[][] band1Rad = band1.field("rad").array2D();
 		float[][] band2Rad = band2.field("rad").array2D();
@@ -469,13 +471,15 @@ public class GeocolorProcessing {
 		Color[][] goesComposite = new Color[red[0].length][red.length];
 
 		final int CONTRAST_FACTOR = 96;
-		final float DESATURATE_THRESHOLD = 0.5f;
+		final float DESATURATE_LOW_THRESHOLD = 3.0f;
+		final float DESATURATE_HIGH_THRESHOLD = 7.0f;
 		final float DESATURATE_AMOUNT = 1.0f;
 		for (int i = 0; i < goesComposite[0].length; i++) {
 //			if(i % 500 == 0) System.out.println("Goes True-Color Composite " + (100 * (float) i/goesComposite[0].length) + "% complete");
 
 			for (int j = 0; j < goesComposite.length; j++) {
 				float mult = solarMult[i][j];
+				float elev = solarElev[i][j];
 
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
 //					int r = ((int) (255 * red[i][j]));
@@ -497,9 +501,14 @@ public class GeocolorProcessing {
 
 					float desaturationFactor = 0;
 
-					if(mult > DESATURATE_THRESHOLD * MAX_MULT) {
-						desaturationFactor =
-								DESATURATE_AMOUNT * (mult - DESATURATE_THRESHOLD * MAX_MULT) / ((1 - DESATURATE_THRESHOLD) * MAX_MULT);
+					if(elev < DESATURATE_HIGH_THRESHOLD) {
+						if(elev < DESATURATE_LOW_THRESHOLD) {
+							desaturationFactor = DESATURATE_AMOUNT;
+						} else {
+							// DO NOT PRESS SIMPLIFY
+							desaturationFactor =
+									-DESATURATE_AMOUNT/(DESATURATE_HIGH_THRESHOLD-DESATURATE_LOW_THRESHOLD) * (elev - DESATURATE_LOW_THRESHOLD) + DESATURATE_AMOUNT;
+						}
 					}
 
 //					System.out.println(desaturationFactor);

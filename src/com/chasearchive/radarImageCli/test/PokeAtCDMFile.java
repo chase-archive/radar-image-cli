@@ -20,8 +20,9 @@ public class PokeAtCDMFile {
                         WeatherUtils.wavelengthToWavenumber(10.7 / 1000000.0))
         );
 
-        NetcdfFile ncfile = NetcdfFile.open("test-files/goes13_1_2016_102_2245.nc");
+        NetcdfFile ncfile = NetcdfFile.open("/home/a-urq/Documents/Schoolwork/Senior Capstone/Non-Git Large Files/test-files/rap.t00z.wrfprsf00.grib2");
         System.out.println(ncfile);
+        System.exit(44);
 
         System.out.println(ncfile.findVariable("crDate").read().getInt(0));
         System.out.println(ncfile.findVariable("crTime").read().getInt(0));
