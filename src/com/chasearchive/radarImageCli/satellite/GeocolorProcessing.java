@@ -680,7 +680,7 @@ public class GeocolorProcessing {
 //				goesComposite[j][i] = maxTristims(fogColor, band13Color);
 
 				Color band13Color = new Color((int) band13Norm[i][j], (int) band13Norm[i][j],
-						(int) Double.max(band13Norm[i][j], fogBlue));
+						(int) band13Norm[i][j]);
 
 				goesComposite[j][i] = maxTristims(band13Color, fogColor);
 
