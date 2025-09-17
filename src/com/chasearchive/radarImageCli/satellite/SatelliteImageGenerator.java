@@ -75,7 +75,7 @@ public class SatelliteImageGenerator {
 		if (lon > -106 && lon <= 74) {
 			source = SatelliteSource.GOES_EAST;
 
-			if(time.isBefore(GRIDSAT_GOES_16_CUTOFF)) {
+			if(time.isBefore(GOES_16_OPERATIONAL_START)) {
 				source = SatelliteSource.GOES_EAST_MCFETCH;
 			}
 			
@@ -2175,6 +2175,7 @@ public class SatelliteImageGenerator {
 
 	private static final int TIME_TOLERANCE = 20; // minutes
 	private static final DateTime GRIDSAT_GOES_16_CUTOFF = new DateTime(2017, 3, 1, 0, 0, DateTimeZone.UTC);
+	private static final DateTime GOES_16_OPERATIONAL_START = new DateTime(2017, 12, 18, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GOES_16_TELEPORTATION_DATE = new DateTime(2017, 12, 8, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GRIDSAT_END = new DateTime(2018, 1, 1, 0, 0, DateTimeZone.UTC);
 	private static final DateTime GOES_17_OPERATIONAL_START = new DateTime(2018, 8, 28, 0, 0, DateTimeZone.UTC);

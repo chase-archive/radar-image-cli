@@ -373,6 +373,8 @@ public class GeocolorProcessing {
 	private static final float WHITE_BALANCE_GREEN = 1.383f;
 	private static final float WHITE_BALANCE_BLUE = 0.765f;
 
+	private static final boolean SOFTCLIP = false;
+
 	public static Color[][] createTrueColorGoes(GoesImage band1, GoesImage band2, GoesImage band3, GeoCoord[][] latLon,
 			DateTime dt, boolean[][] renderChunks, int chunkSize) {
 		float[][] solarMult = createSolarMultiplierMatrix(latLon, dt, renderChunks, chunkSize);
@@ -406,21 +408,33 @@ public class GeocolorProcessing {
 			}
 		}
 
+		final float TIGHTNESS = 3;
+//		System.exit(44);
+
 		// VERY IMPORTANT!! normalize and color-balance radiances to the correct
 		// specific ranges
 		float[][] band1Clip = new float[band1Rad.length][band1Rad[0].length];
 		float[][] band2Clip = new float[band2Rad.length][band2Rad[0].length];
 		float[][] band3Clip = new float[band3Rad.length][band3Rad[0].length];
+
 		for (int i = 0; i < band2Clip.length; i++) {
 			for (int j = 0; j < band2Clip[i].length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
-					if (i % 2 == 0 && j % 2 == 0) {
-						band1Clip[i / 2][j / 2] = clip(band1Rad[i / 2][j / 2] / (WHITE_POINT / WHITE_BALANCE_BLUE), 0,
-								1);
-						band3Clip[i / 2][j / 2] = clip(band3Rad[i / 2][j / 2] / (WHITE_POINT / WHITE_BALANCE_GREEN), 0,
-								1);
+					if(SOFTCLIP) {
+						if (i % 2 == 0 && j % 2 == 0) {
+							band1Clip[i / 2][j / 2] = softclip(band1Rad[i / 2][j / 2] / (WHITE_POINT / WHITE_BALANCE_BLUE), TIGHTNESS);
+							band3Clip[i / 2][j / 2] = softclip(band3Rad[i / 2][j / 2] / (WHITE_POINT / WHITE_BALANCE_GREEN), TIGHTNESS);
+						}
+						band2Clip[i][j] = softclip(band2Rad[i][j] / (WHITE_POINT / WHITE_BALANCE_RED), TIGHTNESS);
+					} else {
+						if (i % 2 == 0 && j % 2 == 0) {
+							band1Clip[i / 2][j / 2] = clip(band1Rad[i / 2][j / 2] / (WHITE_POINT / WHITE_BALANCE_BLUE), 0,
+									1);
+							band3Clip[i / 2][j / 2] = clip(band3Rad[i / 2][j / 2] / (WHITE_POINT / WHITE_BALANCE_GREEN), 0,
+									1);
+						}
+						band2Clip[i][j] = clip(band2Rad[i][j] / (WHITE_POINT / WHITE_BALANCE_RED), 0, 1);
 					}
-					band2Clip[i][j] = clip(band2Rad[i][j] / (WHITE_POINT / WHITE_BALANCE_RED), 0, 1);
 				}
 			}
 		}
@@ -733,7 +747,6 @@ public class GeocolorProcessing {
 		Color[][] irColor = createIRGoes(band2, band4, renderChunks, chunkSize);
 
 		Color[][] goesComposite = new Color[trueColor.length][trueColor[0].length];
-
 
 //		System.out.println("chunkSize: " + chunkSize);
 //		System.out.println("renderChunks.shape: " + renderChunks.length + ", " +  + renderChunks[0].length);
@@ -1339,6 +1352,19 @@ public class GeocolorProcessing {
 			return -1024;
 		} else {
 			return val;
+		}
+	}
+
+	/**
+	 * Softclips the max at 1, hard-clips the min at 0
+	 */
+	private static float softclip(float val, float tightness) {
+		if (val < 0) {
+			return 0;
+		} else if (val == -1024) {
+			return -1024;
+		} else {
+			return (float) ((Math.log(1.0 + Math.exp(-tightness * (val - 1))))/(-tightness) + 1.0);
 		}
 	}
 
