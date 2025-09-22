@@ -20,10 +20,10 @@ public class FullSuiteTest {
 //		double lon = -98.96;
 //		String caseName = String.format("electra-tx-2008-test", time.getHourOfDay(), time.getMinuteOfHour());
 
-		DateTime time = new DateTime(2025, 7, 28, 1, 15, 0, DateTimeZone.UTC);
-		double lat = 44.90;
-		double lon = -97.11;
-		String caseName = "watertown-july2025-test-sunset"; // also need midday
+		DateTime time = new DateTime(2017, 6, 12, 21, 45, 0, DateTimeZone.UTC);
+		double lat = 43.69;
+		double lon = -106.68;
+		String caseName = "kaycee-wy-2017"; // also need midday
 
 //		DateTime time = new DateTime(2025, 7, 10, 2, 0, 0, DateTimeZone.UTC);
 //		double lat = 32.77;

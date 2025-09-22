@@ -830,15 +830,19 @@ public class GeocolorProcessing {
 						band1Rad[i][j] = band1Rad[i][j] * mult;
 					}
 
-					if(mult > 0 && mult < MAX_MULT_MCFETCH) {
+					if(mult > 0) {
+//					if(mult > 0 && mult < MAX_MULT_MCFETCH) {
 						daytimeRadianceValues.add(band1Rad[i][j]);
 					}
 				}
 			}
 		}
 
-		float daytimeRad90thPctl = valueAtPercentile(daytimeRadianceValues, 0.90f);
+		float daytimeRad90thPctl = valueAtPercentile(daytimeRadianceValues, 0.99f);
 		System.out.println("daytimeRad90thPctl: " + daytimeRad90thPctl);
+		float whitePoint = Math.max(WHITE_POINT * 1.75f, daytimeRad90thPctl * 1.75f);
+		System.out.println("baked in white point: " + WHITE_POINT * 1.75f);
+		System.out.println("adaptive white point: " + whitePoint);
 
 		// VERY IMPORTANT!! normalize and color-balance radiances to the correct
 		// specific ranges
@@ -847,7 +851,10 @@ public class GeocolorProcessing {
 			for (int j = 0; j < band1Clip[i].length; j++) {
 				if (renderChunks[i / chunkSize][j / chunkSize]) {
 //					float whitePointMult = dt.isBefore(WHITE_POINT_CHANGE) ? 2.5f : 1.75f;
-                    band1Clip[i][j] = clip(band1Rad[i][j] / Math.max(WHITE_POINT * 1.75f, daytimeRad90thPctl), 0, 1);
+//                  band1Clip[i][j] = clip(band1Rad[i][j] / whitePoint, 0, 1);
+
+					band1Clip[i][j] = softclip(band1Rad[i][j] / whitePoint, 4);
+                  	band1Clip[i][j] = clip(band1Clip[i][j], 0, 1);
 				}
 			}
 		}

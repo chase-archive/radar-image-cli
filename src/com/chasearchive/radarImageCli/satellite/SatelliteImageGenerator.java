@@ -72,26 +72,26 @@ public class SatelliteImageGenerator {
 		SatelliteSector sector = SatelliteSector.GOES_CONUS;
 
 		// this decision tree will likely evolve as new data sources are added
-		if (lon > -106 && lon <= 74) {
+		if (lon > -107 && lon <= 74) {
 			source = SatelliteSource.GOES_EAST;
 
 			if(time.isBefore(GOES_16_OPERATIONAL_START)) {
 				source = SatelliteSource.GOES_EAST_MCFETCH;
 			}
 			
-			if (lat > 22 && lat <= 51 && lon > -106 && lon <= -59) {
+			if (lat > 22 && lat <= 51 && lon > -107 && lon <= -59) {
 				sector = SatelliteSector.GOES_CONUS;
 			} else {
 				sector = SatelliteSector.GOES_FULL_DISK;
 			}
-		} else if ((lon > -180 && lon <= -106) || (lon > 74 && lon <= 180)) {
+		} else if ((lon > -180 && lon <= -107) || (lon > 74 && lon <= 180)) {
 			source = SatelliteSource.GOES_WEST;
 
 			if(time.isBefore(GOES_17_OPERATIONAL_START)) {
 				source = SatelliteSource.GOES_WEST_MCFETCH;
 			}
 
-			if (lat > 22 && lat <= 51 && lon > -162 && lon <= -106) {
+			if (lat > 22 && lat <= 51 && lon > -162 && lon <= -107) {
 				sector = SatelliteSector.GOES_PACUS;
 			} else {
 				sector = SatelliteSector.GOES_FULL_DISK;
