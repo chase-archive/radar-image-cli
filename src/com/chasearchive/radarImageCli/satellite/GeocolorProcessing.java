@@ -152,7 +152,7 @@ public class GeocolorProcessing {
 		for (int i = 0; i < goesComposite.length; i++) {
 			for (int j = 0; j < goesComposite[0].length; j++) {
 				if (renderChunks[i / chunkSize][j / chunkSize]) {
-					float blendFactor = (solarAlt[j][i]) / TERMINATOR_WIDTH;
+					float blendFactor = (solarAlt[j][i]) / (2*TERMINATOR_WIDTH);
 					if (blendFactor < 0) {
 						blendFactor = 0;
 					} else if (blendFactor > 1) {
@@ -182,18 +182,18 @@ public class GeocolorProcessing {
 //		System.out.println(goes.field("band_1").getBundledField("wavelength"));
 
 		final float R_POWER = (float) (Math.log(100) / Math.log(100));
-		final float G_POWER = (float) (Math.log(100) / Math.log(100));
-		final float B_POWER = (float) (Math.log(100) / Math.log(100));
+		final float G_POWER = (float) (Math.log(85) / Math.log(100));
+		final float B_POWER = (float) (Math.log(77) / Math.log(100));
 		for (int i = 0; i < band2Rad.length; i++) {
 			for (int j = 0; j < band2Rad[i].length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					if (renderChunks[j / chunkSize][i / chunkSize]) {
-						float mult = 0.9f * (float) Math.sqrt(solarMult[i][j]);
+						float mult = (float) (0.3f * (solarMult[i][j]));
 
 						if (!Double.isNaN(mult)) {
-							band1Rad[i][j] = (float) (band1Rad[i][j] * Math.pow(mult, R_POWER));
-							band3Rad[i][j] = (float) (band3Rad[i][j] * Math.pow(mult, G_POWER));
-							band2Rad[i][j] = (float) (band2Rad[i][j] * Math.pow(mult, B_POWER));
+							band1Rad[i][j] = (float) (band1Rad[i][j] * mult);
+							band2Rad[i][j] = (float) (band2Rad[i][j] * mult);
+							band3Rad[i][j] = (float) (band3Rad[i][j] * mult);
 						}
 					}
 				}
@@ -219,7 +219,7 @@ public class GeocolorProcessing {
 //		band2Clip = normalize(band2Rad, 0, 1);
 //		band3Clip = normalize(band3Rad, 0, 1);
 
-		final float GAMMA = 2.2f;
+		final float GAMMA = 4.0f;
 
 		float[][] band1NormG = new float[band1Clip.length][band1Clip[0].length];
 		float[][] band2NormG = new float[band2Clip.length][band2Clip[0].length];
@@ -236,12 +236,14 @@ public class GeocolorProcessing {
 
 		float[][] syntheticGreen = new float[band2Rad.length][band2Rad[0].length];
 
+		final float VEGGIE_PERCENTAGE = 0.10f;
+		final float BAND_1_2_PERCENTAGE = (1 - VEGGIE_PERCENTAGE) / 2.0f;
 		for (int i = 0; i < syntheticGreen.length; i++) {
 			for (int j = 0; j < syntheticGreen[i].length; j++) {
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
 					// calculate the "true" green
 					syntheticGreen[i][j] = clip(
-							0.375f * band2NormG[i][j] + 0.25f * band3NormG[i][j] + 0.375f * band1NormG[i][j], 0, 1);
+							BAND_1_2_PERCENTAGE * band2NormG[i][j] + VEGGIE_PERCENTAGE * band3NormG[i][j] + BAND_1_2_PERCENTAGE * band1NormG[i][j], 0, 1);
 				}
 			}
 		}
@@ -252,16 +254,35 @@ public class GeocolorProcessing {
 
 		Color[][] goesComposite = new Color[green[0].length][green.length];
 
+		final int CONTRAST_FACTOR = 96;
+		final float DESATURATE_LOW_THRESHOLD = 3.0f;
+		final float DESATURATE_HIGH_THRESHOLD = 7.0f;
+		final float DESATURATE_AMOUNT = 1.0f;
 		for (int i = 0; i < goesComposite[0].length; i++) {
 			for (int j = 0; j < goesComposite.length; j++) {
+				float mult = solarMult[i][j];
+				float elev = solarElev[i][j];
+
 				if (renderChunks[j / chunkSize][i / chunkSize]) {
-					int r = (int) (255 * red[i][j]);
-					int gr = (int) (255 * green[i][j]);
-					int b = (int) (255 * blue[i][j]);
+					int r = (int) pseudoRayleighCorrectRed((255 * red[i][j]), mult);
+					int gr = (int) pseudoRayleighCorrectGreen(255 * green[i][j], mult);
+					int b = (int) pseudoRayleighCorrectBlue(255 * blue[i][j], mult);
 
 					Color c = new Color(r, gr, b);
 
-					goesComposite[j][i] = contrast(c, 48);
+					float desaturationFactor = 0;
+
+					if(elev < DESATURATE_HIGH_THRESHOLD) {
+						if(elev < DESATURATE_LOW_THRESHOLD) {
+							desaturationFactor = DESATURATE_AMOUNT;
+						} else {
+							// DO NOT PRESS SIMPLIFY
+							desaturationFactor =
+									-DESATURATE_AMOUNT/(DESATURATE_HIGH_THRESHOLD-DESATURATE_LOW_THRESHOLD) * (elev - DESATURATE_LOW_THRESHOLD) + DESATURATE_AMOUNT;
+						}
+					}
+
+					goesComposite[j][i] = desaturate(contrast(c, CONTRAST_FACTOR), desaturationFactor);
 				}
 			}
 		}
@@ -273,7 +294,7 @@ public class GeocolorProcessing {
 		float[][] band7Temp = goes.field("band_7").array2D();
 		float[][] band13Temp = goes.field("band_13").array2D();
 
-		float[][] band13Clip = clip(band13Temp, 90, 273);
+		float[][] band13Clip = clip(band13Temp, 90, 293);
 		float[][] band13Norm = clip(invNormalize(band13Clip, 0, 500), 0, 255);
 
 		Color[][] goesComposite = new Color[band13Temp[0].length][band13Temp.length];
@@ -506,10 +527,10 @@ public class GeocolorProcessing {
 //					int gr = pseudoRayleighCorrectGreen((int) (255 * green[i][j]), 1);
 //					int b = pseudoRayleighCorrectBlue((int) (255 * blue[i / 2][j / 2]), 1);
 
-					int r = pseudoRayleighCorrectRed((int) (255 * red[i][j]), mult);
+					int r = (int) pseudoRayleighCorrectRed((255 * red[i][j]), mult);
 
-					int gr = pseudoRayleighCorrectGreen((int) (255 * green[i][j]), mult);
-					int b = pseudoRayleighCorrectBlue((int) (255 * blue[i / 2][j / 2]), mult);
+					int gr = (int) pseudoRayleighCorrectGreen((255 * green[i][j]), mult);
+					int b = (int) pseudoRayleighCorrectBlue((255 * blue[i / 2][j / 2]), mult);
 
 					Color c = new Color(r, gr, b);
 
@@ -542,7 +563,7 @@ public class GeocolorProcessing {
 	// 0 -> 0 | 50 -> 35 | 160 -> 160 | 255 -> 255
 	// sunset correction
 	// 0 -> 0 | 100 -> 35 | 200 -> 200 | 255 -> 255
-	private static int pseudoRayleighCorrectBlue(int input, float solarMultiplier) {
+	private static float pseudoRayleighCorrectBlue(float input, float solarMultiplier) {
 		// just to filter out any weird stuff like out-of-domain blank space
 		if(solarMultiplier < 0 || solarMultiplier > 2 * MAX_MULT) {
 			return input;
@@ -571,7 +592,7 @@ public class GeocolorProcessing {
 	// 0 -> 0 | 255 -> 255
 	// sunset correction
 	// 0 -> 0 | 70 -> 40 | 160 -> 160 | 255 -> 255
-	private static int pseudoRayleighCorrectGreen(int input, float solarMultiplier) {
+	private static float pseudoRayleighCorrectGreen(float input, float solarMultiplier) {
 		// just to filter out any weird stuff like out-of-domain blank space
 		if(solarMultiplier < 0 || solarMultiplier > 2 * MAX_MULT) {
 			return input;
@@ -600,7 +621,7 @@ public class GeocolorProcessing {
 	// 0 -> 0 | 255 -> 255
 	// sunset correction
 	// 0 -> 0 | 70 -> 60 | 160 -> 160 | 255 -> 255
-	private static int pseudoRayleighCorrectRed(int input, float solarMultiplier) {
+	private static float pseudoRayleighCorrectRed(float input, float solarMultiplier) {
 		// just to filter out any weird stuff like out-of-domain blank space
 		if(solarMultiplier < 0 || solarMultiplier > 2 * MAX_MULT) {
 			return input;
@@ -676,7 +697,7 @@ public class GeocolorProcessing {
 //		System.out.println("band 7: " + band7Rad[400][1500] + " mW m^-2 sr^-1 (cm^-1)^-1");
 //		System.out.println("band 7: " + band7Temp[400][1500] + " K");
 
-		float[][] band13Clip = clip(band13Temp, 90, 273);
+		float[][] band13Clip = clip(band13Temp, 90, 293);
 		float[][] band13Norm = clip(invNormalize(band13Clip, 0, 500), 0, 255);
 
 		Color[][] goesComposite = new Color[band13Temp[0].length][band13Temp.length];

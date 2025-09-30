@@ -80,7 +80,11 @@ public class SatelliteImageGenerator {
 			}
 			
 			if (lat > 22 && lat <= 51 && lon > -107 && lon <= -59) {
-				sector = SatelliteSector.GOES_CONUS;
+				if(settings.getSector() != SatelliteSector.GOES_FULL_DISK) {
+					sector = SatelliteSector.GOES_CONUS;
+				} else {
+					sector = SatelliteSector.GOES_FULL_DISK;
+				}
 			} else {
 				sector = SatelliteSector.GOES_FULL_DISK;
 			}
@@ -92,7 +96,11 @@ public class SatelliteImageGenerator {
 			}
 
 			if (lat > 22 && lat <= 51 && lon > -162 && lon <= -107) {
-				sector = SatelliteSector.GOES_PACUS;
+				if(settings.getSector() != SatelliteSector.GOES_FULL_DISK) {
+					sector = SatelliteSector.GOES_PACUS;
+				} else {
+					sector = SatelliteSector.GOES_FULL_DISK;
+				}
 			} else {
 				sector = SatelliteSector.GOES_FULL_DISK;
 			}
@@ -1462,8 +1470,8 @@ public class SatelliteImageGenerator {
 		DataField band13 = goes.field("band_13");
 		int[] band13Shape = band13.getShape();
 
-		BufferedImage testPlot = new BufferedImage(band13Shape[1], band13Shape[0], BufferedImage.TYPE_4BYTE_ABGR);
-		Graphics2D g2 = testPlot.createGraphics();
+//		BufferedImage testPlot = new BufferedImage(band13Shape[1], band13Shape[0], BufferedImage.TYPE_4BYTE_ABGR);
+//		Graphics2D g2 = testPlot.createGraphics();
 		
 		float[] redX = goes.field("x").array1D();
 		float[] redY = goes.field("y").array1D();
@@ -1680,8 +1688,8 @@ public class SatelliteImageGenerator {
 					if (allValid) {
 						g.setColor(satColors[i][j]);
 						g.fillPolygon(xPoints, yPoints, 4);
-						g2.setColor(satColors[i][j]);
-						g2.fillRect(i, j, 1, 1);
+//						g2.setColor(satColors[i][j]);
+//						g2.fillRect(i, j, 1, 1);
 					}
 				}
 			}
@@ -1689,12 +1697,12 @@ public class SatelliteImageGenerator {
 		long plottingEndTime = System.currentTimeMillis();
 		System.out.println("plotting time: " + (plottingEndTime - plottingStartTime)/1000.0 + " s");
 		
-		try {
-			ImageIO.write(testPlot, "PNG", new File("test-plot.png"));
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+//		try {
+//			ImageIO.write(testPlot, "PNG", new File("test-plot.png"));
+//		} catch (IOException e) {
+//			// TODO Auto-generated catch block
+//			e.printStackTrace();
+//		}
 
 		return satPlot;
 	}

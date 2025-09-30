@@ -8,6 +8,7 @@ import java.util.HashMap;
 
 import javax.imageio.ImageIO;
 
+import com.ameliaWx.wxArchives.earthWeather.goes.SatelliteSector;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -105,6 +106,10 @@ public class SatelliteImageCli {
 					settings.setDrawTimestamp(false);
 				} else {
 					continue;
+				}
+			} else if("-forceFD".equals(flag)) {
+				if("TRUE".equals(arg)) {
+					settings.setSector(SatelliteSector.GOES_FULL_DISK);
 				}
 			} else if("-o".equals(flag)) {
 				outputFolderString = arg;

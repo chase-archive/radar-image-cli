@@ -20,10 +20,10 @@ public class FullSuiteTest {
 //		double lon = -98.96;
 //		String caseName = String.format("electra-tx-2008-test", time.getHourOfDay(), time.getMinuteOfHour());
 
-		DateTime time = new DateTime(2017, 6, 12, 21, 45, 0, DateTimeZone.UTC);
-		double lat = 43.69;
-		double lon = -106.68;
-		String caseName = "kaycee-wy-2017"; // also need midday
+		DateTime time = new DateTime(2025, 9, 30, 16, 45, 0, DateTimeZone.UTC);
+		double lat = 31.74;
+		double lon = -71.92;
+		String caseName = "humberto-imelda-fujiwhara-2025"; // also need midday
 
 //		DateTime time = new DateTime(2025, 7, 10, 2, 0, 0, DateTimeZone.UTC);
 //		double lat = 32.77;
@@ -48,7 +48,7 @@ public class FullSuiteTest {
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon,
 				"-a", "16:9", "-s", "2.5", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatVis = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
-				"-a", "16:9", "-s", "3.0", "-r", "1440", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "15.0", "-r", "1080", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-forceFD", "TRUE", "-o", "caseTests/" + caseName};
 		String[] argsSatLir = {"-dt", dt, "-lat", _lat, "-lon", _lon, 
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
