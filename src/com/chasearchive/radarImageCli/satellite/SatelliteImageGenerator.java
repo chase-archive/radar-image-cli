@@ -141,7 +141,8 @@ public class SatelliteImageGenerator {
 		BufferedImage satPlot = null;
 
 		if (settings.getSource() == SatelliteSource.GOES_EAST || settings.getSource() == SatelliteSource.GOES_WEST) {
-			if (settings.getSector() == SatelliteSector.GOES_CONUS || settings.getSector() == SatelliteSector.GOES_PACUS) {
+			if (settings.getSector() == SatelliteSector.GOES_CONUS || settings.getSector() == SatelliteSector.GOES_PACUS
+					|| settings.getSector() == SatelliteSector.GOES_MESOSCALE_1) {
 				System.out.println("downloading files...");
 				long downloadStartTime = System.currentTimeMillis();
 				File[] satFiles = null;
@@ -181,9 +182,15 @@ public class SatelliteImageGenerator {
 				}
 				long downloadEndTime = System.currentTimeMillis();
 				System.out.println("download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
-	
+
+				GoesMultibandImage goesImage;
 				long fileLoadStartTime = System.currentTimeMillis();
-				GoesMultibandImage goesImage = GoesMultibandImage.loadFromFile(satMultibandFile);
+				try {
+					goesImage = GoesMultibandImage.loadFromFile(satMultibandFile);
+				} catch (IOException e) {
+					e.printStackTrace();
+					return new HashMap<>();
+				}
 	
 				long fileLoadEndTime = System.currentTimeMillis();
 				System.out.println("file load time: " + (fileLoadEndTime - fileLoadStartTime)/1000.0 + " s");
@@ -280,7 +287,7 @@ public class SatelliteImageGenerator {
 		double timestampSizingMultiplier = mapHeight/1080.0;
 
 		g.setColor(new Color(0, 0, 0, 96));
-		g.fillRect(0, timestampLayer.getHeight() - (int) (timestampSizingMultiplier * 56), (int) (timestampSizingMultiplier * 530), (int) (timestampSizingMultiplier * 56));
+		g.fillRect(0, timestampLayer.getHeight() - (int) (timestampSizingMultiplier * (56*1-10)), (int) (timestampSizingMultiplier * 530), (int) (timestampSizingMultiplier * (56*2-10)));
 		
 		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, (int) (timestampSizingMultiplier * 36)));
 		g.setColor(Color.BLACK);
@@ -290,6 +297,15 @@ public class SatelliteImageGenerator {
 		g.drawString(dateStringAlt(time), (int) (timestampSizingMultiplier * 11), mapHeight - (int) (timestampSizingMultiplier * 14));
 		g.setColor(Color.WHITE);
 		g.drawString(dateStringAlt(time), (int) (timestampSizingMultiplier * 10), mapHeight - (int) (timestampSizingMultiplier * 15));
+
+//		g.setFont(new Font(Font.MONOSPACED, Font.BOLD, (int) (timestampSizingMultiplier * 36)));
+//		g.setColor(Color.BLACK);
+//		g.drawString("Made by Amelia Urquhart", (int) (timestampSizingMultiplier * 9), mapHeight - (int) (timestampSizingMultiplier * 64));
+//		g.drawString("Made by Amelia Urquhart", (int) (timestampSizingMultiplier * 11), mapHeight - (int) (timestampSizingMultiplier * 66));
+//		g.drawString("Made by Amelia Urquhart", (int) (timestampSizingMultiplier * 9), mapHeight - (int) (timestampSizingMultiplier * 66));
+//		g.drawString("Made by Amelia Urquhart", (int) (timestampSizingMultiplier * 11), mapHeight - (int) (timestampSizingMultiplier * 64));
+//		g.setColor(Color.WHITE);
+//		g.drawString("Made by Amelia Urquhart", (int) (timestampSizingMultiplier * 10), mapHeight - (int) (timestampSizingMultiplier * 65));
 		
 		BufferedImage compositePlot = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_3BYTE_BGR);
 		g = compositePlot.createGraphics();
@@ -305,7 +321,7 @@ public class SatelliteImageGenerator {
 			g.drawImage(citiesPlot, 0, 0, null);
 //			g.drawImage(warningPlot, 0, 0, null);
 		}
-		g.drawImage(logo, 0, 0, null);
+//		g.drawImage(logo, 0, 0, null);
 		g.drawImage(timestampLayer, 0, 0, null);
 		if(satPlot == null) {
 			availabilityNoticeLayer = noDataAvailableNotice(settings);
@@ -332,7 +348,7 @@ public class SatelliteImageGenerator {
 			}
 		}
 		if (settings.getLayering() != Layering.SEPARATE_ONLY && settings.getLayering() != Layering.SEPARATE_ONLY_NO_BASEMAP) {
-			imagesToExport.put("composite.png", compositePlot);
+			imagesToExport.put("composite-" + makeTimecode(time) + ".png", compositePlot);
 		}
 
 		FileUtils.deleteDirectory(new File(ResourceLoader.DATA_FOLDER));
@@ -340,8 +356,22 @@ public class SatelliteImageGenerator {
 		return imagesToExport;
 	}
 
+	private static String makeTimecode(DateTime dt) {
+		StringBuilder sb = new StringBuilder();
+
+		sb.append(String.format("%04d", dt.getYear()));
+		sb.append(String.format("%02d", dt.getMonthOfYear()));
+		sb.append(String.format("%02d", dt.getDayOfMonth()));
+		sb.append(String.format("%02d", dt.getHourOfDay()));
+		sb.append(String.format("%02d", dt.getMinuteOfHour()));
+
+		return sb.toString();
+	}
+
 	public static DateTimeZone timeZone = DateTimeZone.forID("America/Chicago");
 	public static String timeZoneCode = "CST";
+//	public static DateTimeZone timeZone = DateTimeZone.forID("America/New_York");
+//	public static String timeZoneCode = "EST";
 
 	private static String dateStringAlt(DateTime d) {
 		DateTime c = d.toDateTime(timeZone);
@@ -855,8 +885,8 @@ public class SatelliteImageGenerator {
 		return input;
 	}
 
-	public static final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 16);
-	public static final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 11);
+	public static final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 24);
+	public static final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 16);
 
 	private static BufferedImage generateCityPlot(double lat, double lon, SatelliteGeneratorSettings settings,
 			RotateLatLonProjection plotProj) {
@@ -889,7 +919,7 @@ public class SatelliteImageGenerator {
 			if (pixelsPerDegree < 400 && prm < 0.75) {
 				continue;
 			}
-			if (pixelsPerDegree < 600 && prm < 0.50) {
+			if (pixelsPerDegree < 600 && prm < 1.5) {
 				continue;
 			}
 			if (pixelsPerDegree < 800 && prm < 0.25) {
@@ -2265,17 +2295,21 @@ public class SatelliteImageGenerator {
 		ArrayList<String> band3FilesWithinTolerance = new ArrayList<>();
 		ArrayList<String> band7FilesWithinTolerance = new ArrayList<>();
 		ArrayList<String> band13FilesWithinTolerance = new ArrayList<>();
+
+		int mesoDiff =
+				(sector == SatelliteSector.GOES_MESOSCALE_1 || sector == SatelliteSector.GOES_MESOSCALE_2) ? 1 : 0;
+
 		for (int j = 0; j < satFiles.size(); j++) {
 			String[] awsPath = satFiles.get(j).split("/");
 			String filename = awsPath[awsPath.length - 1];
 
 //			System.out.println("satFile name: " + filename);
 
-			int dayOfYear = Integer.valueOf(filename.substring(31, 34));
+			int dayOfYear = Integer.valueOf(filename.substring(31 + mesoDiff, 34 + mesoDiff));
 
-			DateTime fileTimestamp = new DateTime(Integer.valueOf(filename.substring(27, 31)), 1, 1,
-					Integer.valueOf(filename.substring(34, 36)), Integer.valueOf(filename.substring(36, 38)),
-					Integer.valueOf(filename.substring(38, 40)), DateTimeZone.UTC);
+			DateTime fileTimestamp = new DateTime(Integer.valueOf(filename.substring(27 + mesoDiff, 31 + mesoDiff)), 1, 1,
+					Integer.valueOf(filename.substring(34 + mesoDiff, 36 + mesoDiff)), Integer.valueOf(filename.substring(36 + mesoDiff, 38 + mesoDiff)),
+					Integer.valueOf(filename.substring(38 + mesoDiff, 40 + mesoDiff)), DateTimeZone.UTC);
 
 			fileTimestamp = fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
@@ -2283,7 +2317,7 @@ public class SatelliteImageGenerator {
 
 			fileTimestamp.dayOfYear().setCopy(dayOfYear);
 
-			int band = Integer.valueOf(filename.substring(19, 21));
+			int band = Integer.valueOf(filename.substring(19 + mesoDiff, 21 + mesoDiff));
 
 			if (time.minusMinutes(TIME_TOLERANCE).isBefore(fileTimestamp)
 					&& time.plusMinutes(TIME_TOLERANCE).isAfter(fileTimestamp)) {
@@ -2349,11 +2383,11 @@ public class SatelliteImageGenerator {
 
 //			System.out.println(filename);
 
-			int year = Integer.valueOf(filename.substring(27, 31));
-			int dayOfYear = Integer.valueOf(filename.substring(31, 34));
-			int hour = Integer.valueOf(filename.substring(34, 36));
-			int minute = Integer.valueOf(filename.substring(36, 38));
-			int second = Integer.valueOf(filename.substring(38, 40));
+			int year = Integer.valueOf(filename.substring(27 + mesoDiff, 31 + mesoDiff));
+			int dayOfYear = Integer.valueOf(filename.substring(31 + mesoDiff, 34 + mesoDiff));
+			int hour = Integer.valueOf(filename.substring(34 + mesoDiff, 36 + mesoDiff));
+			int minute = Integer.valueOf(filename.substring(36 + mesoDiff, 38 + mesoDiff));
+			int second = Integer.valueOf(filename.substring(38 + mesoDiff, 40 + mesoDiff));
 
 //			System.out.println(year + "\t" + dayOfYear + "\t" + hour + "\t" + minute + "\t" + second);
 
@@ -2372,11 +2406,11 @@ public class SatelliteImageGenerator {
 			String[] awsPath = validBand2Files.get(i).split("/");
 			String filename = awsPath[awsPath.length - 1];
 
-			int year = Integer.valueOf(filename.substring(27, 31));
-			int dayOfYear = Integer.valueOf(filename.substring(31, 34));
-			int hour = Integer.valueOf(filename.substring(34, 36));
-			int minute = Integer.valueOf(filename.substring(36, 38));
-			int second = Integer.valueOf(filename.substring(38, 40));
+			int year = Integer.valueOf(filename.substring(27 + mesoDiff, 31 + mesoDiff));
+			int dayOfYear = Integer.valueOf(filename.substring(31 + mesoDiff, 34 + mesoDiff));
+			int hour = Integer.valueOf(filename.substring(34 + mesoDiff, 36 + mesoDiff));
+			int minute = Integer.valueOf(filename.substring(36 + mesoDiff, 38 + mesoDiff));
+			int second = Integer.valueOf(filename.substring(38 + mesoDiff, 40 + mesoDiff));
 
 //			System.out.println(year + "\t" + dayOfYear + "\t" + hour + "\t" + minute + "\t" + second);
 
@@ -2395,11 +2429,11 @@ public class SatelliteImageGenerator {
 			String[] awsPath = validBand3Files.get(i).split("/");
 			String filename = awsPath[awsPath.length - 1];
 
-			int year = Integer.valueOf(filename.substring(27, 31));
-			int dayOfYear = Integer.valueOf(filename.substring(31, 34));
-			int hour = Integer.valueOf(filename.substring(34, 36));
-			int minute = Integer.valueOf(filename.substring(36, 38));
-			int second = Integer.valueOf(filename.substring(38, 40));
+			int year = Integer.valueOf(filename.substring(27 + mesoDiff, 31 + mesoDiff));
+			int dayOfYear = Integer.valueOf(filename.substring(31 + mesoDiff, 34 + mesoDiff));
+			int hour = Integer.valueOf(filename.substring(34 + mesoDiff, 36 + mesoDiff));
+			int minute = Integer.valueOf(filename.substring(36 + mesoDiff, 38 + mesoDiff));
+			int second = Integer.valueOf(filename.substring(38 + mesoDiff, 40 + mesoDiff));
 
 //			System.out.println(year + "\t" + dayOfYear + "\t" + hour + "\t" + minute + "\t" + second);
 
@@ -2418,11 +2452,11 @@ public class SatelliteImageGenerator {
 			String[] awsPath = validBand7Files.get(i).split("/");
 			String filename = awsPath[awsPath.length - 1];
 
-			int year = Integer.valueOf(filename.substring(27, 31));
-			int dayOfYear = Integer.valueOf(filename.substring(31, 34));
-			int hour = Integer.valueOf(filename.substring(34, 36));
-			int minute = Integer.valueOf(filename.substring(36, 38));
-			int second = Integer.valueOf(filename.substring(38, 40));
+			int year = Integer.valueOf(filename.substring(27 + mesoDiff, 31 + mesoDiff));
+			int dayOfYear = Integer.valueOf(filename.substring(31 + mesoDiff, 34 + mesoDiff));
+			int hour = Integer.valueOf(filename.substring(34 + mesoDiff, 36 + mesoDiff));
+			int minute = Integer.valueOf(filename.substring(36 + mesoDiff, 38 + mesoDiff));
+			int second = Integer.valueOf(filename.substring(38 + mesoDiff, 40 + mesoDiff));
 
 //			System.out.println(year + "\t" + dayOfYear + "\t" + hour + "\t" + minute + "\t" + second);
 
@@ -2441,11 +2475,11 @@ public class SatelliteImageGenerator {
 			String[] awsPath = validBand13Files.get(i).split("/");
 			String filename = awsPath[awsPath.length - 1];
 
-			int year = Integer.valueOf(filename.substring(27, 31));
-			int dayOfYear = Integer.valueOf(filename.substring(31, 34));
-			int hour = Integer.valueOf(filename.substring(34, 36));
-			int minute = Integer.valueOf(filename.substring(36, 38));
-			int second = Integer.valueOf(filename.substring(38, 40));
+			int year = Integer.valueOf(filename.substring(27 + mesoDiff, 31 + mesoDiff));
+			int dayOfYear = Integer.valueOf(filename.substring(31 + mesoDiff, 34 + mesoDiff));
+			int hour = Integer.valueOf(filename.substring(34 + mesoDiff, 36 + mesoDiff));
+			int minute = Integer.valueOf(filename.substring(36 + mesoDiff, 38 + mesoDiff));
+			int second = Integer.valueOf(filename.substring(38 + mesoDiff, 40 + mesoDiff));
 
 //			System.out.println(year + "\t" + dayOfYear + "\t" + hour + "\t" + minute + "\t" + second);
 

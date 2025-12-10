@@ -1,6 +1,7 @@
 package com.chasearchive.radarImageCli.radar;
 
 import com.chasearchive.radarImageCli.PointD;
+import com.chasearchive.radarImageCli.satellite.GeoCoord;
 
 import java.awt.Color;
 import java.awt.Graphics2D;
@@ -152,6 +153,41 @@ public class RotateLatLonProjection implements MapProjection {
 		double latPrime = Math.toDegrees(Math.atan2(zP, rPlanar));
 
 		return new PointD(latPrime, lonPrime);
+	}
+
+	public PointD reverseRotateLatLon(double longitude, double latitude) {
+		double[][] rotationMatrixLatT = transposeMatrix(rotationMatrixLat);
+		double[][] rotationMatrixLonT = transposeMatrix(rotationMatrixLon);
+
+		double x = Math.cos(Math.toRadians(longitude)) * Math.cos(Math.toRadians(latitude));
+		double y = Math.sin(Math.toRadians(longitude)) * Math.cos(Math.toRadians(latitude));
+		double z = Math.sin(Math.toRadians(latitude));
+
+		double xM = rotationMatrixLatT[0][0] * x + rotationMatrixLatT[1][0] * y + rotationMatrixLatT[2][0] * z;
+		double yM = rotationMatrixLatT[0][1] * x + rotationMatrixLatT[1][1] * y + rotationMatrixLatT[2][1] * z;
+		double zM = rotationMatrixLatT[0][2] * x + rotationMatrixLatT[1][2] * y + rotationMatrixLatT[2][2] * z;
+
+		double xP = rotationMatrixLonT[0][0] * xM + rotationMatrixLonT[1][0] * yM + rotationMatrixLonT[2][0] * zM;
+		double yP = rotationMatrixLonT[0][1] * xM + rotationMatrixLonT[1][1] * yM + rotationMatrixLonT[2][1] * zM;
+		double zP = rotationMatrixLonT[0][2] * xM + rotationMatrixLonT[1][2] * yM + rotationMatrixLonT[2][2] * zM;
+
+		double lonPrime = Math.toDegrees(Math.atan2(yP, xP));
+		double rPlanar = Math.hypot(xP, yP);
+		double latPrime = Math.toDegrees(Math.atan2(zP, rPlanar));
+
+		return new PointD(latPrime, lonPrime);
+	}
+
+	private static double[][] transposeMatrix(double[][] in) {
+		double[][] out = new double[in[0].length][in.length];
+
+		for(int i = 0; i < out.length; i++) {
+			for(int j = 0; j < out[i].length; j++) {
+				out[i][j] = in[j][i];
+			}
+		}
+
+		return out;
 	}
 
 	@Override

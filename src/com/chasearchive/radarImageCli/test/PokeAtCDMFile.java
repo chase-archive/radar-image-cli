@@ -14,13 +14,13 @@ import java.io.IOException;
 
 public class PokeAtCDMFile {
     public static void main(String[] args) throws IOException {
-        System.out.println(
-                (float) WeatherUtils.brightnessTemperatureFromWavenumber(
-                        GvarProcessing.spectralRadiance(604, 4, "GOES-13") / 100000.0,
-                        WeatherUtils.wavelengthToWavenumber(10.7 / 1000000.0))
-        );
+//        System.out.println(
+//                (float) WeatherUtils.brightnessTemperatureFromWavenumber(
+//                        GvarProcessing.spectralRadiance(604, 4, "GOES-13") / 100000.0,
+//                        WeatherUtils.wavelengthToWavenumber(10.7 / 1000000.0))
+//        );
 
-        NetcdfFile ncfile = NetcdfFile.open("/home/a-urq/Documents/Schoolwork/Senior Capstone/Non-Git Large Files/test-files/rap.t00z.wrfprsf00.grib2");
+        NetcdfFile ncfile = NetcdfFile.open("OR_SUVI-L1b-Fe195_G19_s20253102001532_e20253102001542_c20253102002204.nc");
         System.out.println(ncfile);
         System.exit(44);
 

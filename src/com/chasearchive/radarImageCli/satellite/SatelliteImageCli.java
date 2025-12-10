@@ -107,9 +107,14 @@ public class SatelliteImageCli {
 				} else {
 					continue;
 				}
-			} else if("-forceFD".equals(flag)) {
-				if("TRUE".equals(arg)) {
+			} else if("-forceSector".equals(flag)) {
+				if("FD".equals(arg)) {
+					System.out.println("setting full sector: " + arg);
 					settings.setSector(SatelliteSector.GOES_FULL_DISK);
+				}
+				if("MESO1".equals(arg)) {
+					System.out.println("setting meso1: " + arg);
+					settings.setSector(SatelliteSector.GOES_MESOSCALE_1);
 				}
 			} else if("-o".equals(flag)) {
 				outputFolderString = arg;
@@ -126,8 +131,12 @@ public class SatelliteImageCli {
 		try {
 			HashMap<String, BufferedImage> images = SatelliteImageGenerator.generateSatellite(dt, lat, lon, settings);
 			final String caseType = caseTypeStr(settings);
-			
-			String exportDirectory = outputFolderString + "/" + caseType + "/";
+
+
+//			String exportDirectory = outputFolderString + "/" + caseType + "/";
+
+			// FOR HUMBERTO-IMELDA LOOP ONLY!!!
+			String exportDirectory = outputFolderString + "/";
 			new File(exportDirectory).mkdirs();
 			
 			for(String imgName : images.keySet()) {

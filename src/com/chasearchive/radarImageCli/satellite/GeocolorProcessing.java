@@ -219,7 +219,7 @@ public class GeocolorProcessing {
 //		band2Clip = normalize(band2Rad, 0, 1);
 //		band3Clip = normalize(band3Rad, 0, 1);
 
-		final float GAMMA = 4.0f;
+		final float GAMMA = 3.2f;
 
 		float[][] band1NormG = new float[band1Clip.length][band1Clip[0].length];
 		float[][] band2NormG = new float[band2Clip.length][band2Clip[0].length];

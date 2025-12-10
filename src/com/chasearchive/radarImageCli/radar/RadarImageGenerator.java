@@ -43,6 +43,8 @@ import com.univocity.parsers.csv.CsvParserSettings;
 import com.univocity.parsers.tsv.TsvParser;
 import com.univocity.parsers.tsv.TsvParserSettings;
 
+import javax.imageio.ImageIO;
+
 public class RadarImageGenerator {
 	public static ArrayList<City> cities;
 	static {
@@ -879,12 +881,26 @@ public class RadarImageGenerator {
 
 		switch (settings.getMoment()) {
 		case REFLECTIVITY:
-			data = gridrad.refl1km;
+			data = gridrad.reflLLcomp;
 			colorTable = reflectivityColorTable;
 			break;
 		default:
 			return radarPlot;
 		}
+
+//		for (int z = 0; z < gridrad.refl.length; z++) {
+//			BufferedImage imgRaw = new BufferedImage(gridrad.refl[z][0].length,  gridrad.refl[z].length, BufferedImage.TYPE_3BYTE_BGR);
+//			Graphics2D gr = imgRaw.createGraphics();
+//
+//			for (int i = 0; i < gridrad.refl[z].length; i++) {
+//				for (int j = 0; j < gridrad.refl[z][i].length; j++) {
+//					gr.setColor(colorTable.getColor(gridrad.refl[z][i][j]));
+//					gr.fillRect(j, i, 1, 1);
+//				}
+//			}
+//
+//			ImageIO.write(imgRaw, "PNG", new File(String.format("gridrad-3d-z%02d.png", z)));
+//		}
 
 		System.out.println("gridrad.lat.length: " + gridrad.lat.length);
 		System.out.println("gridrad.lon.length: " + gridrad.lon.length);
@@ -1308,7 +1324,14 @@ public class RadarImageGenerator {
 		ArrayList<WarningPolygon> warnings;
 		if(mostRecentCaseName.equals(settings.getCaseName())) {
 			File wwaFile = new File("wwa-" + settings.getCaseName() + "/wwa.kml");
-			warnings = WarningArchive.getWarnings(wwaFile);
+
+			try {
+				warnings = WarningArchive.getWarnings(wwaFile);
+			} catch (Exception e) {
+				e.printStackTrace();
+				System.err.println("returning blank for warning plot!");
+				return warningPlot;
+			}
 		} else {
 			if(new File("wwa-" + mostRecentCaseName + "/wwa.kml").exists()) {
 				FileUtils.deleteDirectory(new File("wwa-" + mostRecentCaseName + "/"));

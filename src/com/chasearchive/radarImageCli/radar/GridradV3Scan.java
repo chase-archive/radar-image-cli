@@ -12,6 +12,7 @@ public class GridradV3Scan {
 	float[] lon;
 	float[][][] refl;
 	float[][] refl1km;
+	float[][] reflLLcomp;
 
 	float dLat;
 	float dLon;
@@ -41,6 +42,7 @@ public class GridradV3Scan {
 		float[] reflUnpacked = new float[24 * 1201 * 2301];
 		refl = new float[24][1201][2301];
 		refl1km = new float[1201][2301];
+		reflLLcomp = new float[1201][2301];
 
 		dLat = lat[1] - lat[0];
 		dLon = lon[1] - lon[0];
@@ -61,6 +63,12 @@ public class GridradV3Scan {
 			System.out.println(i + ":\t" + max(refl[i]));
 		}
 		refl1km = refl[0];
+
+		for (int j = 0; j < reflLLcomp.length; j++) {
+			for (int k = 0; k < reflLLcomp[j].length; k++) {
+				reflLLcomp[j][k] = Float.max(Float.max(refl[0][j][k], refl[1][j][k]), Float.max(refl[2][j][k], refl[3][j][k]));
+			}
+		}
 	}
 
 	private static float[] readVariable1Dim(Variable rawData) {
