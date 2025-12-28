@@ -133,11 +133,11 @@ public class SatelliteImageCli {
 			final String caseType = caseTypeStr(settings);
 
 
-//			String exportDirectory = outputFolderString + "/" + caseType + "/";
+			String exportDirectory = outputFolderString + "/" + caseType + "/";
+			new File(exportDirectory).mkdirs();
 
 			// FOR HUMBERTO-IMELDA LOOP ONLY!!!
-			String exportDirectory = outputFolderString + "/";
-			new File(exportDirectory).mkdirs();
+//			String exportDirectory = outputFolderString + "/";
 			
 			for(String imgName : images.keySet()) {
 //				System.out.println("imgName: " + imgName);

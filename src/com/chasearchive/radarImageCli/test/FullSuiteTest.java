@@ -48,7 +48,7 @@ public class FullSuiteTest {
 //		double lon = -98.96;
 //		String caseName = String.format("electra-tx-2008-test", time.getHourOfDay(), time.getMinuteOfHour());
 
-		DateTime time = new DateTime(2014, 6, 18, 2, 45, 0, DateTimeZone.UTC);
+		DateTime time = new DateTime(2014, 6, 17, 22, 45, 0, DateTimeZone.UTC);
 		double lat = 42.54;
 		double lon = -97.12;
 		String caseName = "2014-06-17-coleridge-ne"; // also need midday
@@ -93,7 +93,7 @@ public class FullSuiteTest {
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
 //		RadarImageCli.main(argsRadLoc);
-		RadarImageCli.main(argsRadReg);
+//		RadarImageCli.main(argsRadReg);
 		SatelliteImageCli.main(argsSatVis);
 //		SatelliteImageCli.main(argsSatLir);
 	}
