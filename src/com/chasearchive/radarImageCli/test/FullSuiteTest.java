@@ -14,6 +14,12 @@ public class FullSuiteTest {
 	// MAKE HRRR COMPARISON RETROFIT FOR CAPSTONE FIG 1A ENDERLIN EF5
 
 	public static void main(String[] args) {
+//		String testString = "31.74-71.92";
+//		String regex = "(?<=\\d)-(?=\\d)";
+//		System.out.println(testString);
+//		System.out.println(testString.replaceAll(regex, " -"));
+//		System.exit(44);
+
 //		// make loop stuff
 //
 //		System.out.println("before args check");
@@ -48,10 +54,10 @@ public class FullSuiteTest {
 //		double lon = -98.96;
 //		String caseName = String.format("electra-tx-2008-test", time.getHourOfDay(), time.getMinuteOfHour());
 
-		DateTime time = new DateTime(2014, 6, 17, 22, 45, 0, DateTimeZone.UTC);
-		double lat = 42.54;
-		double lon = -97.12;
-		String caseName = "2014-06-17-coleridge-ne"; // also need midday
+		DateTime time = new DateTime(2011, 4, 15, 15, 15, 0, DateTimeZone.UTC);
+		double lat = 32.74;
+		double lon = -88.88;
+		String caseName = "2011-04-15-jackson-ms"; // also need midday
 
 //		makeLoop(time, time.plusHours(8), lat, lon, caseName, 8.0, true);
 
@@ -86,14 +92,14 @@ public class FullSuiteTest {
 		String[] argsRadLoc = {"-dt", dt, "-lat", _lat, "-lon", _lon,
 				"-a", "4:3", "-s", "0.5", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE", "-tms", "TRUE", "-o", "caseTests/" + caseName};
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon,
-				"-a", "16:9", "-s", "2.5", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "2.5", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatVis = {"-dt", dt, "-lat", _lat, "-lon", _lon,
-				"-a", "16:9", "-s", "2.5", "-r", "1080", "-debug", "SILENT", "-lyr", "SEPARATE", "-tms", "FALSE", "-forceFD", "TRUE", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "2.5", "-r", "1080", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-forceFD", "TRUE", "-o", "caseTests/" + caseName};
 		String[] argsSatLir = {"-dt", dt, "-lat", _lat, "-lon", _lon,
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
 //		RadarImageCli.main(argsRadLoc);
-//		RadarImageCli.main(argsRadReg);
+		RadarImageCli.main(argsRadReg);
 		SatelliteImageCli.main(argsSatVis);
 //		SatelliteImageCli.main(argsSatLir);
 	}
