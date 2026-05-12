@@ -115,7 +115,7 @@ public class RadarImageGenerator {
 		BufferedImage citiesPlot = generateCityPlot(settings, plotProj);
 		BufferedImage availabilityNoticeLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);
 
-//		BufferedImage logo = ImageIO.read(ResourceLoader.loadResourceAsFile("res/chase-archive-logo-128pix.png"));
+		BufferedImage logo = ImageIO.read(ResourceLoader.loadResourceAsFile("res/chase-archive-logo-256pix.png"));
 
 		BufferedImage timestampLayer = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g = timestampLayer.createGraphics();
@@ -148,7 +148,7 @@ public class RadarImageGenerator {
 			g.drawImage(citiesPlot, 0, 0, null);
 			g.drawImage(warningPlot, 0, 0, null);
 		}
-//		g.drawImage(logo, 0, 0, null);
+		g.drawImage(logo, 0, 0, null);
 		g.drawImage(timestampLayer, 0, 0, null);
 		if (radarPlot == null) {
 			availabilityNoticeLayer = noDataAvailableNotice(settings);
@@ -638,8 +638,10 @@ public class RadarImageGenerator {
 				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
 		Graphics2D g2d = citiesImg.createGraphics();
 
-		final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 16);
-		final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 11);
+//		final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 16);
+//		final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 11);
+		final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, 24);
+		final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, 16);
 //		final Font CITY_FONT = new Font(Font.MONOSPACED, Font.BOLD, (int) (18 * ((double) settings.getSize()/1080.0)));
 //		final Font TOWN_FONT = new Font(Font.MONOSPACED, Font.BOLD, (int) (12 * ((double) settings.getSize()/1080.0)));
 

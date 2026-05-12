@@ -8,6 +8,7 @@ import org.joda.time.DateTimeZone;
 import com.chasearchive.radarImageCli.radar.RadarImageCli;
 import com.chasearchive.radarImageCli.satellite.SatelliteImageCli;
 
+import java.io.File;
 import java.util.Arrays;
 
 public class FullSuiteTest {
@@ -54,10 +55,10 @@ public class FullSuiteTest {
 //		double lon = -98.96;
 //		String caseName = String.format("electra-tx-2008-test", time.getHourOfDay(), time.getMinuteOfHour());
 
-		DateTime time = new DateTime(2011, 4, 15, 15, 15, 0, DateTimeZone.UTC);
-		double lat = 32.74;
-		double lon = -88.88;
-		String caseName = "2011-04-15-jackson-ms"; // also need midday
+		DateTime time = new DateTime(1999, 5, 4, 0, 0, 0, DateTimeZone.UTC);
+		double lat = 35;
+		double lon = -98;
+		String caseName = "1999-05-03-moore"; // also need midday
 
 //		makeLoop(time, time.plusHours(8), lat, lon, caseName, 8.0, true);
 
@@ -69,8 +70,19 @@ public class FullSuiteTest {
 		long maxMemory = Runtime.getRuntime().maxMemory();
 		long usedMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
-		// Run full suite
 		runSuite(time, lat, lon, caseName);
+
+//		// Run full suite
+//		for(int i = 0; i < 12 * 6 + 1; i++) {
+//			runSuite(time, lat, lon, caseName);
+//			time = time.plusMinutes(5);
+//
+//			new File("/home/a-urq/IdeaProjects/Chase Archive Radar Image CLI/caseTests/2025-06-16-wellfleet-is-toty/radar-local/composite.png")
+//					.renameTo(new File(
+//						String.format("/home/a-urq/IdeaProjects/Chase Archive Radar Image CLI/caseTests/2025-06-16-wellfleet-is-toty/radar-local/composite-%03d.png",
+//								i)
+//					));
+//		}
 	}
 
 	public static DateTime convertCliDtToDatetime(String input) {
@@ -90,17 +102,17 @@ public class FullSuiteTest {
 		String _lon = String.valueOf(lon);
 
 		String[] argsRadLoc = {"-dt", dt, "-lat", _lat, "-lon", _lon,
-				"-a", "4:3", "-s", "0.5", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE", "-tms", "TRUE", "-o", "caseTests/" + caseName};
+				"-a", "4:3", "-s", "0.5", "-r", "1080", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "TRUE", "-o", "caseTests/" + caseName};
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon,
-				"-a", "16:9", "-s", "2.5", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "8.0", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatVis = {"-dt", dt, "-lat", _lat, "-lon", _lon,
-				"-a", "16:9", "-s", "2.5", "-r", "1080", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-forceFD", "TRUE", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "8.0", "-r", "1080", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatLir = {"-dt", dt, "-lat", _lat, "-lon", _lon,
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
 //		RadarImageCli.main(argsRadLoc);
-		RadarImageCli.main(argsRadReg);
 		SatelliteImageCli.main(argsSatVis);
+		RadarImageCli.main(argsRadReg);
 //		SatelliteImageCli.main(argsSatLir);
 	}
 

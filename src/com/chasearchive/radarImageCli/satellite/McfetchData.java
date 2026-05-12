@@ -15,9 +15,9 @@ import static com.chasearchive.radarImageCli.satellite.GoesMcfetchCutoffs.*;
 
 public class McfetchData {
     // band 1:
-    // band 2: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=GOES13&band=2&output=JPG&date=2016-04-11&time=22:45&lat=33.01+96.5&mag=-1&size=375+625
-    // band 4: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=GOES13&band=4&output=JPG&date=2016-04-11&time=22:45&lat=33.01+96.5&mag=-1&size=375+625
-    // himawari 9: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=HIMAWARI9&coverage=FD&band=1&output=JPG&date=2024-09-01&time=00:50:01&lat=42.01+-141.5&size=1500+2500&mag=-1
+    // band 2: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=GOES13&band=2&output=JPG&date=2016-04-11&time=22:45&lat=33.01+96.5&mag=-1&size=125+500
+    // band 4: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=GOES13&band=4&output=JPG&date=2016-04-11&time=22:45&lat=33.01+96.5&mag=-1&size=125+500
+    // himawari 9: https://mcfetch.ssec.wisc.edu/cgi-bin/mcfetch?dkey=fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn&satellite=HIMAWARI9&coverage=FD&band=1&output=JPG&date=2024-09-01&time=00:50:01&lat=42.01+-141.5&size=1500+2000&mag=-1
 
     private static final String DKEY = "fhnp35c2-cv5b-fpux-ygib-y4sh4lrmkdwn";
 
@@ -31,8 +31,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -52,8 +52,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -70,8 +70,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -88,8 +88,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -106,8 +106,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -125,8 +125,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -143,8 +143,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -165,8 +165,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -183,8 +183,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -201,8 +201,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -219,8 +219,8 @@ public class McfetchData {
                 String date = String.format("%04d-%02d-%02d", dateTime.getYear(), dateTime.getMonthOfYear(), dateTime.getDayOfMonth());
                 String time = String.format("%02d:%02d", dateTime.getHourOfDay(), dateTime.getMinuteOfHour());
                 String latLon = String.format("%.2f+%.2f", lat, -lon);
-                String size1 = "1500+2500";
-                String size2 = "375+625";
+                String size1 = "500+2000";
+                String size2 = "125+500";
 
                 String band1Url = String.format(URL_FORMAT, DKEY, sat, 1, date, time, latLon, size1);
                 String band2Url = String.format(URL_FORMAT, DKEY, sat, 2, date, time, latLon, size2);
@@ -240,7 +240,7 @@ public class McfetchData {
     }
 
     private static File downloadFile(String url, String fileName) throws IOException {
-//		System.out.println("Downloading from: " + url);
+		System.out.println("Downloading from: " + url);
         URL dataURL = new URL(url);
 
         File dataDir = new File(ResourceLoader.DATA_FOLDER);
