@@ -8,13 +8,14 @@ import java.util.ArrayList;
 
 public class TestClassOrder {
     public static void main(String[] args) throws IOException {
-        ArrayList<File> files = NceiClass.getFilesInOrder("8559148304");
+        NceiClass.downloadClassOrder("8559260104");
+
+        ArrayList<File> files = NceiClass.getFilesInOrder("8559260104");
 
         System.out.println(files.size());
 
         for (File f : files) {
             System.out.println(f.getAbsolutePath());
         }
-//        NceiClass.downloadClassOrder("8559148304");
     }
 }
