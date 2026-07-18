@@ -13,6 +13,8 @@ public class SatelliteGeneratorSettings {
 	private double resolution = 1080; // height in pixels
 	private Layering layering = Layering.COMPOSITE_ONLY;
 	private boolean drawTimestamp = true;
+	private boolean useClass = false;
+	private String classOrderId = "";
 	
 	public AspectRatio getAspectRatio() {
 		return aspectRatio;
@@ -91,5 +93,19 @@ public class SatelliteGeneratorSettings {
 
 	public void setDrawTimestamp(boolean drawTimestamp) {
 		this.drawTimestamp = drawTimestamp;
+	}
+
+	public boolean isUseClass() { return useClass; }
+
+	public void setUseClass(boolean useClass) {
+		this.useClass = useClass;
+	}
+
+	public String getClassOrderId() {
+		return classOrderId;
+	}
+
+	public void setClassOrderId(String classOrderId) {
+		this.classOrderId = classOrderId;
 	}
 }

@@ -3,6 +3,7 @@ package com.chasearchive.radarImageCli.nceiClass;
 import com.chasearchive.radarImageCli.ResourceLoader;
 import com.google.re2j.Matcher;
 import com.google.re2j.Pattern;
+import org.joda.time.DateTime;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,12 +16,56 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 
 public class NceiClass {
+    public static final String CLASS_FOLDER = "class-orders/";
+
     public static ArrayList<File> getFilesInOrder(String orderId) {
-        String dir = String.format(ResourceLoader.DATA_FOLDER + "class-orders/%s", orderId);
+        String dir = String.format(CLASS_FOLDER + "%s", orderId);
 
         return getFilesInDirectory(dir);
+    }
+
+    public static ArrayList<ClassSatFile> getGoesFilesInOrder(String orderId) {
+        ArrayList<File> files = getFilesInOrder(orderId);
+
+        ArrayList<ClassSatFile> goesFiles = new ArrayList<>();
+
+        for (File f : files) {
+            if(f.getName().contains(".nc")) {
+                goesFiles.add(ClassSatFile.fromGoes(f));
+            }
+        }
+
+        return goesFiles;
+    }
+
+    public static HashMap<Integer, ClassSatFile> getGoesFilesInOrderFromTime(String orderId, DateTime time) {
+        ArrayList<ClassSatFile> filesInOrder = getGoesFilesInOrder(orderId);
+
+        ArrayList<ClassSatFile> filesInOrderBeforeTime = new ArrayList<>();
+
+        for (ClassSatFile f : filesInOrder) {
+            if (!f.getDateTime().isAfter(time)) {
+                filesInOrderBeforeTime.add(f);
+            }
+        }
+
+        Collections.sort(filesInOrderBeforeTime);
+
+        DateTime mostRecentTime = filesInOrderBeforeTime.get(filesInOrderBeforeTime.size() - 1).getDateTime();
+
+        HashMap<Integer, ClassSatFile> bandFiles = new HashMap<>();
+
+        for (ClassSatFile f : filesInOrderBeforeTime) {
+            if(f.getDateTime().isEqual(mostRecentTime)){
+                bandFiles.put(f.getBandNumber(), f);
+            }
+        }
+
+        return bandFiles;
     }
 
     private static ArrayList<File> getFilesInDirectory(String dir) {
@@ -42,7 +87,7 @@ public class NceiClass {
     }
 
     public static void downloadClassOrder(String orderId) throws IOException {
-        new File(String.format(ResourceLoader.DATA_FOLDER + "class-orders/%s/", orderId)).mkdirs();
+        new File(String.format(CLASS_FOLDER + "%s/", orderId)).mkdirs();
 
         File manifest = downloadFile(String.format("https://order.class.noaa.gov/public/%s/001/", orderId), String.format("class-orders/%s/manifest.html", orderId));
 

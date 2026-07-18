@@ -116,6 +116,16 @@ public class SatelliteImageCli {
 					System.out.println("setting meso1: " + arg);
 					settings.setSector(SatelliteSector.GOES_MESOSCALE_1);
 				}
+			} else if("-useClass".equals(flag)) {
+				if("TRUE".equals(arg)) {
+					settings.setUseClass(true);
+				} else if("FALSE".equals(arg)) {
+					settings.setUseClass(false);
+				} else {
+					continue;
+				}
+			} else if("-classId".equals(flag)) {
+				settings.setClassOrderId(arg);
 			} else if("-o".equals(flag)) {
 				outputFolderString = arg;
 			} else {

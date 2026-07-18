@@ -772,7 +772,9 @@ public class GeocolorProcessing {
 //		System.out.println("chunkSize: " + chunkSize);
 //		System.out.println("renderChunks.shape: " + renderChunks.length + ", " +  + renderChunks[0].length);
 //		System.out.println("trueColor.shape (expected): " + renderChunks.length * chunkSize + ", " +  + renderChunks[0].length * chunkSize);
-//		System.out.println("trueColor.shape (actual)  : " + trueColor.length + ", " +  + trueColor[0].length);
+		System.out.println("trueColor.shape (actual)  : " + trueColor.length + ", " +  + trueColor[0].length);
+		System.out.println("irColor.shape (upscaled x4): " + irColor.length * 4 + ", " +  + irColor[0].length * 4);
+		System.out.println("irColor.shape (actual)  : " + irColor.length + ", " +  + irColor[0].length);
 //		System.out.println("goesComposite.shape (expected): " + renderChunks.length * chunkSize + ", " +  + renderChunks[0].length * chunkSize);
 //		System.out.println("goesComposite.shape (actual)  : " + goesComposite.length + ", " +  + goesComposite[0].length);
 
@@ -786,7 +788,19 @@ public class GeocolorProcessing {
 						blendFactor = 1;
 					}
 
-					goesComposite[i][j] = blendTristims(trueColor[i][j], irColor[i / 4][j / 4], blendFactor);
+					Color trueColorPixel = trueColor[i][j];
+					Color irColorPixel = Color.BLACK;
+					int irCoordsI = i / 4;
+					int irCoordsJ = j / 4;
+
+					// WRITE CODE TO DETERMINE ALIGNMENT OFFSET CORRECTIONS FOR THE VIS GRID AND THE IR GRID IF NECESSARY
+
+					if(irCoordsI > 0 && irCoordsI < irColor.length && irCoordsJ > 0 && irCoordsJ < irColor[0].length) {
+						irColorPixel = irColor[i / 4][j / 4];
+					}
+
+
+					goesComposite[i][j] = blendTristims(trueColorPixel, irColorPixel, blendFactor);
 //					goesComposite[i][j] = trueColor[i][j];
 				}
 			}

@@ -29,6 +29,8 @@ import java.util.zip.GZIPInputStream;
 import javax.imageio.ImageIO;
 
 import com.chasearchive.radarImageCli.*;
+import com.chasearchive.radarImageCli.nceiClass.ClassSatFile;
+import com.chasearchive.radarImageCli.nceiClass.NceiClass;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
@@ -72,37 +74,41 @@ public class SatelliteImageGenerator {
 		SatelliteSector sector = SatelliteSector.GOES_CONUS;
 
 		// this decision tree will likely evolve as new data sources are added
-		if (lon > -107 && lon <= 74) {
-			source = SatelliteSource.GOES_EAST;
+		if(settings.isUseClass()) {
+			source = SatelliteSource.NCEI_CLASS;
+		} else {
+			if (lon > -107 && lon <= 74) {
+				source = SatelliteSource.GOES_EAST;
 
-			if(time.isBefore(GOES_16_OPERATIONAL_START)) {
-				source = SatelliteSource.GOES_EAST_MCFETCH;
-			}
-			
-			if (lat > 22 && lat <= 51 && lon > -107 && lon <= -59) {
-				if(settings.getSector() != SatelliteSector.GOES_FULL_DISK) {
-					sector = SatelliteSector.GOES_CONUS;
+				if (time.isBefore(GOES_16_OPERATIONAL_START)) {
+					source = SatelliteSource.GOES_EAST_MCFETCH;
+				}
+
+				if (lat > 22 && lat <= 51 && lon > -107 && lon <= -59) {
+					if (settings.getSector() != SatelliteSector.GOES_FULL_DISK) {
+						sector = SatelliteSector.GOES_CONUS;
+					} else {
+						sector = SatelliteSector.GOES_FULL_DISK;
+					}
 				} else {
 					sector = SatelliteSector.GOES_FULL_DISK;
 				}
-			} else {
-				sector = SatelliteSector.GOES_FULL_DISK;
-			}
-		} else if ((lon > -180 && lon <= -107) || (lon > 74 && lon <= 180)) {
-			source = SatelliteSource.GOES_WEST;
+			} else if ((lon > -180 && lon <= -107) || (lon > 74 && lon <= 180)) {
+				source = SatelliteSource.GOES_WEST;
 
-			if(time.isBefore(GOES_17_OPERATIONAL_START)) {
-				source = SatelliteSource.GOES_WEST_MCFETCH;
-			}
+				if (time.isBefore(GOES_17_OPERATIONAL_START)) {
+					source = SatelliteSource.GOES_WEST_MCFETCH;
+				}
 
-			if (lat > 22 && lat <= 51 && lon > -162 && lon <= -107) {
-				if(settings.getSector() != SatelliteSector.GOES_FULL_DISK) {
-					sector = SatelliteSector.GOES_PACUS;
+				if (lat > 22 && lat <= 51 && lon > -162 && lon <= -107) {
+					if (settings.getSector() != SatelliteSector.GOES_FULL_DISK) {
+						sector = SatelliteSector.GOES_PACUS;
+					} else {
+						sector = SatelliteSector.GOES_FULL_DISK;
+					}
 				} else {
 					sector = SatelliteSector.GOES_FULL_DISK;
 				}
-			} else {
-				sector = SatelliteSector.GOES_FULL_DISK;
 			}
 		}
 
@@ -267,6 +273,43 @@ public class SatelliteImageGenerator {
 				System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
 			} else {
 				satPlot = null;
+			}
+		} else if (settings.getSource() == SatelliteSource.NCEI_CLASS) {
+			String orderId = settings.getClassOrderId();
+
+			long downloadStartTime = System.currentTimeMillis();
+
+//			NceiClass.downloadClassOrder(orderId);
+
+			long downloadEndTime = System.currentTimeMillis();
+			System.out.println("download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
+
+			System.out.println("loading files...");
+			long fileLoadStartTime = System.currentTimeMillis();
+
+			HashMap<Integer, ClassSatFile> files = NceiClass.getGoesFilesInOrderFromTime(orderId, time);
+
+			File visFile = files.get(1).getFile();
+			File swirFile = files.get(2).getFile();
+			File lwirFile = files.get(4).getFile();
+			try {
+				GoesImageMcfetch band1 = GoesImageMcfetch.loadFromFile(visFile);
+				GoesImageMcfetch band2 = GoesImageMcfetch.loadFromFile(swirFile);
+				GoesImageMcfetch band4 = GoesImageMcfetch.loadFromFile(lwirFile);
+
+				GoesImageMcfetch[] goesImages = { band1, band2, band4 };
+				long fileLoadEndTime = System.currentTimeMillis();
+				System.out.println("file load time: " + (fileLoadEndTime - fileLoadStartTime)/1000.0 + " s");
+
+				System.out.println("plotting data...");
+				long plotStartTime = System.currentTimeMillis();
+				satPlot = generateSatellitePlot(goesImages, time, lat, lon, settings, satProj, plotProj);
+				long plotEndTime = System.currentTimeMillis();
+				System.out.println("overall plotting time: " + (plotEndTime - plotStartTime)/1000.0 + " s");
+				System.out.println("**overall run time: " + (plotEndTime - downloadStartTime)/1000.0 + " s**");
+			} catch (NotValidMcfetchFileException e) {
+				System.err.println("Valid file does not exist in McFETCH archive for this time! Returning blank black image to avoid crash.");
+				satPlot = new BufferedImage(mapWidth, mapHeight, BufferedImage.TYPE_3BYTE_BGR);
 			}
 		}
 
