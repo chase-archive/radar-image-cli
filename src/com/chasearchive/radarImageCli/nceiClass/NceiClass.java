@@ -89,12 +89,17 @@ public class NceiClass {
     public static void downloadClassOrder(String orderId) throws IOException {
         new File(String.format(CLASS_FOLDER + "%s/", orderId)).mkdirs();
 
-        File manifest = downloadFile(String.format("https://order.class.noaa.gov/public/%s/001/", orderId), String.format("class-orders/%s/manifest.html", orderId));
+        File manifest = downloadFile(String.format("https://order.class.noaa.gov/public/%s/001/", orderId), String.format("%s/manifest.html", orderId));
 
         ArrayList<String> filenames = readFilenamesFromManifest(manifest);
 
+//        System.out.println("filenames present in manifest");
+//        for (String name : filenames) {
+//            System.out.println(name);
+//        }
+
         for (String name : filenames) {
-            downloadFile(String.format("https://order.class.noaa.gov/public/%s/%s", orderId, name), String.format("class-orders/%s/%s", orderId, name));
+            downloadFile(String.format("https://order.class.noaa.gov/public/%s/%s", orderId, name), String.format("%s/%s", orderId, name));
         }
     }
 
@@ -106,7 +111,6 @@ public class NceiClass {
 
         while(m.find()) {
             String group = m.group(1);
-            System.out.println(group);
 
             filenames.add(group);
         }
@@ -115,26 +119,27 @@ public class NceiClass {
     }
 
     private static File downloadFile(String url, String fileName) throws IOException {
-        if(new File(fileName).exists()) {
-            return new File(fileName);
+        if(new File(CLASS_FOLDER + fileName).exists()) {
+            System.out.println("file already exists: " + CLASS_FOLDER + fileName);
+            return new File(CLASS_FOLDER + fileName);
         }
 
         System.out.println("Downloading from: " + url);
         URL dataURL = new URL(url);
 
-        File dataDir = new File(ResourceLoader.DATA_FOLDER);
+        File dataDir = new File(CLASS_FOLDER);
 //		System.out.println("Creating Directory: " + dataFolder);
         dataDir.mkdirs();
         InputStream is = dataURL.openStream();
 
         int kbDownloaded = 0;
 
-		System.out.println("Output File: " + ResourceLoader.DATA_FOLDER + fileName);
-        Path file = Paths.get(ResourceLoader.DATA_FOLDER + fileName);
+		System.out.println("Output File: " + CLASS_FOLDER + fileName);
+        Path file = Paths.get(CLASS_FOLDER + fileName);
         System.out.println(file.getParent());
         new File(file.getParent().toUri()).mkdirs();
 
-        OutputStream os = Files.newOutputStream(Paths.get(ResourceLoader.DATA_FOLDER + fileName));
+        OutputStream os = Files.newOutputStream(Paths.get(CLASS_FOLDER + fileName));
         byte[] buffer = new byte[16 * 1024];
         int transferredBytes = is.read(buffer);
         while (transferredBytes > -1) {
@@ -150,7 +155,7 @@ public class NceiClass {
         is.close();
         os.close();
 
-        return new File(ResourceLoader.DATA_FOLDER + fileName);
+        return new File(CLASS_FOLDER + fileName);
     }
 
     // Source - https://stackoverflow.com/a/326440

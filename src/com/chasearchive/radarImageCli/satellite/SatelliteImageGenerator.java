@@ -140,8 +140,14 @@ public class SatelliteImageGenerator {
 		BufferedImage basemap = null;
 		
 		if(settings.getLayering() != Layering.SEPARATE_ONLY_NO_BASEMAP) {
+			System.out.println("generating basemap...");
+			long basemapStartTime = System.currentTimeMillis();
+
 			basemapLayers = generateBasemap(lat, lon, settings, plotProj);
 			basemap = basemapLayers[0];
+
+			long basemapEndTime = System.currentTimeMillis();
+			System.out.println("basemap time: " + (basemapEndTime - basemapStartTime)/1000.0 + " s");
 		}
 
 		BufferedImage satPlot = null;
@@ -279,7 +285,7 @@ public class SatelliteImageGenerator {
 
 			long downloadStartTime = System.currentTimeMillis();
 
-//			NceiClass.downloadClassOrder(orderId);
+			NceiClass.downloadClassOrder(orderId);
 
 			long downloadEndTime = System.currentTimeMillis();
 			System.out.println("download time: " + (downloadEndTime - downloadStartTime)/1000.0 + " s");
