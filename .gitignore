@@ -1,6 +1,7 @@
 ### Project Specific
 caseTests/
 exclude/
+class-orders/
 radar-image-generator-temp/
 satellite-image-generator-temp/
 radar-image-cli-temp/
