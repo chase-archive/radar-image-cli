@@ -840,7 +840,9 @@ public class RadarImageGenerator {
 
 	private static BufferedImage generateRadarMosaicPlot(DateTime time, double lat, double lon,
 			RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
-		if (!time.isBefore(GRIDRAD_V3_OP_START) && !time.isAfter(MRMS_OP_START)) {
+		if (!time.isBefore(MYRORSS_OP_START) && !time.isAfter(MYRORSS_OP_END)) {
+			return generateMyrorssPlot(time, lat, lon, settings, plotProj);
+		} else if (!time.isBefore(GRIDRAD_V3_OP_START) && !time.isAfter(MRMS_OP_START)) {
 			return generateGridradV3Plot(time, lat, lon, settings, plotProj);
 		} else if (time.isAfter(GRIDRAD_v3_OP_END) && !time.isAfter(MRMS_OP_START)) {
 			if(time.getMonthOfYear() >= 4 && time.getMonthOfYear() <= 8) {
@@ -853,6 +855,136 @@ public class RadarImageGenerator {
 		} else {
 			return null;
 		}
+	}
+
+	private static BufferedImage generateMyrorssPlot(DateTime time, double lat, double lon,
+													   RadarGeneratorSettings settings, RotateLatLonProjection plotProj) throws IOException {
+//		PointD latLonProjected = plotProj.rotateLatLon(lon, lat);
+
+		if(lat < 25 || lat > 55 || lon < -130 || lon > -60) {
+			return null;
+		}
+
+		BufferedImage radarPlot = new BufferedImage((int) (settings.getResolution() * settings.getAspectRatioFloat()),
+				(int) settings.getResolution(), BufferedImage.TYPE_4BYTE_ABGR);
+		Graphics2D g = radarPlot.createGraphics();
+
+		PointD latLonProjectedUL = new PointD(-(settings.getSize() * settings.getAspectRatioFloat()),
+				(settings.getSize()));
+		PointD latLonProjectedDR = new PointD((settings.getSize() * settings.getAspectRatioFloat()),
+				-(settings.getSize()));
+
+		String myrorssUrl = String.format(
+				"https://data.rda.ucar.edu/d841000/%04d%02d/nexrad_3d_v3_1_%04d%02d%02dT%02d%02d%02dZ.nc",
+				time.getYear(), time.getMonthOfYear(), time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
+				time.getHourOfDay(), 0, 0);
+		File myrorssGz = downloadFile(myrorssUrl, "myrorss.nc.gz");
+		File myrorssFile = unzipGz(myrorssGz);
+		MyrorssComposite myrorss = new MyrorssComposite(myrorssFile);
+
+		float[][] data = null;
+		ColorTable colorTable = null;
+
+		switch (settings.getMoment()) {
+			case REFLECTIVITY:
+				data = myrorss.rala;
+				colorTable = reflectivityColorTable;
+				break;
+			default:
+				return radarPlot;
+		}
+
+//		for (int z = 0; z < gridrad.refl.length; z++) {
+//			BufferedImage imgRaw = new BufferedImage(gridrad.refl[z][0].length,  gridrad.refl[z].length, BufferedImage.TYPE_3BYTE_BGR);
+//			Graphics2D gr = imgRaw.createGraphics();
+//
+//			for (int i = 0; i < gridrad.refl[z].length; i++) {
+//				for (int j = 0; j < gridrad.refl[z][i].length; j++) {
+//					gr.setColor(colorTable.getColor(gridrad.refl[z][i][j]));
+//					gr.fillRect(j, i, 1, 1);
+//				}
+//			}
+//
+//			ImageIO.write(imgRaw, "PNG", new File(String.format("gridrad-3d-z%02d.png", z)));
+//		}
+
+		System.out.println("myrorss.lat.length: " + myrorss.lat.length);
+		System.out.println("myrorss.lon.length: " + myrorss.lon.length);
+		for (int i = 0; i < data.length; i++) {
+			for (int j = 0; j < data[i].length; j++) {
+				float qLat = myrorss.lat[myrorss.lat.length - 1 - i];
+				float qLon = myrorss.lon[j];
+
+				float lat1 = qLat - myrorss.dLat / 2.0f;
+				float lat2 = qLat + myrorss.dLat / 2.0f;
+				float lon1 = qLon - myrorss.dLat / 2.0f;
+				float lon2 = qLon + myrorss.dLat / 2.0f;
+
+				PointD p1P = plotProj.rotateLatLon(lon1, lat1);
+				PointD p2P = plotProj.rotateLatLon(lon1, lat2);
+				PointD p3P = plotProj.rotateLatLon(lon2, lat2);
+				PointD p4P = plotProj.rotateLatLon(lon2, lat1);
+
+				double x1 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p1P.getY());
+				double y1 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p1P.getX());
+				double x2 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p2P.getY());
+				double y2 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p2P.getX());
+				double x3 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p3P.getY());
+				double y3 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p3P.getX());
+				double x4 = linScale(latLonProjectedUL.getX(), latLonProjectedDR.getX(), 0, radarPlot.getWidth(),
+						p4P.getY());
+				double y4 = linScale(latLonProjectedUL.getY(), latLonProjectedDR.getY(), 0, radarPlot.getHeight(),
+						p4P.getX());
+
+				double value = data[i][j];
+				Color color = colorTable.getColor(value);
+
+				int[] xPoints = { (int) Math.round(x1), (int) Math.round(x2), (int) Math.round(x3),
+						(int) Math.round(x4) };
+				int[] yPoints = { (int) Math.round(y1), (int) Math.round(y2), (int) Math.round(y3),
+						(int) Math.round(y4) };
+
+				boolean anyInsideImage = false;
+				for (int k = 0; k < 4; k++) {
+					int x = xPoints[k];
+					int y = yPoints[k];
+
+					if (x >= 0 && x < radarPlot.getWidth() && y >= 0 && y < radarPlot.getHeight()) {
+						anyInsideImage = true;
+						break;
+					}
+				}
+
+				if (anyInsideImage) {
+					g.setColor(color);
+					g.fillPolygon(xPoints, yPoints, 4);
+				}
+			}
+		}
+
+//		BufferedImage gridradTest = new BufferedImage(data[0].length, data.length, BufferedImage.TYPE_3BYTE_BGR);
+//		Graphics2D g2 = gridradTest.createGraphics();
+//
+//		for(int i = 0; i < gridradTest.getWidth(); i++) {
+//			for(int j = 0; j < gridradTest.getHeight(); j++) {
+//				Color c = colorTable.getColor(data[j][i]);
+//
+//				System.out.println("data[j][i]::color - " + data[j][i] + "::" + c);
+//
+//				g2.setColor(c);
+//				g2.fillRect(i, j, 1, 1);
+//			}
+//		}
+//
+//		ImageIO.write(gridradTest, "PNG", new File("gridrad-test.png"));
+
+		return radarPlot;
 	}
 
 	private static BufferedImage generateGridradV3Plot(DateTime time, double lat, double lon,
