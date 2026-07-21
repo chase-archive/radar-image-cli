@@ -20,6 +20,14 @@ public class PokeAtCDMFile {
 //                        WeatherUtils.wavelengthToWavenumber(10.7 / 1000000.0))
 //        );
 
+        NetcdfFile ncfile = NetcdfFile.open("/home/a-urq/IdeaProjects/Chase Archive Radar Image CLI/test-files/MYRORSS/20091224-230024.netcdf");
+
+        System.out.println(ncfile);
+
+
+    }
+
+    public static void pokeAtSuviFile() throws IOException {
         NetcdfFile ncfile = NetcdfFile.open("OR_SUVI-L1b-Fe195_G19_s20253102001532_e20253102001542_c20253102002204.nc");
         System.out.println(ncfile);
         System.exit(44);

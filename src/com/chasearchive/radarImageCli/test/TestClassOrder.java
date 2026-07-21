@@ -14,9 +14,9 @@ import java.util.Iterator;
 
 public class TestClassOrder {
     public static void main(String[] args) throws IOException {
-        NceiClass.downloadClassOrder("8561071453");
+        NceiClass.downloadClassOrder("8561091534");
 
-        ArrayList<ClassSatFile> files = NceiClass.getGoesFilesInOrder("8561071453");
+        ArrayList<ClassSatFile> files = NceiClass.getGoesFilesInOrder("8561091534");
 
         Collections.sort(files);
 
@@ -26,7 +26,7 @@ public class TestClassOrder {
             System.out.println(f);
         }
 
-        HashMap<Integer, ClassSatFile> filesByTime = NceiClass.getGoesFilesInOrderFromTime("8561071453", new DateTime(2004, 5, 29, 23, 45, DateTimeZone.UTC));
+        HashMap<Integer, ClassSatFile> filesByTime = NceiClass.getGoesFilesInOrderFromTime("8561091534", new DateTime(2003, 5, 8, 22, 45, DateTimeZone.UTC));
 
         for (Iterator<Integer> it = filesByTime.keySet().iterator(); it.hasNext(); ) {
             int i = it.next();
