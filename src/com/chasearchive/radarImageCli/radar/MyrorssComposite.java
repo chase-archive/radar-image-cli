@@ -47,7 +47,7 @@ public class MyrorssComposite {
     public MyrorssComposite(File f) throws IOException {
         NetcdfFile ncfile = NetcdfFile.open(f.getAbsolutePath());
 
-        System.out.println(ncfile);
+//        System.out.println(ncfile);
 
         int latLength = ncfile.findDimension("Lat").getLength();
         int lonLength = ncfile.findDimension("Lon").getLength();
@@ -56,10 +56,10 @@ public class MyrorssComposite {
         dLat = ncfile.findGlobalAttribute("LatGridSpacing").getNumericValue().floatValue();
         dLon = ncfile.findGlobalAttribute("LonGridSpacing").getNumericValue().floatValue();
 
-        System.out.println(latLength);
-        System.out.println(lonLength);
-        System.out.println(dLat);
-        System.out.println(dLon);
+//        System.out.println(latLength);
+//        System.out.println(lonLength);
+//        System.out.println(dLat);
+//        System.out.println(dLon);
 
         lat = new float[latLength];
         lon = new float[lonLength];

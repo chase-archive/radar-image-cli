@@ -55,10 +55,15 @@ public class FullSuiteTest {
 //		double lon = -98.96;
 //		String caseName = String.format("electra-tx-2008-test", time.getHourOfDay(), time.getMinuteOfHour());
 
-		DateTime time = new DateTime(2003, 5, 8, 22, 45, 0, DateTimeZone.UTC);
+		DateTime time = new DateTime(2003, 5, 8, 22, 15, 0, DateTimeZone.UTC);
 		double lat = 35.67;
 		double lon = -98.36;
 		String caseName = "2003-05-08-moore-ok"; // also need midday
+
+//		DateTime time = new DateTime(2009, 12, 24, 22, 55, 0, DateTimeZone.UTC);
+//		double lat = 34.67;
+//		double lon = -95.36;
+//		String caseName = "2009-12-24-dfw-near-blizzard"; // also need midday
 
 //		makeLoop(time, time.plusHours(8), lat, lon, caseName, 8.0, true);
 
@@ -104,15 +109,15 @@ public class FullSuiteTest {
 		String[] argsRadLoc = {"-dt", dt, "-lat", _lat, "-lon", _lon,
 				"-a", "4:3", "-s", "0.5", "-r", "1080", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "TRUE", "-o", "caseTests/" + caseName};
 		String[] argsRadReg = {"-dt", dt, "-lat", _lat, "-lon", _lon,
-				"-a", "16:9", "-s", "8.0", "-c", "MRMS", "-r", "720", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "3.0", "-c", "MRMS", "-r", "1080", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 		String[] argsSatVis = {"-dt", dt, "-lat", _lat, "-lon", _lon,
-				"-a", "16:9", "-s", "3.0", "-r", "1080", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE", "-useClass", "TRUE", "-classId", "8561091534", "-o", "caseTests/" + caseName};
+				"-a", "16:9", "-s", "3.0", "-r", "1080", "-debug", "SILENT", "-lyr", "COMPOSITE", "-tms", "FALSE"/*, "-useClass", "TRUE", "-classId", "8561091534"*/, "-o", "caseTests/" + caseName};
 		String[] argsSatLir = {"-dt", dt, "-lat", _lat, "-lon", _lon,
 				"-a", "4:3", "-s", "3.0", "-t", "LIR", "-r", "720", "-debug", "SILENT", "-lyr", "SEPARATE-NO-BASEMAP", "-tms", "FALSE", "-o", "caseTests/" + caseName};
 
 //		RadarImageCli.main(argsRadLoc);
 		SatelliteImageCli.main(argsSatVis);
-//		RadarImageCli.main(argsRadReg);
+		RadarImageCli.main(argsRadReg);
 //		SatelliteImageCli.main(argsSatLir);
 	}
 

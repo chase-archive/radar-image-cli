@@ -27,6 +27,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
 
+import com.ameliaWx.wxArchives.earthWeather.myrorss.MyrorssAws;
 import com.chasearchive.radarImageCli.*;
 import org.apache.commons.io.FileUtils;
 import org.joda.time.DateTime;
@@ -874,10 +875,12 @@ public class RadarImageGenerator {
 		PointD latLonProjectedDR = new PointD((settings.getSize() * settings.getAspectRatioFloat()),
 				-(settings.getSize()));
 
-		String myrorssUrl = String.format(
-				"https://data.rda.ucar.edu/d841000/%04d%02d/nexrad_3d_v3_1_%04d%02d%02dT%02d%02d%02dZ.nc",
-				time.getYear(), time.getMonthOfYear(), time.getYear(), time.getMonthOfYear(), time.getDayOfMonth(),
-				time.getHourOfDay(), 0, 0);
+		// +1 minutes addresses some timing weirdness
+		// in chase archive we've usually been using 15 minute increments
+		// MYRORSS has a lot of files 20-60 seconds after multiples of 5 minutes
+		// many of those files already have minute old scans so radar imagery can easily be 10+ minutes old
+		// this helps address that
+		String myrorssUrl = MyrorssAws.getMyrorssFile(time.plusMinutes(1));
 		File myrorssGz = downloadFile(myrorssUrl, "myrorss.nc.gz");
 		File myrorssFile = unzipGz(myrorssGz);
 		MyrorssComposite myrorss = new MyrorssComposite(myrorssFile);
@@ -908,11 +911,11 @@ public class RadarImageGenerator {
 //			ImageIO.write(imgRaw, "PNG", new File(String.format("gridrad-3d-z%02d.png", z)));
 //		}
 
-		System.out.println("myrorss.lat.length: " + myrorss.lat.length);
-		System.out.println("myrorss.lon.length: " + myrorss.lon.length);
+//		System.out.println("myrorss.lat.length: " + myrorss.lat.length);
+//		System.out.println("myrorss.lon.length: " + myrorss.lon.length);
 		for (int i = 0; i < data.length; i++) {
 			for (int j = 0; j < data[i].length; j++) {
-				float qLat = myrorss.lat[myrorss.lat.length - 1 - i];
+				float qLat = myrorss.lat[i];
 				float qLon = myrorss.lon[j];
 
 				float lat1 = qLat - myrorss.dLat / 2.0f;
