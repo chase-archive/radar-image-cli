@@ -834,6 +834,8 @@ public class RadarImageGenerator {
 
 	private static DateTime GRIDRAD_V3_OP_START = new DateTime(1995, 1, 1, 0, 0, 0, DateTimeZone.UTC);
 	private static DateTime GRIDRAD_v3_OP_END = new DateTime(2017, 12, 31, 23, 0, 1, DateTimeZone.UTC);
+	private static DateTime MYRORSS_OP_START = new DateTime(1995, 1, 1, 0, 0, 0, DateTimeZone.UTC);
+	private static DateTime MYRORSS_OP_END = new DateTime(2017, 12, 31, 23, 0, 1, DateTimeZone.UTC);
 	private static DateTime MRMS_OP_START = new DateTime(2014, 11, 19, 21, 57, 0, DateTimeZone.UTC);
 
 	private static BufferedImage generateRadarMosaicPlot(DateTime time, double lat, double lon,

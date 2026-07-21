@@ -80,6 +80,9 @@ public class MyrorssComposite {
         constructGrid(rala, ralaRaw, pixel_x, pixel_y);
 
         fillGapsPass(rala);
+        fillGapsPass(rala);
+        fill2x2GapsPass(rala);
+        fillGapsPass(rala);
     }
 
     private void constructGrid(float[][] grid, float[] data, float[] x, float[] y) {
@@ -100,7 +103,7 @@ public class MyrorssComposite {
         // longitudinal pass
         for(int i = 0; i < grid.length; i++) {
             for(int j = 1; j < grid[i].length - 1; j++) {
-                if(grid[i][j] == -1024 && grid[i][j - 1] != -1024 && grid[i][j + 1] != -1024){
+                if(grid[i][j] == -1024 && grid[i][j - 1] != -1024 && grid[i][j + 1] != -1024) {
                     grid[i][j] = (float) ((grid[i][j - 1] + grid[i][j + 1]) / 2.0);
                 }
             }
@@ -109,8 +112,31 @@ public class MyrorssComposite {
         // latitudinal pass
         for(int i = 1; i < grid.length - 1; i++) {
             for(int j = 0; j < grid[i].length; j++) {
-                if(grid[i][j] == -1024 && grid[i - 1][j] != -1024 && grid[i + 1][j] != -1024){
+                if(grid[i][j] == -1024 && grid[i - 1][j] != -1024 && grid[i + 1][j] != -1024) {
                     grid[i][j] = (float) ((grid[i - 1][j] + grid[i + 1][j]) / 2.0);
+                }
+            }
+        }
+    }
+
+    // one pass of longitudinal and then latitudinal gap filling
+    private void fill2x2GapsPass(float[][] grid) {
+        // longitudinal pass
+        for(int i = 0; i < grid.length; i++) {
+            for(int j = 1; j < grid[i].length - 2; j++) {
+                if(grid[i][j] == -1024 && grid[i][j + 1] == -1024 && grid[i][j - 1] != -1024 && grid[i][j + 2] != -1024) {
+                    grid[i][j]     = (float) ((2 * grid[i][j - 1] + grid[i][j + 2]) / 3.0);
+                    grid[i][j + 1] = (float) ((grid[i][j - 1] + 2 * grid[i][j + 2]) / 3.0);
+                }
+            }
+        }
+
+        // latitudinal pass
+        for(int i = 1; i < grid.length - 2; i++) {
+            for(int j = 0; j < grid[i].length; j++) {
+                if(grid[i][j] == -1024 && grid[i + 1][j] == -1024 && grid[i - 1][j] != -1024 && grid[i + 2][j] != -1024) {
+                    grid[i][j]     = (float) ((2 * grid[i - 1][j] + grid[i + 2][j]) / 3.0);
+                    grid[i + 1][j] = (float) ((grid[i - 1][j] + 2 * grid[i + 2][j]) / 3.0);
                 }
             }
         }
